@@ -5,6 +5,22 @@
 #   WEB_PORT            listen port (default 8080; non-root)
 #   API_UPSTREAM        api host:port (default api:8080)
 #   PUBLIC_ENVIRONMENT  rendered into /config.json (whitelisted keys only, see config.json.tmpl)
+
+# iCal feed URLs carry the secret token in the path (docs/architecture/ical-caldav.md §1): mask everything
+# from `/ical/` on (query string included) in the request URI and Referer. Unanchored and tolerant of
+# percent-encoding, because the path matcher below also proxies `//ical/…` and `/%69cal/…`. Used by the access log and by the default
+# logger, which receives the error logs (e.g. a 502 from reverse_proxy) with the full request.
+# Caddy already omits Cookie/Authorization header values.
+(redacted_json) {
+	format filter {
+		wrap json
+		fields {
+			request>uri regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
+			request>headers>Referer regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
+		}
+	}
+}
+
 {
 	admin off
 	auto_https off
@@ -16,7 +32,7 @@
 	}
 	log {
 		output stdout
-		format json
+		import redacted_json
 	}
 }
 
@@ -41,17 +57,10 @@
 	import security_headers
 	encode zstd gzip
 
-	# Access log. iCal feed URLs carry the secret token in the path: mask everything after /ical/
-	# (docs/architecture/ical-caldav.md §1). Caddy already omits Cookie/Authorization header values.
+	# Access log, redacted like the default (error) log above.
 	log {
 		output stdout
-		format filter {
-			wrap json
-			fields {
-				request>uri regexp "(?i)^/ical/.*" "/ical/[REDACTED]"
-				request>headers>Referer regexp "(?i)/ical/.*" "/ical/[REDACTED]"
-			}
-		}
+		import redacted_json
 	}
 
 	handle /healthz {
