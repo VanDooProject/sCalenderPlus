@@ -1938,6 +1938,214 @@
           }
         ]
       }
+    },
+    "/api/v1/events": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Create a single event in a calendar (contribute)",
+        "description": "Timed ({ dateTime, timeZone }, zone default: the calendar's) or all-day ({ date }, end exclusive). A local time in a DST gap is shifted forward and reported in warnings (time_shifted_dst_gap); an ambiguous one takes the earlier offset (time_ambiguous_earlier_offset). Below contribute: 403; no level: 404. Frozen calendars: 409 calendar_frozen. Recurrence: 422 recurrence_not_supported. Duplicate uid: 409 uid_conflict.",
+        "operationId": "CreateEvent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{id}": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "An event I see (with ETag)",
+        "description": "free_busy callers get the busy projection (times only, title null). 404 for events the caller has no level on, and for transparent events at free_busy (no existence leaks).",
+        "operationId": "GetEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Change an event (edit; JSON Merge Patch, requires If-Match)",
+        "description": "Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.",
+        "operationId": "UpdateEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Delete an event (edit; soft delete, requires If-Match)",
+        "operationId": "DeleteEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2155,6 +2363,122 @@
           }
         }
       },
+      "CreateEventRequest": {
+        "required": [
+          "calendarId",
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "start": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeRequest"
+              }
+            ]
+          },
+          "end": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeRequest"
+              }
+            ]
+          },
+          "uid": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 20000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transparency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "maxLength": 7,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "categories": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "recurrence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventRecurrenceRequest"
+              }
+            ]
+          }
+        }
+      },
       "CreateGrantRequest": {
         "required": [
           "principal",
@@ -2294,6 +2618,7 @@
           "rate_limited",
           "reauthentication_failed",
           "recurrence_invalid",
+          "recurrence_not_supported",
           "service_unavailable",
           "time_zone_invalid",
           "token_expired",
@@ -2306,6 +2631,292 @@
         ],
         "type": "string",
         "description": "Stable machine-readable error code (part of the contract; never renamed)."
+      },
+      "EventCreatorResponse": {
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EventRecurrenceRequest": {
+        "type": "object",
+        "properties": {
+          "rrule": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rdates": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "exdates": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EventResponse": {
+        "required": [
+          "id",
+          "calendarId",
+          "title",
+          "start",
+          "end",
+          "allDay",
+          "transparency",
+          "myLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uid": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "categories": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "start": {
+            "$ref": "#/components/schemas/EventTimeResponse"
+          },
+          "end": {
+            "$ref": "#/components/schemas/EventTimeResponse"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "transparency": {
+            "type": "string"
+          },
+          "hasOverrides": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "sequence": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "createdBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventCreatorResponse"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "myLevel": {
+            "type": "string"
+          },
+          "sharedWithMe": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "etag": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "warnings": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EventWarningResponse"
+            }
+          }
+        }
+      },
+      "EventTimeRequest": {
+        "type": "object",
+        "properties": {
+          "dateTime": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timeZone": {
+            "maxLength": 64,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "date": {
+            "maxLength": 16,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EventTimeResponse": {
+        "type": "object",
+        "properties": {
+          "dateTime": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "utc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EventWarningResponse": {
+        "required": [
+          "code",
+          "field",
+          "message",
+          "requested",
+          "resolved",
+          "utc"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requested": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "string"
+          },
+          "utc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "ForgotPasswordRequest": {
         "required": [
@@ -3105,6 +3716,102 @@
           }
         }
       },
+      "UpdateEventRequest": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeRequest"
+              }
+            ]
+          },
+          "end": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeRequest"
+              }
+            ]
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 20000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transparency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "maxLength": 7,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "categories": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "recurrence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventRecurrenceRequest"
+              }
+            ]
+          }
+        }
+      },
       "UpdateGrantRequest": {
         "type": "object",
         "properties": {
@@ -3199,6 +3906,9 @@
     },
     {
       "name": "Calendars"
+    },
+    {
+      "name": "Events"
     }
   ]
 }

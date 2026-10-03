@@ -563,6 +563,51 @@ export interface paths {
     patch: operations['UpdateCalendarGrant']
     trace?: never
   }
+  '/api/v1/events': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Create a single event in a calendar (contribute)
+     * @description Timed ({ dateTime, timeZone }, zone default: the calendar's) or all-day ({ date }, end exclusive). A local time in a DST gap is shifted forward and reported in warnings (time_shifted_dst_gap); an ambiguous one takes the earlier offset (time_ambiguous_earlier_offset). Below contribute: 403; no level: 404. Frozen calendars: 409 calendar_frozen. Recurrence: 422 recurrence_not_supported. Duplicate uid: 409 uid_conflict.
+     */
+    post: operations['CreateEvent']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/events/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * An event I see (with ETag)
+     * @description free_busy callers get the busy projection (times only, title null). 404 for events the caller has no level on, and for transparent events at free_busy (no existence leaks).
+     */
+    get: operations['GetEvent']
+    put?: never
+    post?: never
+    /** Delete an event (edit; soft delete, requires If-Match) */
+    delete: operations['DeleteEvent']
+    options?: never
+    head?: never
+    /**
+     * Change an event (edit; JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.
+     */
+    patch: operations['UpdateEvent']
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -615,6 +660,22 @@ export interface components {
       groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
       creatorsManageOwnEvents?: null | boolean
       creatorsMayShareExternally?: null | boolean
+    }
+    CreateEventRequest: {
+      /** Format: uuid */
+      calendarId: null | string
+      start: null | components['schemas']['EventTimeRequest']
+      end: null | components['schemas']['EventTimeRequest']
+      uid?: null | string
+      title?: null | string
+      description?: null | string
+      location?: null | string
+      url?: null | string
+      status?: null | string
+      transparency?: null | string
+      color?: null | string
+      categories?: null | string[]
+      recurrence?: null | components['schemas']['EventRecurrenceRequest']
     }
     CreateGrantRequest: {
       principal: components['schemas']['GrantPrincipalRequest']
@@ -673,6 +734,7 @@ export interface components {
       | 'rate_limited'
       | 'reauthentication_failed'
       | 'recurrence_invalid'
+      | 'recurrence_not_supported'
       | 'service_unavailable'
       | 'time_zone_invalid'
       | 'token_expired'
@@ -682,6 +744,67 @@ export interface components {
       | 'unauthenticated'
       | 'unsupported_media_type'
       | 'validation_failed'
+    EventCreatorResponse: {
+      /** Format: uuid */
+      id: string
+      displayName: null | string
+    }
+    EventRecurrenceRequest: {
+      rrule?: null | string
+      rdates?: null | string[]
+      exdates?: null | string[]
+    }
+    EventResponse: {
+      /** Format: uuid */
+      id: string
+      /** Format: uuid */
+      calendarId: string
+      uid?: null | string
+      title: null | string
+      description?: null | string
+      location?: null | string
+      url?: null | string
+      status?: null | string
+      color?: null | string
+      categories?: null | string[]
+      start: components['schemas']['EventTimeResponse']
+      end: components['schemas']['EventTimeResponse']
+      allDay: boolean
+      transparency: string
+      hasOverrides?: null | boolean
+      /** Format: int32 */
+      sequence?: null | number
+      createdBy?: null | components['schemas']['EventCreatorResponse']
+      /** Format: date-time */
+      createdAt?: null | string
+      /** Format: date-time */
+      updatedAt?: null | string
+      myLevel: string
+      sharedWithMe?: null | boolean
+      etag?: null | string
+      warnings?: null | components['schemas']['EventWarningResponse'][]
+    }
+    EventTimeRequest: {
+      dateTime?: null | string
+      timeZone?: null | string
+      date?: null | string
+    }
+    EventTimeResponse: {
+      dateTime?: null | string
+      timeZone?: null | string
+      /** Format: date-time */
+      utc?: null | string
+      date?: null | string
+    }
+    EventWarningResponse: {
+      code: string
+      field: string
+      message: string
+      requested: string
+      resolved: string
+      /** Format: date-time */
+      utc: string
+    }
     ForgotPasswordRequest: {
       email: string
     }
@@ -887,6 +1010,19 @@ export interface components {
       creatorsManageOwnEvents?: null | boolean
       creatorsMayShareExternally?: null | boolean
       groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
+    }
+    UpdateEventRequest: {
+      start?: null | components['schemas']['EventTimeRequest']
+      end?: null | components['schemas']['EventTimeRequest']
+      title?: null | string
+      description?: null | string
+      location?: null | string
+      url?: null | string
+      status?: null | string
+      transparency?: null | string
+      color?: null | string
+      categories?: null | string[]
+      recurrence?: null | components['schemas']['EventRecurrenceRequest']
     }
     UpdateGrantRequest: {
       level?: null | string
@@ -2209,6 +2345,139 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['GrantResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateEvent: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateEventRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetEvent: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  DeleteEvent: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateEvent: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateEventRequest']
+        'application/json': components['schemas']['UpdateEventRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

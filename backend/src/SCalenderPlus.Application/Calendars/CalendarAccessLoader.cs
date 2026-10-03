@@ -15,8 +15,9 @@ public sealed record CalendarAccess(Calendar Calendar, IReadOnlyList<CalendarGra
 /// permissions.md §8): <see cref="PrincipalContext"/> from the actor's group memberships, <see cref="CalendarAcl"/>
 /// from a calendar and its grants. Use cases ask it for the actor's level (<see cref="RequireAsync"/>) instead of
 /// deciding access themselves; listings load in batch (<see cref="ListVisibleAsync"/>: one query for the
-/// memberships, then per page one for calendars and one for their grants — no query per calendar). Events (M2-C)
-/// build their <c>EventAcl</c>s next to these and resolve with the same principal and calendar ACLs.
+/// memberships, then per page one for calendars and one for their grants — no query per calendar). Events resolve
+/// with the same principal and calendar ACLs (<c>Events.EventQueryService</c>, <see cref="FindAclAsync"/>,
+/// <see cref="VisibleAsync"/>).
 /// </summary>
 public sealed class CalendarAccessLoader(IAppDbContext db)
 {
@@ -56,6 +57,56 @@ public sealed class CalendarAccessLoader(IAppDbContext db)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         var byCalendar = grants.ToLookup(g => g.CalendarId);
         return calendars.ToDictionary(c => c.Id, c => c.ToAcl(byCalendar[c.Id]));
+    }
+
+    /// <summary>
+    /// The calendar (untracked) and its ACL without any level check, or null when it does not exist: events resolve
+    /// against it, and event overrides (M2-D) may reach people whose calendar level is <c>none</c>.
+    /// </summary>
+    public async Task<(Calendar Calendar, CalendarAcl Acl)?> FindAclAsync(Guid calendarId, CancellationToken cancellationToken = default)
+    {
+        var calendar = await db.Calendars.AsNoTracking().SingleOrDefaultAsync(c => c.Id == calendarId, cancellationToken).ConfigureAwait(false);
+        if (calendar is null)
+        {
+            return null;
+        }
+
+        var acls = await AclsAsync([calendar], cancellationToken).ConfigureAwait(false);
+        return (calendar, acls[calendar.Id]);
+    }
+
+    /// <summary>
+    /// Every calendar the principal sees (level ≥ <c>free_busy</c>), unpaged, with its ACL and the level — the first
+    /// step of event window queries (permissions.md §8). <paramref name="only"/> restricts the candidates to these ids.
+    /// Two queries: candidate calendars and their grants (the principal is cached).
+    /// </summary>
+    public async Task<IReadOnlyList<(Calendar Calendar, CalendarAcl Acl, CalendarLevel Level)>> VisibleAsync(
+        PrincipalContext principal,
+        IReadOnlyCollection<Guid>? only = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        var candidates = Candidates(principal);
+        if (only is not null)
+        {
+            var ids = only.ToList();
+            candidates = candidates.Where(c => ids.Contains(c.Id));
+        }
+
+        var calendars = await candidates.OrderBy(c => c.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var acls = await AclsAsync(calendars, cancellationToken).ConfigureAwait(false);
+        var visible = new List<(Calendar, CalendarAcl, CalendarLevel)>(calendars.Count);
+        foreach (var calendar in calendars)
+        {
+            var acl = acls[calendar.Id];
+            var level = PermissionEngine.ResolveCalendarLevel(principal, acl);
+            if (level != CalendarLevel.None)
+            {
+                visible.Add((calendar, acl, level));
+            }
+        }
+
+        return visible;
     }
 
     /// <summary>The calendar and the actor's level on it; <c>404</c> for unknown calendars and level <c>none</c>.</summary>

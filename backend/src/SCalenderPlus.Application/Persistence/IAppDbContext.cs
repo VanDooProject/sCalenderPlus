@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Core.Calendars;
+using SCalenderPlus.Core.Events;
 using SCalenderPlus.Core.Groups;
 
 namespace SCalenderPlus.Application.Persistence;
@@ -20,6 +21,15 @@ public interface IAppDbContext
     DbSet<Calendar> Calendars { get; }
 
     DbSet<CalendarGrantEntry> CalendarGrants { get; }
+
+    /// <summary>
+    /// Events: read only through <c>Events.EventQueryService</c> (permission-aware) and added only through
+    /// <c>Events.EventWriter</c> — an architecture test forbids every other use (tenant isolation, permissions.md §8).
+    /// </summary>
+    DbSet<Event> Events { get; }
+
+    /// <summary>The sync log (<c>calendar_changes</c>), appended by <c>Events.EventWriter</c>.</summary>
+    DbSet<CalendarChange> CalendarChanges { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

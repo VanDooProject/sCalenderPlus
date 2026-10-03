@@ -88,7 +88,7 @@ Groups are **hard-deleted** (owners only): `group_members` and `group_invites` c
 | archived_at | timestamptz null | |
 | created_at, updated_at, xmin | | `xmin` = concurrency token |
 
-Index: `(owner_user_id)`, `(owner_group_id)`. Calendars are hard-deleted (owners only); grants cascade. There is no `owner_type` column: the owner kind follows from which owner column is set.
+Index: `(owner_user_id)`, `(owner_group_id)`. Calendars are hard-deleted (owners only); grants, events and their `calendar_changes` cascade. There is no `owner_type` column: the owner kind follows from which owner column is set.
 
 ### `calendar_grants`
 
@@ -120,37 +120,41 @@ Unique `(calendar_id, principal_type, principal_id, min_role)` `NULLS NOT DISTIN
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| calendar_id | uuid FK | |
-| uid | text | iCalendar UID, unique per calendar; `{id}@scalenderplus` for native events, preserved for imports/CalDAV. Multi-calendar feeds emit `{id}@scalenderplus` instead (the same external UID may exist in two calendars). |
+| calendar_id | uuid FK → calendars (cascade) | events go with their (hard-deleted) calendar |
+| uid | text | iCalendar UID (≤ 255, RFC 5545-safe printable ASCII), unique per calendar among live events; `{id}@scalenderplus` for native events, preserved for imports/CalDAV. Multi-calendar feeds emit `{id}@scalenderplus` instead (the same external UID may exist in two calendars). |
 | creator_user_id | uuid null | null for system/import (then import source creator acts as creator); kept as tombstone after user deletion (no FK, no floor). Preserved on series split. |
 | title | text | ≤ 500 chars |
 | description | text | markdown subset, ≤ 20k |
-| location | text | |
-| url | text | |
-| status | smallint | confirmed / tentative / cancelled |
-| transparency | smallint | opaque / transparent |
+| location | text | ≤ 1000 |
+| url | text | absolute http(s), ≤ 2000 |
+| status | smallint | 0 confirmed / 1 tentative / 2 cancelled |
+| transparency | smallint | 0 opaque / 1 transparent |
+| color | text null | `#rrggbb`; null = the calendar's color |
+| categories | text[] | iCalendar CATEGORIES (free text; `category_ids` may follow in v1) |
 | all_day | bool | |
 | start_local, end_local | timestamp (no tz) | wall clock for timed events |
 | start_date, end_date | date | for all-day events (end exclusive) |
 | time_zone | text null | IANA; null only for all-day |
-| start_utc, end_utc | timestamptz | computed first occurrence instant (all-day: date at UTC−14h/UTC+14h bounds so window queries in any viewer zone find it) |
+| start_utc, end_utc | timestamptz | computed first occurrence instant (all-day: `start_date 00:00Z − 14h` / `end_date 00:00Z + 14h`, so window queries in any viewer zone find it); CHECK `end_utc >= start_utc` |
 | rrule | text null | RFC 5545 RRULE value |
-| rdates, exdates | timestamptz[] / date[] | |
+| rdates, exdates | timestamptz[] / date[] | added with M2-E |
 | series_until_utc | timestamptz null | end of last occurrence; null = infinite |
-| occurs_range | tstzrange | **generated**: `[start_utc, coalesce(series_until_utc, end_utc, 'infinity'))` |
+| occurs_range | tstzrange | **generated** (stored): single events `[start_utc, end_utc)` (zero-length events `[start_utc, start_utc]`, so they still overlap windows); series masters `[start_utc, coalesce(series_until_utc, 'infinity'))` |
 | has_overrides | bool | fast path for permission engine |
 | sequence | int | iCal SEQUENCE, incremented on significant change |
 | category_ids | uuid[] | v1 |
-| import_source_id | uuid null | |
-| import_key | bytea null | dedupe key (see llm-import) |
-| locally_modified_at | timestamptz null | user edited an imported event → import won't overwrite those fields |
-| search | tsvector | generated from title/description/location, `simple` config + unaccent |
+| import_source_id | uuid null | added with imports (v1) |
+| import_key | bytea null | dedupe key (see llm-import); added with imports |
+| locally_modified_at | timestamptz null | user edited an imported event → import won't overwrite those fields; added with imports |
+| search | tsvector | generated from title/description/location, `simple` config + unaccent; added with search (v1) |
 | deleted_at | timestamptz null | soft delete (needed for sync & restore); purged after 90 days |
+| created_at, updated_at, xmin | | `xmin` = concurrency token |
 
 Indexes:
 
-- GiST `(calendar_id, occurs_range)` (btree_gist) → window queries per calendar.
-- Unique `(calendar_id, uid)`; unique partial `(import_source_id, import_key) WHERE import_key IS NOT NULL`.
+- GiST `(calendar_id, occurs_range) WHERE deleted_at IS NULL` (`ix_events_calendar_id_occurs_range`, extension btree_gist) → window queries per calendar (one lateral index scan per visible calendar, `EventQueryService.WindowSql`).
+- Unique `(calendar_id, uid) WHERE deleted_at IS NULL` (a deleted event's UID may be reused, e.g. by CalDAV); unique partial `(import_source_id, import_key) WHERE import_key IS NOT NULL` (with imports).
+- CHECK `ck_events_times`: all-day rows have dates (end > start) and no wall clock/zone, timed rows the reverse.
 - GIN `(search)`.
 
 ### `event_exceptions` (modified/cancelled occurrences of a recurring event)
@@ -195,7 +199,7 @@ Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_t
 
 ### `calendar_changes` (sync log)
 
-`seq bigserial PK, calendar_id, event_id, change (upsert|delete|acl), at` — index `(calendar_id, seq)`. Powers CalDAV `sync-collection`, webhooks and incremental client sync (`/changes?since=`). Trimmed after 90 days (clients older than that do full resync).
+`seq bigint identity PK, calendar_id FK → calendars (cascade), event_id (no FK), change smallint (0 upsert, 1 delete, 2 acl), at` — index `(calendar_id, seq)`. Appended by `EventWriter` in the transaction of every event change. Powers CalDAV `sync-collection`, webhooks and incremental client sync (`/changes?since=`). Trimmed after 90 days (clients older than that do full resync).
 
 ## 5. Feeds, tokens, integrations
 
@@ -243,12 +247,12 @@ Tokens are 32 random bytes (base64url) and stored only as SHA-256 hashes; lookup
 | All-day event | `start_date`/`end_date` (exclusive) — no zone | Same calendar date everywhere ("floating date"). |
 | Recurring timed event | Wall clock + zone → DST-stable ("every Monday 18:00 Berlin" stays 18:00 local across DST). | |
 | Imported floating time (no TZID) | Interpreted in the import source's/calendar's default zone; flagged in the candidate. | |
-| Nonexistent local time (DST gap) | Shifted forward (NodaTime `Resolvers.LenientResolver`), user warned in UI. | |
-| Ambiguous local time (DST overlap) | Earlier offset. | |
+| Nonexistent local time (DST gap) | Shifted forward by the gap (NodaTime `Resolvers.LenientResolver`); the shifted wall clock is stored; the api answers with a `time_shifted_dst_gap` warning, shown in the UI. | |
+| Ambiguous local time (DST overlap) | Earlier offset; `time_ambiguous_earlier_offset` warning. | |
 
 Rules:
 
-- The UTC instant is **derived**, the wall clock + zone is **authoritative** (zone rules change; intent does not).
+- The UTC instant is **derived**, the wall clock + zone is **authoritative** (zone rules change; intent does not). Implemented in `Core/Events/EventTimes` (one zone per event: start and end share `time_zone`; seconds precision).
 - The API accepts and returns `{"dateTime":"2026-11-02T18:00:00","timeZone":"Europe/Berlin"}` for timed and `{"date":"2026-11-02"}` for all-day values, plus read-only `utc` for convenience.
 - iCal output uses `TZID` with generated `VTIMEZONE` components (Ical.Net) for every zone used in the feed.
 - tzdb version is tracked; NodaTime tzdb is updated with dependency updates.

@@ -48,7 +48,7 @@ All errors are `application/problem+json`:
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
-| 422 | `recurrence_invalid`, `time_zone_invalid`, `email_domain_not_allowed` (both + `errors` with the field, like `validation_failed`) |
+| 422 | `recurrence_invalid`, `recurrence_not_supported` (recurring events before M2-E), `time_zone_invalid`, `email_domain_not_allowed` (all + `errors` with the field, like `validation_failed`) |
 | 429 | `rate_limited` |
 | 500 / 503 | `internal_error` (no details; correlate via `traceId`), `service_unavailable` |
 
@@ -151,13 +151,13 @@ Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Gr
 
 ### Calendars (implemented, M2)
 
-Use cases: `Application/Calendars/CalendarService`; access decisions only through the pure engine (`Core/Permissions`, permissions.md §4.5) via `CalendarAccessLoader`, which builds the engine's inputs from the database (`PrincipalContext` from the caller's memberships, `CalendarAcl` from the calendar row and its grants) — events (M2-C) resolve through the same loader. Every calendar endpoint answers **404 `not_found`** when the caller's level is `none` (unknown and invisible calendars are indistinguishable) and **403 `insufficient_permission`** (+ `required`, `actual` calendar levels) when it is visible but too low.
+Use cases: `Application/Calendars/CalendarService`; access decisions only through the pure engine (`Core/Permissions`, permissions.md §4.5) via `CalendarAccessLoader`, which builds the engine's inputs from the database (`PrincipalContext` from the caller's memberships, `CalendarAcl` from the calendar row and its grants) — events resolve through the same loader (`EventQueryService`, below). Every calendar endpoint answers **404 `not_found`** when the caller's level is `none` (unknown and invisible calendars are indistinguishable) and **403 `insufficient_permission`** (+ `required`, `actual` calendar levels) when it is visible but too low.
 
 - `GET /calendars?limit&cursor` → `{ items: [calendar], nextCursor }`: every calendar the caller sees (owned by them or one of their groups, granted to them or one of their groups), ordered by creation (UUIDv7 id), each with **`myLevel`**. One query loads the caller's memberships; per page one query loads candidate calendars and one their grants; the engine (`ResolveCalendarLevel`, untraced) decides, and candidates that resolve to `none` (e.g. a role default `none`, a grant whose `minRole` is above the caller's role) are skipped while the page is filled. `limit` 1–200 (default 50).
 - `POST /calendars { name, defaultTimeZone, description?, color?, groupId?, groupRoleDefaults?, creatorsManageOwnEvents?, creatorsMayShareExternally? }` → `201` + `Location` + `ETag`. Without `groupId` a personal calendar owned by the caller; with it a group calendar — group admins and owners only (members/viewers `403` with the required group role, non-members `404`). Name 1–100 (trimmed), description ≤ 1000, `color` `#rrggbb` (default `#4f46e5`, stored lowercase), `defaultTimeZone` an IANA id (`422 time_zone_invalid`), `groupRoleDefaults` (group calendars only) `{ admin?, member?, viewer? }` with levels `none` … `manage` (default `manage`/`contribute`/`read`); a creator whose own level would end up below `manage` gets `409 permission_self_lockout`. Counts against the plan subject's `owned_calendars` (the caller, or the group's billing owner) → `402 plan_limit_reached`; the count and the insert run in one transaction under an advisory lock on the subject, so concurrent creations cannot exceed the limit.
 - `GET /calendars/{id}` → `{ id, name, description, color, defaultTimeZone, owner: { type: user|group, id }, myLevel, groupRoleDefaults (null for personal calendars), creatorsManageOwnEvents, creatorsMayShareExternally, frozen, createdAt, updatedAt }` with a strong `ETag` (hash of the representation, as the caller sees it).
 - `PATCH /calendars/{id}` (`manage`; JSON Merge Patch, `If-Match` required: 428/412) of `name`, `description` (empty removes it), `color`, `defaultTimeZone`, `creatorsManageOwnEvents`, `creatorsMayShareExternally`, `groupRoleDefaults` (partial; never above the caller's level, `AccessPolicy.CanSetRoleDefault`). A change that would leave the caller below `manage` (an admin lowering the admin default) → `409 permission_self_lockout`. Frozen calendars (over the plan limit) → `409 calendar_frozen`.
-- `DELETE /calendars/{id}` (`owner`: the owning user, or role-owners of the owning group; `If-Match`) → `204`: hard delete with its grants (events follow in M2-C). Frozen calendars may be deleted.
+- `DELETE /calendars/{id}` (`owner`: the owning user, or role-owners of the owning group; `If-Match`) → `204`: hard delete with its grants, events and sync log (FK cascade). Frozen calendars may be deleted.
 - **Grants** (`Application/Calendars/CalendarGrantService`, `manage` required; below → 403, none → 404):
   - `GET /calendars/{id}/grants?limit&cursor` → `{ items: [{ id, calendarId, principal: { type: user|group, id, minRole }, principalName, level, createdBy, createdAt, updatedAt, etag }], nextCursor }` ordered by creation; `principalName` is the user's display name or the group's name.
   - `POST /calendars/{id}/grants { principal: { type, id, minRole? }, level }` → `201` + `Location` + `ETag`. Levels `free_busy` … `manage`, never `owner` nor above the caller's level (`AccessPolicy.CanGrant` → `400 validation_failed` with `errors.level`). `minRole` only for groups (default `viewer`). Selectable principals (else `400` with `errors.principal`, unknown ids alike): users who share a group with the caller or already see the calendar; groups the caller belongs to or that already hold a grant on the calendar; never the owner or the owning group (its members get the role defaults). Inviting by email (pending shares) follows with the sharing UI. One grant per principal → `409 conflict`.
@@ -165,6 +165,17 @@ Use cases: `Application/Calendars/CalendarService`; access decisions only throug
   - Lifecycle hook: removing a grant will also delete the `user:` overrides of people who lose access (permissions.md §4.6) once event overrides exist (M2-D, TODO in `CalendarGrantService.DeleteAsync`).
 - `acl_version`: `calendars.acl_version` is bumped by changes of `groupRoleDefaults`, the `creators*` settings and every grant change; a grant change also bumps the `acl_version` of the user or group it names (`AclVersions`). Deleting a calendar bumps the `acl_version` of the users and groups its grants named.
 - Audit (resource `calendar`, subject = the plan subject): `calendar.created`, `calendar.updated` (before/after; permission settings under `aclRelevant`), `calendar.deleted`, `calendar.grant.created`, `calendar.grant.updated`, `calendar.grant.removed` (before/after `{ grantId, principal, level }`), `calendar.grant.removed_with_group` (the named group was deleted).
+
+### Events (implemented, M2 — single events)
+
+Use cases: `Application/Events/EventService`; reads only through the permission-aware **`EventQueryService`** (the single choke point of permissions.md §8): it loads the event, builds the engine inputs (`CalendarAccessLoader.FindAclAsync` for the calendar ACL — without a level check, because event overrides may reach people whose calendar level is `none` — and `IEventOverrideSource` for overrides, asked only for events with `has_overrides`; until M2-D that source is `NoEventOverrides`) and resolves the caller's level with `PermissionEngine.ResolveLevel`. New rows and the sync log go through **`EventWriter`**; the architecture test `EventAccessTests` fails on any other use of `DbSet<Event>` (`IAppDbContext.Events`, `Set<Event>()`, fields/properties of that type, also inside lambdas and LINQ expressions). Every event endpoint answers **404 `not_found`** when the caller's level is `none` — also for transparent events seen at `free_busy` (permissions.md §2.1) — and **403 `insufficient_permission`** (+ `required`, `actual` event levels; for creating: calendar levels) when it is visible but too low.
+
+- `POST /events { calendarId, title, start, end, description?, location?, url?, status?, transparency?, color?, categories?, uid? }` → `201` + `Location` + `ETag`: needs `contribute` on the calendar. `start`/`end`: `{ dateTime, timeZone? }` (wall clock `yyyy-MM-ddTHH:mm[:ss]` without offset, sub-seconds dropped; zone default: the calendar's `defaultTimeZone`; `end.timeZone` may be left out and must otherwise equal the start's — one zone per event) or `{ date }` (all-day, end exclusive, after the start); both must be the same kind. A local time in a DST gap is **shifted forward** by the gap (the shifted wall clock is stored) and an ambiguous one (DST overlap) takes the **earlier offset**; both are reported in the response's `warnings: [{ code: time_shifted_dst_gap | time_ambiguous_earlier_offset, field: start|end, message, requested, resolved, utc }]` (create/update responses only; not part of the ETag). Title 1–500 (trimmed), description ≤ 20,000, location ≤ 1000, `url` absolute http(s) ≤ 2000, `status` `confirmed` (default) | `tentative` | `cancelled`, `transparency` `opaque` (default) | `transparent`, `color` `#rrggbb` (default: the calendar's), `categories` ≤ 20 × ≤ 50 characters without commas, `uid` (default `{id}@scalenderplus`): 1–255 printable ASCII without spaces, quotes, backslashes, commas or semicolons, unique among the calendar's live events (`409 uid_conflict`; checked under an advisory lock on the calendar). Unknown zone → `422 time_zone_invalid` (`errors["start.timeZone"]`); a `recurrence` member → `422 recurrence_not_supported` (M2-E); frozen calendars → `409 calendar_frozen`.
+- `GET /events/{id}` → the event with a strong `ETag` (hash of the representation as the caller sees it, so it changes with the caller's level too).
+- `PATCH /events/{id}` (`edit`; JSON Merge Patch, `If-Match` required: 428/412): absent or `null` members stay unchanged; an empty `description`, `location`, `url` or `color` and an empty `categories` list remove the value. `start` and/or `end` re-resolve the times (a missing end keeps its wall clock and follows the start's zone; switching between timed and all-day needs both). `sequence` (iCalendar SEQUENCE) is incremented when times or status change. The row's `xmin` guards the save: a concurrent change answers `412`.
+- `DELETE /events/{id}` (`edit`, `If-Match`) → `204`: **soft delete** (`deleted_at`; the row stays for sync and restore, its UID becomes free again). Deleting a calendar deletes its events and sync log with it (FK cascade).
+- **Sync log**: every create/update/delete appends `calendar_changes (calendar_id, event_id, change: upsert|delete)` in the same transaction (the future `/changes`, CalDAV `sync-collection` and webhooks read it).
+- Audit (resource `event`, subject = the calendar's billing subject): `event.created`, `event.updated` (before/after), `event.deleted`.
 
 ### Event representation (excerpt)
 
@@ -177,15 +188,19 @@ Use cases: `Application/Calendars/CalendarService`; access decisions only throug
   "start": { "dateTime": "2026-11-02T18:00:00", "timeZone": "Europe/Berlin", "utc": "2026-11-02T17:00:00Z" },
   "end":   { "dateTime": "2026-11-02T20:00:00", "timeZone": "Europe/Berlin", "utc": "2026-11-02T19:00:00Z" },
   "allDay": false,
-  "recurrence": { "rrule": "FREQ=MONTHLY;BYDAY=1MO", "exdates": [] },
-  "access": { "level": "read", "canEdit": false, "canManage": false, "reason": "calendar_grant" },
+  "description": "…", "location": "…", "url": "…", "status": "confirmed", "transparency": "opaque",
+  "color": "#4f46e5", "categories": ["board"],
+  "myLevel": "read",
   "hasOverrides": true,
+  "sequence": 0,
   "createdBy": { "id": "…", "displayName": "Adam" },
-  "etag": "W/\"8f3a\""
+  "createdAt": "…", "updatedAt": "…"
 }
 ```
 
-For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, `allDay`, `transparency`, `access`, with `"title": null` — the client renders the localized "Busy". Fields are **omitted server-side**, never sent and hidden client-side.
+(`recurrence` comes with M2-E; capabilities follow from `myLevel`: `edit` and `manage` may change the event, `manage` also its overrides; `GET /events/{id}/access` adds the reason with M2-D.) List items also carry `etag` (the `ETag` of `GET /events/{id}`); members that are null are omitted.
+
+For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, `allDay`, `transparency`, `myLevel` (and `sharedWithMe` when true), with `"title": null` — the client renders the localized "Busy". Fields are **omitted server-side**, never sent and hidden client-side; transparent events are not returned at all.
 
 Window query `GET /events?from=…&to=…&expand=occurrences` returns expanded occurrences (`occurrenceId = {eventId}:{recurrenceIdUtc}`) for calendar views; without `expand` it returns series masters (for sync clients). Max window: 13 months.
 

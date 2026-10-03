@@ -119,6 +119,58 @@ export const mockPersonalCalendar: Calendar = {
 
 const mockCalendars = [mockCalendar, mockPersonalCalendar]
 
+type CalendarEvent = components['schemas']['EventResponse']
+
+/** A timed event in {@link mockCalendar}, created by the mock user (creator floor: manage). */
+export const mockEvent: CalendarEvent = {
+  id: '0192f2c4-0000-7000-8000-000000000401',
+  calendarId: mockCalendar.id,
+  uid: '0192f2c4-0000-7000-8000-000000000401@scalenderplus',
+  title: 'Training',
+  description: 'Bring shoes',
+  location: 'Pitch 2',
+  status: 'confirmed',
+  categories: ['sport'],
+  start: {
+    dateTime: '2026-11-02T18:00:00',
+    timeZone: 'Europe/Berlin',
+    utc: '2026-11-02T17:00:00Z',
+  },
+  end: { dateTime: '2026-11-02T20:00:00', timeZone: 'Europe/Berlin', utc: '2026-11-02T19:00:00Z' },
+  allDay: false,
+  transparency: 'opaque',
+  hasOverrides: false,
+  sequence: 0,
+  createdBy: { id: mockUser.id, displayName: 'Mia' },
+  createdAt: '2026-10-01T08:00:00Z',
+  updatedAt: '2026-10-01T08:00:00Z',
+  myLevel: 'manage',
+}
+
+/** An all-day event the mock user only sees as busy (free_busy projection: times only, title null). */
+export const mockBusyEvent: CalendarEvent = {
+  id: '0192f2c4-0000-7000-8000-000000000402',
+  calendarId: mockPersonalCalendar.id,
+  title: null,
+  start: { date: '2026-11-04' },
+  end: { date: '2026-11-05' },
+  allDay: true,
+  transparency: 'opaque',
+  myLevel: 'free_busy',
+}
+
+const mockEvents = [mockEvent, mockBusyEvent]
+
+/** A time value of a request as the api answers it (no zone conversion: utc is left out). */
+function eventTime(
+  value: components['schemas']['EventTimeRequest'] | null | undefined,
+  zone: string,
+): components['schemas']['EventTimeResponse'] {
+  return value?.date
+    ? { date: value.date }
+    : { dateTime: value?.dateTime ?? '', timeZone: value?.timeZone ?? zone }
+}
+
 type Grant = components['schemas']['GrantResponse']
 
 /** A grant on {@link mockCalendar}: a user outside the group may edit it. */
@@ -312,6 +364,53 @@ export const handlers = [
     return response(200).json({ ...mockGrant, level: level ?? mockGrant.level })
   }),
   http.delete('/api/v1/calendars/{id}/grants/{grantId}', ({ response }) => response(204).empty()),
+
+  http.post('/api/v1/events', async ({ request, response }) => {
+    const body = await request.json()
+    const zone = body.start?.timeZone ?? mockCalendar.defaultTimeZone
+    const id = crypto.randomUUID()
+    return response(201).json({
+      ...mockEvent,
+      id,
+      uid: body.uid ?? `${id}@scalenderplus`,
+      calendarId: body.calendarId ?? mockCalendar.id,
+      title: body.title ?? '',
+      description: body.description ?? null,
+      location: body.location ?? null,
+      url: body.url ?? null,
+      status: body.status ?? 'confirmed',
+      transparency: body.transparency ?? 'opaque',
+      color: body.color?.toLowerCase() ?? null,
+      categories: body.categories ?? [],
+      start: eventTime(body.start, zone),
+      end: eventTime(body.end, zone),
+      allDay: Boolean(body.start?.date),
+    })
+  }),
+  http.get('/api/v1/events/{id}', ({ params, response }) => {
+    const event = mockEvents.find((e) => e.id === params.id)
+    return event
+      ? response(200).json(event)
+      : response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
+  }),
+  http.patch('/api/v1/events/{id}', async ({ params, request, response }) => {
+    const event = mockEvents.find((e) => e.id === params.id)
+    if (!event) {
+      return response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
+    }
+    const patch = (await request.json()) as components['schemas']['UpdateEventRequest']
+    const zone = event.start.timeZone ?? mockCalendar.defaultTimeZone
+    return response(200).json({
+      ...event,
+      title: patch.title ?? event.title,
+      description: patch.description === '' ? null : (patch.description ?? event.description),
+      location: patch.location === '' ? null : (patch.location ?? event.location),
+      start: patch.start ? eventTime(patch.start, zone) : event.start,
+      end: patch.end ? eventTime(patch.end, zone) : event.end,
+      sequence: (event.sequence ?? 0) + (patch.start || patch.end ? 1 : 0),
+    })
+  }),
+  http.delete('/api/v1/events/{id}', ({ response }) => response(204).empty()),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {

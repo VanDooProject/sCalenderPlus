@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using SCalenderPlus.Application.Events;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Calendars;
@@ -121,6 +122,28 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
             ("grant-removed-by-owner", CalendarLevel.FreeBusy));
         await SeedCalendarAsync("lions-doomed", "lions");
         await SeedCalendarAsync("other", "other");
+
+        // Events (#44): in "lions", created by the admin (the member reads it, the editor edits it); one per
+        // successful delete case.
+        foreach (var name in new[] { "lions", "lions-deleted-by-editor", "lions-deleted-by-admin", "lions-deleted-by-owner" })
+        {
+            await SeedEventAsync(name, "lions", Actors.GroupAdmin.Name);
+        }
+    }
+
+    /// <summary>A timed event created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>
+    private async Task SeedEventAsync(string name, string calendar, string actor)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var events = scope.ServiceProvider.GetRequiredService<EventService>();
+        var created = await events.CreateAsync(
+            Guid.Parse(Get("user:" + actor)),
+            new NewEvent(
+                Guid.Parse(Get("calendar:" + calendar)),
+                new EventTimeInput("2026-11-02T18:00:00", "Europe/Berlin"),
+                new EventTimeInput("2026-11-02T20:00:00"),
+                new EventDetails(Title: name)));
+        Set("event:" + name, created.View.Event.Id.ToString());
     }
 
     /// <summary>A calendar owned by a seeded group with user grants; resource <c>calendar:{name}</c>.</summary>

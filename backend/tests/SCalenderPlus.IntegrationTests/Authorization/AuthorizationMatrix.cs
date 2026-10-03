@@ -338,6 +338,64 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
             .WithRoute(s => Grant(s, "grant-removed-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
+
+        // Events (#44): calendar level contribute creates; event levels from the engine — none → 404, too low → 403.
+        .. For("POST", "/api/v1/events")
+            .WithBody(s => JsonContent.Create(new
+            {
+                calendarId = s.Get("calendar:lions"),
+                title = "Matrix",
+                start = new { dateTime = "2026-11-03T18:00:00" },
+                end = new { dateTime = "2026-11-03T19:00:00" },
+            }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Created)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Created)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+        .. For("GET", "/api/v1/events/{id}")
+            .WithRoute(LionsEvent)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK) // busy projection
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.GroupMember, HttpStatusCode.OK)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("PATCH", "/api/v1/events/{id}")
+            .WithRoute(LionsEvent)
+            .WithBody(_ => JsonContent.Create(new { title = "lions" })) // unchanged: no effect on other cases
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden) // not the creator: read
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/events/{id}")
+            .WithRoute(LionsEvent)
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .WithRoute(s => Route(s, "event:lions-deleted-by-editor"))
+            .Expect(Actors.CalendarEditor, HttpStatusCode.NoContent)
+            .WithRoute(s => Route(s, "event:lions-deleted-by-admin"))
+            .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
+            .WithRoute(s => Route(s, "event:lions-deleted-by-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
@@ -346,6 +404,8 @@ public static class AuthorizationMatrix
     private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
 
     private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
+
+    private static IReadOnlyDictionary<string, string> LionsEvent(MatrixScenario s) => Route(s, "event:lions");
 
     private static Dictionary<string, string> Grant(MatrixScenario s, string holder) =>
         new(StringComparer.Ordinal) { ["id"] = s.Get("calendar:lions"), ["grantId"] = s.Get($"grant:lions:{holder}") };

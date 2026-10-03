@@ -90,6 +90,9 @@ public static class ErrorCodes
     public const string RecurrenceInvalid = "recurrence_invalid";
     public const string TimeZoneInvalid = "time_zone_invalid";
 
+    /// <summary>The request asks for recurrence (RRULE etc.), which is not supported (yet: M2-E); carries <c>errors.recurrence</c>.</summary>
+    public const string RecurrenceNotSupported = "recurrence_not_supported";
+
     /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";
 

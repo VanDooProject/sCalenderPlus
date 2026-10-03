@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Calendars;
+using SCalenderPlus.Core.Events;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
 
@@ -28,6 +29,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Calendar> Calendars => Set<Calendar>();
 
     public DbSet<CalendarGrantEntry> CalendarGrants => Set<CalendarGrantEntry>();
+
+    public DbSet<Event> Events => Set<Event>();
+
+    public DbSet<CalendarChange> CalendarChanges => Set<CalendarChange>();
 
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {
@@ -62,6 +67,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         ArgumentNullException.ThrowIfNull(builder);
 
         base.OnModelCreating(builder);
+        builder.HasPostgresExtension("btree_gist"); // GiST (calendar_id, occurs_range) of events
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

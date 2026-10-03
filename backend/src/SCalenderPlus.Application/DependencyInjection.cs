@@ -7,6 +7,7 @@ using SCalenderPlus.Application.Calendars;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Entitlements;
+using SCalenderPlus.Application.Events;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Jobs;
 
@@ -51,6 +52,11 @@ public static class DependencyInjection
         services.AddScoped<CalendarService>();
         services.AddScoped<CalendarGrantService>();
         services.AddScoped<CalendarGroupLifecycle>();
+
+        services.TryAddSingleton<IEventOverrideSource, NoEventOverrides>(); // M2-D: event_overrides
+        services.AddScoped<EventQueryService>();
+        services.AddScoped<EventWriter>();
+        services.AddScoped<EventService>();
 
         return services;
     }

@@ -33,6 +33,7 @@ internal static class OpenApiSetup
             options.AddDocumentTransformer((document, _, _) => ProblemSchemas.TransformAsync(document));
             options.AddDocumentTransformer((document, _, _) => SecuritySchemes.AddSchemesAsync(document));
             options.AddOperationTransformer((operation, context, _) => SecuritySchemes.AddRequirementAsync(operation, context));
+            options.AddSchemaTransformer((schema, context, _) => schema is OpenApiSchema concrete ? OptionalMembers.TransformAsync(concrete, context) : Task.CompletedTask);
         });
 
     public static IEndpointRouteBuilder MapApiDocument(this IEndpointRouteBuilder endpoints)

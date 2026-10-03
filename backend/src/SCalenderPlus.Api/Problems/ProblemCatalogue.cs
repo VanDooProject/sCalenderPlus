@@ -47,6 +47,7 @@ public static class ProblemCatalogue
         [ErrorCodes.UnsupportedMediaType] = new(StatusCodes.Status415UnsupportedMediaType, "Unsupported media type"),
         [ErrorCodes.RecurrenceInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Invalid recurrence"),
         [ErrorCodes.TimeZoneInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Invalid time zone"),
+        [ErrorCodes.RecurrenceNotSupported] = new(StatusCodes.Status422UnprocessableEntity, "Recurrence not supported"),
         [ErrorCodes.EmailDomainNotAllowed] = new(StatusCodes.Status422UnprocessableEntity, "Email domain not allowed"),
         [ErrorCodes.RateLimited] = new(StatusCodes.Status429TooManyRequests, "Too many requests"),
         [ErrorCodes.InternalError] = new(StatusCodes.Status500InternalServerError, "Internal server error"),
