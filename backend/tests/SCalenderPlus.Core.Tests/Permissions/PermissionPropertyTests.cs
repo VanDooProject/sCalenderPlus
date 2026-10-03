@@ -221,6 +221,13 @@ public sealed class PermissionPropertyTests
             },
             iter: Iterations);
 
+    [Fact]
+    public void Traced_and_untraced_resolution_agree() =>
+        Scenario.Any.Sample(
+            s => PermissionEngine.ResolveLevel(s.Viewer, s.Calendar, s.Event) == s.Resolve().Level
+                && PermissionEngine.ResolveCalendarLevel(s.Viewer, s.Calendar) == s.CalendarLevel,
+            iter: Iterations);
+
     private static EventLevel FloorOf(Scenario s, Guid user) =>
         (s with { Viewer = s.ContextOf(user) }).HasFloor ? EventLevel.Manage : EventLevel.None;
 }
