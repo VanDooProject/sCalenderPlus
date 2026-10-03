@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using SCalenderPlus.Application.Errors;
+using SCalenderPlus.Infrastructure.Identity;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 using SCalenderPlus.IntegrationTests.Problems;
 
@@ -192,6 +195,57 @@ public sealed class AccountFlowTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Logins_of_locked_or_unknown_accounts_still_hash_the_password()
+    {
+        var hasher = new CountingPasswordHasher();
+        await using var host = await ApiTestHost.StartAsync(postgres, services: s => s.AddSingleton<IPasswordHasher<AppUser>>(hasher));
+        var email = ApiTestHost.UniqueEmail();
+        await host.CreateUserAsync(email);
+        using var client = host.CreateClient();
+        for (var i = 0; i < IdentitySetup.MaxFailedAccessAttempts; i++)
+        {
+            using var failed = await ApiTestHost.LoginAsync(client, email, "wrong password 123");
+        }
+
+        Assert.NotNull((await host.FindUserAsync(email)).LockoutEnd);
+
+        // A locked account must cost as much as an unknown one, or the timing tells that the address is registered.
+        foreach (var address in new[] { email, ApiTestHost.UniqueEmail("nobody") })
+        {
+            hasher.Reset();
+            using var response = await ApiTestHost.LoginAsync(client, address, "wrong password 123");
+            await ProblemResponse.AssertProblemAsync(response, HttpStatusCode.Unauthorized, ErrorCodes.InvalidCredentials);
+            Assert.Equal(1, hasher.Calls);
+        }
+    }
+
+    [Fact]
+    public async Task A_password_reset_ends_the_other_sessions()
+    {
+        // Check the security stamp on every request instead of once a minute.
+        await using var host = await ApiTestHost.StartAsync(postgres, services: s => s.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero));
+        var email = ApiTestHost.UniqueEmail();
+        await host.CreateUserAsync(email);
+        using var other = await host.SignedInClientAsync(email);
+        Assert.Equal(HttpStatusCode.OK, (await other.GetAsync(new Uri("/api/v1/me", UriKind.Relative), Ct)).StatusCode);
+
+        using var anonymous = host.CreateClient();
+        using (var forgot = await anonymous.PostAsJsonAsync("/api/v1/auth/forgot-password", new { email }, Ct))
+        {
+            Assert.Equal(HttpStatusCode.Accepted, forgot.StatusCode);
+        }
+
+        var (_, userId, token) = ApiTestHost.LinkIn((await host.EmailsToAsync(email))[^1]);
+        using (var reset = await anonymous.PostAsJsonAsync("/api/v1/auth/reset-password", new { userId, token, newPassword = "brand new password" }, Ct))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+        }
+
+        using var me = await other.GetAsync(new Uri("/api/v1/me", UriKind.Relative), Ct);
+        await ProblemResponse.AssertProblemAsync(me, HttpStatusCode.Unauthorized, ErrorCodes.Unauthenticated);
+    }
+
+    [Fact]
     public async Task Signed_in_post_without_csrf_header_is_rejected_and_keeps_the_session()
     {
         var email = ApiTestHost.UniqueEmail();
@@ -299,6 +353,28 @@ public sealed class AccountFlowTests(PostgresFixture postgres) : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         Assert.Empty(await _host.EmailsToAsync(unknown));
+    }
+
+    /// <summary>Identity's hasher, counting how often a password is hashed or verified (the expensive part of a login).</summary>
+    private sealed class CountingPasswordHasher : PasswordHasher<AppUser>
+    {
+        private int _calls;
+
+        public int Calls => Volatile.Read(ref _calls);
+
+        public void Reset() => Interlocked.Exchange(ref _calls, 0);
+
+        public override string HashPassword(AppUser user, string password)
+        {
+            Interlocked.Increment(ref _calls);
+            return base.HashPassword(user, password);
+        }
+
+        public override PasswordVerificationResult VerifyHashedPassword(AppUser user, string hashedPassword, string providedPassword)
+        {
+            Interlocked.Increment(ref _calls);
+            return base.VerifyHashedPassword(user, hashedPassword, providedPassword);
+        }
     }
 
     private async Task<(string Path, string Token)> RequestResetAsync(HttpClient client, string email)

@@ -154,6 +154,13 @@ internal static partial class AuthEndpoints
         {
             var wasLockedOut = await users.IsLockedOutAsync(user).ConfigureAwait(false);
             var result = await signIn.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: true).ConfigureAwait(false);
+            if (wasLockedOut)
+            {
+                // Identity refuses a locked-out account before verifying the password; hash anyway, or the fast
+                // answer would tell that the address has an account (lock it with five guesses, then time it).
+                _ = users.PasswordHasher.HashPassword(_timingDummy, request.Password);
+            }
+
             var userId = user.Id.ToString();
 
             if (result.Succeeded)
