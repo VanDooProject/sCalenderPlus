@@ -1811,7 +1811,7 @@
           "Calendars"
         ],
         "summary": "Change a grant's level (manage; requires If-Match)",
-        "description": "Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. If-Match: the grant's etag (or *).",
+        "description": "Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. If-Match: the grant's etag (or *).",
         "operationId": "UpdateCalendarGrant",
         "parameters": [
           {
@@ -1837,6 +1837,13 @@
             "in": "header",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "revokeEventShares",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -1888,7 +1895,7 @@
           "Calendars"
         ],
         "summary": "Remove a grant (manage; requires If-Match)",
-        "description": "A removal that would take away the caller's own manage level is 409 permission_self_lockout.",
+        "description": "A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false.",
         "operationId": "DeleteCalendarGrant",
         "parameters": [
           {
@@ -1914,6 +1921,13 @@
             "in": "header",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "revokeEventShares",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],

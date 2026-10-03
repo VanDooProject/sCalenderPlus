@@ -167,4 +167,10 @@ public static class EventAuditActions
 
     /// <summary>The event's overrides were replaced (before/after: <c>["principal → level", …]</c>).</summary>
     public const string OverridesChanged = "event.overrides.changed";
+
+    /// <summary>Individual shares (<c>user:</c> entries) were revoked because the user lost calendar level (permissions.md §4.6).</summary>
+    public const string OverridesRevoked = "event.overrides.revoked";
+
+    /// <summary>The group an entry named was deleted.</summary>
+    public const string OverridesRemovedWithGroup = "event.overrides.removed_with_group";
 }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Common;
+using SCalenderPlus.Application.Events;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Application.Users;
 using SCalenderPlus.Core.Calendars;
@@ -19,12 +20,15 @@ public sealed record GrantView(CalendarGrantEntry Grant, string PrincipalName);
 /// (<see cref="AccessPolicy.CanGrant"/>: never <c>owner</c>, never above their own level; for changes and
 /// removals the old level too). A change that would take away the actor's own <c>manage</c> level is refused
 /// (<c>409 permission_self_lockout</c>). Every change bumps <c>calendars.acl_version</c> and the
-/// <c>acl_version</c> of the user or group it names, and is audited on the calendar.
+/// <c>acl_version</c> of the user or group it names, and is audited on the calendar. Removing or lowering a grant
+/// revokes the individual event shares of the people who lose level through it (<see cref="EventShareRevocation"/>,
+/// permissions.md §4.6) unless the caller opts out.
 /// </summary>
 public sealed class CalendarGrantService(
     IAppDbContext db,
     CalendarAccessLoader access,
     AclVersions aclVersions,
+    EventShareRevocation shares,
     IUserDirectory users,
     IAuditLog audit,
     IClock clock)
@@ -84,7 +88,15 @@ public sealed class CalendarGrantService(
     }
 
     /// <param name="precondition">Checks If-Match against the grant's current state (after authorization); throws to refuse.</param>
-    public async Task<GrantView> UpdateAsync(Guid actorId, Guid calendarId, Guid grantId, CalendarLevel level, Action<CalendarGrantEntry>? precondition = null, CancellationToken cancellationToken = default) =>
+    /// <param name="revokeEventShares">When the level is lowered: also revoke the individual event shares of those who lose level.</param>
+    public async Task<GrantView> UpdateAsync(
+        Guid actorId,
+        Guid calendarId,
+        Guid grantId,
+        CalendarLevel level,
+        Action<CalendarGrantEntry>? precondition = null,
+        bool revokeEventShares = true,
+        CancellationToken cancellationToken = default) =>
         await db.InTransactionAsync(async ct =>
         {
             var (loaded, grant) = await LoadGrantAsync(actorId, calendarId, grantId, precondition, ct).ConfigureAwait(false);
@@ -93,9 +105,15 @@ public sealed class CalendarGrantService(
             if (grant.Level != level)
             {
                 var before = State(grant);
+                var oldLevel = grant.Level;
                 grant.Level = level;
                 grant.UpdatedAt = clock.Now();
                 EnsureNoSelfLockout(loaded, loaded.Grants);
+                if (revokeEventShares && level < oldLevel)
+                {
+                    await shares.OnGrantChangedAsync(loaded.Acl, loaded.Calendar.ToAcl(loaded.Grants), grant.Principal, ct).ConfigureAwait(false);
+                }
+
                 await BumpAsync(loaded.Calendar, grant, ct).ConfigureAwait(false);
                 audit.Record(CalendarAuditActions.GrantUpdated, CalendarAuditActions.ResourceType, calendarId.ToString(), before, State(grant), await SubjectAsync(loaded, ct).ConfigureAwait(false));
                 await SaveAsync(ct).ConfigureAwait(false);
@@ -105,15 +123,26 @@ public sealed class CalendarGrantService(
         }, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// Removes the grant. TODO(M2-D): with event overrides, also delete the <c>user:</c> overrides naming the
-    /// people who lose access through this removal on the calendar's events (permissions.md §4.6, opt-out flag).
+    /// Removes the grant and (unless <paramref name="revokeEventShares"/> is false) the individual event shares of the
+    /// people who lose level through it (permissions.md §4.6).
     /// </summary>
-    public async Task DeleteAsync(Guid actorId, Guid calendarId, Guid grantId, Action<CalendarGrantEntry>? precondition = null, CancellationToken cancellationToken = default) =>
+    public async Task DeleteAsync(
+        Guid actorId,
+        Guid calendarId,
+        Guid grantId,
+        Action<CalendarGrantEntry>? precondition = null,
+        bool revokeEventShares = true,
+        CancellationToken cancellationToken = default) =>
         await db.InTransactionAsync(async ct =>
         {
             var (loaded, grant) = await LoadGrantAsync(actorId, calendarId, grantId, precondition, ct).ConfigureAwait(false);
             EnsureCanGrant(loaded, grant.Level);
-            EnsureNoSelfLockout(loaded, [.. loaded.Grants.Where(g => g.Id != grantId)]);
+            var remaining = loaded.Grants.Where(g => g.Id != grantId).ToList();
+            EnsureNoSelfLockout(loaded, remaining);
+            if (revokeEventShares)
+            {
+                await shares.OnGrantChangedAsync(loaded.Acl, loaded.Calendar.ToAcl(remaining), grant.Principal, ct).ConfigureAwait(false);
+            }
 
             await BumpAsync(loaded.Calendar, grant, ct).ConfigureAwait(false);
             audit.Record(CalendarAuditActions.GrantRemoved, CalendarAuditActions.ResourceType, calendarId.ToString(), State(grant), null, await SubjectAsync(loaded, ct).ConfigureAwait(false));

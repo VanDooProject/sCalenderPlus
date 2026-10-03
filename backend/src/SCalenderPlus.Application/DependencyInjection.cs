@@ -60,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<EventOverrideService>();
         services.AddScoped<EventAccessExplainer>();
         services.AddScoped<EventMoveService>();
+        services.AddScoped<EventShareRevocation>();
+        services.AddScoped<IGroupMembershipObserver>(sp => sp.GetRequiredService<EventShareRevocation>());
 
         return services;
     }

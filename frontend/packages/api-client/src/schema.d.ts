@@ -551,14 +551,14 @@ export interface paths {
     post?: never
     /**
      * Remove a grant (manage; requires If-Match)
-     * @description A removal that would take away the caller's own manage level is 409 permission_self_lockout.
+     * @description A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false.
      */
     delete: operations['DeleteCalendarGrant']
     options?: never
     head?: never
     /**
      * Change a grant's level (manage; requires If-Match)
-     * @description Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. If-Match: the grant's etag (or *).
+     * @description Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. If-Match: the grant's etag (or *).
      */
     patch: operations['UpdateCalendarGrant']
     trace?: never
@@ -2430,7 +2430,9 @@ export interface operations {
   }
   DeleteCalendarGrant: {
     parameters: {
-      query?: never
+      query?: {
+        revokeEventShares?: boolean
+      }
       header?: {
         'If-Match'?: string
       }
@@ -2462,7 +2464,9 @@ export interface operations {
   }
   UpdateCalendarGrant: {
     parameters: {
-      query?: never
+      query?: {
+        revokeEventShares?: boolean
+      }
       header?: {
         'If-Match'?: string
       }

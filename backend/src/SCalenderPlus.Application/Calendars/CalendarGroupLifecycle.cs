@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Application.Auditing;
+using SCalenderPlus.Application.Events;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Permissions;
 
@@ -9,13 +10,16 @@ namespace SCalenderPlus.Application.Calendars;
 /// Calendar rules of the group lifecycle (issue #43, docs/architecture/permissions.md §4.6, data-model.md §2),
 /// called by the group use cases inside their transaction.
 /// </summary>
-public sealed class CalendarGroupLifecycle(IAppDbContext db, AclVersions aclVersions, IAuditLog audit)
+public sealed class CalendarGroupLifecycle(IAppDbContext db, AclVersions aclVersions, IAuditLog audit, EventShareRevocation shares)
 {
     /// <summary>
     /// Before a group is deleted: refuses while the group owns calendars (<c>409 group_has_calendars</c>; the
     /// <c>calendars.owner_group_id</c> FK is <c>RESTRICT</c>, so the rule also holds in the database), then removes
     /// every grant naming the group, bumping the affected calendars' <c>acl_version</c> and auditing each removal
-    /// on its calendar. The members' <c>users.acl_version</c> is bumped by the group use case.
+    /// on its calendar, and every event override naming the group (<see cref="EventShareRevocation.RemoveGroupOverridesAsync"/>:
+    /// <c>has_overrides</c>, sync log, calendar <c>acl_version</c>, audited per event). The members'
+    /// <c>users.acl_version</c> is bumped by the group use case; their individual shares on the calendars they lose
+    /// follow through the membership observer.
     /// </summary>
     public async Task OnGroupDeletingAsync(Guid groupId, CancellationToken cancellationToken = default)
     {
@@ -58,8 +62,6 @@ public sealed class CalendarGroupLifecycle(IAppDbContext db, AclVersions aclVers
             db.CalendarGrants.RemoveRange(grants);
         }
 
-        // TODO(M2-D, #43): also delete the event overrides naming the group (event_overrides.principal_type = 1,
-        // principal_id = groupId), reset events.has_overrides where none remain and bump the affected calendars'
-        // acl_version — same transaction, audited per event.
+        await shares.RemoveGroupOverridesAsync(groupId, cancellationToken).ConfigureAwait(false);
     }
 }

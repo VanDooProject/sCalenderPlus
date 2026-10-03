@@ -4,10 +4,10 @@ namespace SCalenderPlus.Application.Groups;
 
 /// <summary>
 /// Extension point for consequences of membership changes, called by the group use cases inside their
-/// transaction (before the commit; throwing rolls the change back). M2 implements "membership removal revokes
-/// event shares" here (permissions.md §4.6: on removal or demotion, <c>user:</c> overrides naming the user on
-/// events of the group's calendars are deleted unless <see cref="MembershipChange.RevokeEventShares"/> is false).
-/// No observers are registered in M1.
+/// transaction (before the commit; throwing rolls the change back). <c>Events.EventShareRevocation</c> implements
+/// "membership removal revokes event shares" here (permissions.md §4.6: on removal, leaving, demotion or group
+/// deletion, <c>user:</c> overrides sharing events of the group's calendars with the user above their new level are
+/// deleted unless <see cref="MembershipChange.RevokeEventShares"/> is false).
 /// </summary>
 public interface IGroupMembershipObserver
 {
