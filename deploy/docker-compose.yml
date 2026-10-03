@@ -54,6 +54,8 @@ services:
     environment:
       <<: *backend-env
       Database__AutoMigrate: 'false'
+      # Trust X-Forwarded-* only from private networks (web/Caddy and Traefik); the api has no public port.
+      ReverseProxy__KnownNetworks: ${TRUSTED_PROXY_NETWORKS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
     depends_on:
       migrate:
         condition: service_completed_successfully

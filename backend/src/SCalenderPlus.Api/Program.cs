@@ -1,3 +1,4 @@
+using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Application;
 using SCalenderPlus.Infrastructure;
@@ -38,12 +39,24 @@ public sealed class Program
             .AddInfrastructure(builder.Configuration)
             .AddDatabaseAutoMigration()
             .AddPlatformHealthChecks();
+        builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
+        builder.Services.AddProblemDetails();
         builder.Services.AddApiDocument();
+        if (BuildTimeDocument.IsGenerating)
+        {
+            builder.Services.UseInMemoryKeyRing();
+        }
 
         var app = builder.Build();
 
+        // Order matters: client scheme/address first, then errors → RFC 9457 problem details for everything below.
+        app.UseForwardedHeaders();
+        app.UseExceptionHandler();
+        app.UseStatusCodePages();
+
         app.MapPlatformHealthEndpoints();
         app.MapApiDocument();
+        app.MapApiV1();
 
         return await HostRunner.RunAsync(app).ConfigureAwait(false);
     }

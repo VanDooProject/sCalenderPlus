@@ -1,3 +1,7 @@
+using System.Xml.Linq;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.DataProtection.Repositories;
+using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.OpenApi;
 
 namespace SCalenderPlus.Api.OpenApi;
@@ -51,4 +55,37 @@ internal static class BuildTimeDocument
         ["ConnectionStrings:Default"] = "Host=openapi.invalid;Database=openapi",
         ["Database:AutoMigrate"] = "false",
     };
+
+    /// <summary>
+    /// Keeps the Data Protection key ring in memory: the database placeholder is unreachable and the key ring
+    /// is preloaded on start, which would only log connection errors (and the unencrypted-key warning) into the
+    /// build output.
+    /// </summary>
+    public static IServiceCollection UseInMemoryKeyRing(this IServiceCollection services) =>
+        services.Configure<KeyManagementOptions>(o =>
+        {
+            o.XmlRepository = new InMemoryXmlRepository();
+            o.XmlEncryptor = new NullXmlEncryptor();
+        });
+
+    private sealed class InMemoryXmlRepository : IXmlRepository
+    {
+        private readonly List<XElement> _elements = [];
+
+        public IReadOnlyCollection<XElement> GetAllElements()
+        {
+            lock (_elements)
+            {
+                return [.. _elements.Select(e => new XElement(e))];
+            }
+        }
+
+        public void StoreElement(XElement element, string friendlyName)
+        {
+            lock (_elements)
+            {
+                _elements.Add(new XElement(element));
+            }
+        }
+    }
 }

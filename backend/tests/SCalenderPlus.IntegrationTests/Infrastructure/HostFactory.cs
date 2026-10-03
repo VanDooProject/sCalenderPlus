@@ -1,10 +1,17 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SCalenderPlus.IntegrationTests.Infrastructure;
 
-/// <summary>In-memory host (TestServer) for Api or Worker with explicit settings, environment "Testing".</summary>
-public sealed class HostFactory<TProgram>(IReadOnlyDictionary<string, string?> settings) : WebApplicationFactory<TProgram>
+/// <summary>
+/// In-memory host (TestServer) for Api or Worker with explicit settings, environment "Testing", and optional
+/// extra services (test doubles, <see cref="TestPipeline"/> hooks) registered after the host's own.
+/// </summary>
+public sealed class HostFactory<TProgram>(
+    IReadOnlyDictionary<string, string?> settings,
+    Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<TProgram>
     where TProgram : class
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -13,6 +20,11 @@ public sealed class HostFactory<TProgram>(IReadOnlyDictionary<string, string?> s
         foreach (var (key, value) in settings)
         {
             builder.UseSetting(key, value);
+        }
+
+        if (configureServices is not null)
+        {
+            builder.ConfigureTestServices(configureServices);
         }
     }
 }

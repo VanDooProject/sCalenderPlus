@@ -63,7 +63,9 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `ConnectionStrings__Default` | api, worker, migrate | ✓ | `Host=pg;Database=scal;Username=scal;Password=…;Maximum Pool Size=50` |
 | `App__PublicBaseUrl` | api, worker | ✓ | `https://app.example.com` (feed links, emails) |
 | `App__LandingUrl` | api | | `https://www.example.com` |
-| `DataProtection__Keys` | api, worker | ✓ | stored in DB table (`PersistKeysToDbContext`) — no volume needed; key-encryption cert optional |
+| `ReverseProxy__KnownNetworks` | api | | comma-separated CIDRs whose `X-Forwarded-For`/`-Proto` are trusted; compose default (`TRUSTED_PROXY_NETWORKS`): `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7` (web and Traefik on the private Docker networks; the api has no public port). Loopback is always trusted; invalid entries fail startup |
+| `ReverseProxy__KnownProxies` | api | | comma-separated IPs of individual trusted proxies (optional) |
+| – (Data Protection keys) | api, worker | | no setting: the key ring is stored in the `data_protection_keys` table (`PersistKeysToDbContext`, application name `scalenderplus` shared by api and worker) — no volume needed. Keys are stored unencrypted (DB access = key access; the startup log warns once per new key); a key-encryption certificate is a possible later hardening |
 | `Auth__CookieDomain` | api | | empty (host-only cookie) |
 | `Auth__External__Google__ClientId/Secret` (Microsoft, Apple) | api | | v1 |
 | `Smtp__Host`, `Smtp__Port`, `Smtp__User`, `Smtp__Password`, `Smtp__From` | worker (api for sync auth mails via queue) | ✓ | |
@@ -84,7 +86,7 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `WEB_PORT` | web | | listen port, `8080` (image default) |
 | `PUBLIC_*` (e.g. `PUBLIC_ENVIRONMENT`, later `PUBLIC_SENTRY_DSN`) | web | | rendered into `/config.json`; each key must be added to `deploy/caddy/config.json.tmpl` (whitelist). `PUBLIC_ENVIRONMENT` → `environment` (default `production`) |
 
-Compose-level variables (`deploy/docker-compose.yml`, see `deploy/.env.example`): `APP_URL` (→ `App__PublicBaseUrl`), `DATABASE_URL` (→ `ConnectionStrings__Default`), `POSTGRES_PASSWORD` (bundled database), `IMAGE_TAG` and `IMAGE_PREFIX` (image tags), `APP_ENVIRONMENT` (→ `PUBLIC_ENVIRONMENT`), `WEB_PORT` (host port). `deploy/coolify/docker-compose.yml` uses `IMAGE_TAG` (default `main`), `IMAGE_PREFIX`, `DATABASE_URL` and `APP_URL` (required), `APP_ENVIRONMENT` (default `staging`) and `API_UPSTREAM` (§11 step 6).
+Compose-level variables (`deploy/docker-compose.yml`, see `deploy/.env.example`): `APP_URL` (→ `App__PublicBaseUrl`), `DATABASE_URL` (→ `ConnectionStrings__Default`), `POSTGRES_PASSWORD` (bundled database), `IMAGE_TAG` and `IMAGE_PREFIX` (image tags), `APP_ENVIRONMENT` (→ `PUBLIC_ENVIRONMENT`), `WEB_PORT` (host port), `TRUSTED_PROXY_NETWORKS` (→ `ReverseProxy__KnownNetworks`). `deploy/coolify/docker-compose.yml` uses `IMAGE_TAG` (default `main`), `IMAGE_PREFIX`, `DATABASE_URL` and `APP_URL` (required), `APP_ENVIRONMENT` (default `staging`), `API_UPSTREAM` (§11 step 6) and `TRUSTED_PROXY_NETWORKS` (optional, same default).
 
 All backend options are bound to typed options classes with `ValidateDataAnnotations().ValidateOnStart()` — a misconfigured container fails fast and Coolify keeps the old version running.
 

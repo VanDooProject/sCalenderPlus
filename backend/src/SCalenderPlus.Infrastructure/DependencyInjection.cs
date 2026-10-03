@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using SCalenderPlus.Infrastructure.Persistence;
+using SCalenderPlus.Infrastructure.Security;
 
 namespace SCalenderPlus.Infrastructure;
 
@@ -13,6 +14,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddPersistence(configuration);
+        services.AddPersistentDataProtection();
 
         return services;
     }
