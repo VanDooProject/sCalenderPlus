@@ -1,0 +1,4 @@
+# The permission engine is security-critical: changes require the architecture owner.
+# See docs/development/workflow.md §3.
+/backend/src/SCalenderPlus.Core/Permissions/ @m-s-work
+/docs/architecture/permissions.md            @m-s-work
