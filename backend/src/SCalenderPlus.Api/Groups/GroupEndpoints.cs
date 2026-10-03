@@ -37,6 +37,7 @@ internal static class GroupEndpoints
             .WithDescription("Absent or null members stay unchanged; an empty description removes it. Members and viewers: 403 insufficient_permission. If-Match: the ETag of GET /groups/{id} (or *).");
         groups.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteGroup")
             .WithSummary("Delete the group with its memberships and invites (owners only, requires If-Match)");
+        groups.MapMemberEndpoints();
 
         return groups;
     }

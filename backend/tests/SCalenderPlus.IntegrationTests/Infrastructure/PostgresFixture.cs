@@ -49,7 +49,9 @@ public sealed class PostgresFixture : IAsyncDisposable
         {
             if (_container is null)
             {
-                var container = new PostgreSqlBuilder(Image).Build();
+                // Every test host has its own database and therefore its own connection pool, whose idle
+                // connections outlive the host for a while; the default of 100 connections is too few.
+                var container = new PostgreSqlBuilder(Image).WithCommand("-c", "max_connections=500").Build();
                 await container.StartAsync();
                 _container = container;
             }

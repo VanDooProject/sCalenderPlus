@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IJobHandler, SendEmailJobHandler>();
 
         services.AddScoped<GroupService>();
+        services.AddScoped<GroupMembershipService>();
         services.TryAddScoped<IGroupEntitlements, UnlimitedGroupEntitlements>(); // M2: entitlement service
 
         return services;

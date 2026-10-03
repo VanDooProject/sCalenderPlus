@@ -959,10 +959,289 @@
           }
         ]
       }
+    },
+    "/api/v1/groups/{id}/members": {
+      "get": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Members of a group (cursor-paginated)",
+        "description": "Every member sees the list unless memberListVisibility is members_and_above (viewers: 403). Emails are only shown to admins and owners.",
+        "operationId": "ListGroupMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/groups/{id}/members/{userId}": {
+      "patch": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Change a member's role (requires If-Match)",
+        "description": "Owners assign any role; admins manage members and viewers only and assign at most member (only owners promote to admin or owner); everyone may lower their own role. The last owner cannot be demoted (409 last_owner), the billing owner only after transferring billing (409 billing_owner_transfer_required); frozen groups refuse role changes (409 group_frozen). revokeEventShares (default true): on demotion also revoke the member's individual event shares on the group's calendars.",
+        "operationId": "ChangeGroupMemberRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revokeEventShares",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMemberRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Remove a member, or leave the group with your own user id (requires If-Match)",
+        "description": "Owners remove anyone, admins members and viewers; everyone may leave. Last-owner and billing-owner protection as for role changes. revokeEventShares (default true): also revoke the member's individual event shares on the group's calendars.",
+        "operationId": "RemoveGroupMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revokeEventShares",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/groups/{id}/transfer": {
+      "post": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Make another owner the billing owner (billing owner only)",
+        "description": "The recipient must be a member with role owner (409 billing_owner_must_be_owner); their plan governs the group from now on.",
+        "operationId": "TransferGroupBilling",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferBillingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "ChangeMemberRoleRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        }
+      },
       "ConfirmEmailRequest": {
         "required": [
           "userId",
@@ -1017,6 +1296,8 @@
       "ErrorCode": {
         "enum": [
           "bad_request",
+          "billing_owner_must_be_owner",
+          "billing_owner_transfer_required",
           "calendar_frozen",
           "conflict",
           "csrf_header_missing",
@@ -1024,9 +1305,11 @@
           "email_not_verified",
           "external_sharing_not_allowed",
           "feature_not_in_plan",
+          "group_frozen",
           "insufficient_permission",
           "internal_error",
           "invalid_credentials",
+          "last_owner",
           "method_not_allowed",
           "not_found",
           "override_invalid_in_target",
@@ -1274,6 +1557,67 @@
           }
         }
       },
+      "MemberListResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "MemberResponse": {
+        "required": [
+          "userId",
+          "displayName",
+          "email",
+          "role",
+          "isBillingOwner",
+          "joinedAt",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "isBillingOwner": {
+            "type": "boolean"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "etag": {
+            "type": "string"
+          }
+        }
+      },
       "MeResponse": {
         "required": [
           "id",
@@ -1455,6 +1799,18 @@
             "maxLength": 128,
             "minLength": 0,
             "type": "string"
+          }
+        }
+      },
+      "TransferBillingRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },

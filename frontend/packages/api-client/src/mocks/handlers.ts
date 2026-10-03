@@ -37,6 +37,40 @@ export const mockGroup: Group = {
   updatedAt: '2026-10-01T08:00:00Z',
 }
 
+type Member = components['schemas']['MemberResponse']
+
+/** Members of {@link mockGroup}: one per role. */
+export const mockMembers: Member[] = [
+  {
+    userId: mockUser.id,
+    displayName: 'Mia',
+    email: mockUser.email,
+    role: 'owner',
+    isBillingOwner: true,
+  },
+  {
+    userId: '0192f2c4-0000-7000-8000-000000000002',
+    displayName: 'Adam',
+    email: 'adam@example.test',
+    role: 'admin',
+    isBillingOwner: false,
+  },
+  {
+    userId: '0192f2c4-0000-7000-8000-000000000003',
+    displayName: 'Max',
+    email: 'max@example.test',
+    role: 'member',
+    isBillingOwner: false,
+  },
+  {
+    userId: '0192f2c4-0000-7000-8000-000000000004',
+    displayName: 'Vic',
+    email: 'vic@example.test',
+    role: 'viewer',
+    isBillingOwner: false,
+  },
+].map((m) => ({ ...m, joinedAt: '2026-10-01T08:00:00Z', etag: `"${m.userId.slice(-4)}"` }))
+
 export const handlers = [
   http.get('/health/live', ({ response }) => response(200).json({ status: 'Healthy', checks: {} })),
   http.get('/health/ready', ({ response }) =>
@@ -84,6 +118,27 @@ export const handlers = [
     })
   }),
   http.delete('/api/v1/groups/{id}', ({ response }) => response(204).empty()),
+  http.get('/api/v1/groups/{id}/members', ({ response }) =>
+    response(200).json({ items: mockMembers, nextCursor: null }),
+  ),
+  http.patch('/api/v1/groups/{id}/members/{userId}', async ({ params, request, response }) => {
+    const member = mockMembers.find((m) => m.userId === params.userId)
+    if (!member) {
+      return response('default').json(
+        notFound(`/api/v1/groups/${params.id}/members/${params.userId}`),
+        {
+          status: 404,
+        },
+      )
+    }
+    const { role } = await request.json()
+    return response(200).json({ ...member, role })
+  }),
+  http.delete('/api/v1/groups/{id}/members/{userId}', ({ response }) => response(204).empty()),
+  http.post('/api/v1/groups/{id}/transfer', async ({ request, response }) => {
+    const { userId } = await request.json()
+    return response(200).json({ ...mockGroup, billingOwnerId: userId })
+  }),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {

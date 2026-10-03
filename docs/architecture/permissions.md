@@ -232,10 +232,12 @@ Mia sets `everyone → read` on her event: Vic stays `read`, the link holder sta
 
 | Role | Group administration | Default level on group-owned calendars |
 |---|---|---|
-| `owner` (1+) | Everything incl. delete group, billing, transfer ownership. | owner |
-| `admin` | Invite/remove `member`/`viewer`, set roles up to `admin`; cannot demote/remove other admins or owners. Invite *links* carry at most `member`. Create group calendars. | manage |
+| `owner` (1+) | Everything incl. delete group, assign every role (also `owner`), remove other owners. | owner |
+| `admin` | Invite/remove `member`/`viewer` and switch them between `viewer` and `member`; cannot promote to `admin`/`owner` (only owners do) and cannot demote/remove other admins or owners. Invite *links* carry at most `member`. Create group calendars. | manage |
 | `member` | See member list, leave group. | contribute |
 | `viewer` | See member list (configurable), leave group. | read |
+
+Every member may leave and lower their own role; nobody raises their own. A group always keeps at least one owner (the last owner cannot leave, be demoted or removed → `409 last_owner`). The **billing owner** (`groups.owner_user_id`, see §6.2) stays an owner until they transfer billing to another owner (`POST /groups/{id}/transfer`, only by the billing owner, only to a role-owner); before that they cannot leave or be demoted (`409 billing_owner_transfer_required`). Implemented as pure rules in `Core/Groups/MembershipPolicy`.
 
 ### 6.2 Per-calendar role defaults
 

@@ -86,10 +86,30 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
             await SeedUserAsync(actor.Name, emailConfirmed: true);
         }
 
-        await SeedGroupAsync("lions", (Actors.GroupOwner.Name, GroupRole.Owner), (Actors.GroupAdmin.Name, GroupRole.Admin), (Actors.GroupMember.Name, GroupRole.Member), (Actors.GroupViewer.Name, GroupRole.Viewer));
+        // Members without a session that membership cases change or remove (one per destructive case).
+        foreach (var target in LionsTargets)
+        {
+            await SeedUserAsync(target.Name, emailConfirmed: true, signIn: false);
+        }
+
+        await SeedGroupAsync(
+            "lions",
+            [
+                (Actors.GroupOwner.Name, GroupRole.Owner), (Actors.GroupAdmin.Name, GroupRole.Admin), (Actors.GroupMember.Name, GroupRole.Member), (Actors.GroupViewer.Name, GroupRole.Viewer),
+                .. LionsTargets.Select(t => (t.Name, t.Role)),
+            ]);
         await SeedGroupAsync("doomed", (Actors.GroupOwner.Name, GroupRole.Owner));
         await SeedGroupAsync("other", (Actors.OtherTenant.Name, GroupRole.Owner));
     }
+
+    /// <summary>Further members of "lions" (resource <c>user:{name}</c>): targets of role changes and removals.</summary>
+    public static IReadOnlyList<(string Name, GroupRole Role)> LionsTargets { get; } =
+    [
+        ("lions-role-target", GroupRole.Member),
+        ("lions-removed-by-owner", GroupRole.Member),
+        ("lions-removed-by-admin", GroupRole.Viewer),
+        ("lions-kept", GroupRole.Member),
+    ];
 
     /// <summary>A group whose first member is its billing owner; resource <c>group:{name}</c>.</summary>
     private async Task SeedGroupAsync(string name, params (string Actor, GroupRole Role)[] members)

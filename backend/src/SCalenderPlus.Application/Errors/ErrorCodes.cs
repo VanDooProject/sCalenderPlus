@@ -60,6 +60,18 @@ public static class ErrorCodes
     public const string OverrideInvalidInTarget = "override_invalid_in_target";
     public const string UidConflict = "uid_conflict";
 
+    /// <summary>The change would leave the group without an owner (last owner leaving, demoted or removed).</summary>
+    public const string LastOwner = "last_owner";
+
+    /// <summary>The billing owner cannot leave, be demoted or removed before billing is transferred to another owner.</summary>
+    public const string BillingOwnerTransferRequired = "billing_owner_transfer_required";
+
+    /// <summary>Billing can only be transferred to a member with role owner.</summary>
+    public const string BillingOwnerMustBeOwner = "billing_owner_must_be_owner";
+
+    /// <summary>The group is over its plan limit (frozen): no invites or role changes.</summary>
+    public const string GroupFrozen = "group_frozen";
+
     // 412 / 428
     public const string PreconditionFailed = "precondition_failed";
     public const string PreconditionRequired = "precondition_required";

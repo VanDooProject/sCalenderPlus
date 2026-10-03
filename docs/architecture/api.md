@@ -43,7 +43,7 @@ All errors are `application/problem+json`:
 | 403 | `insufficient_permission` (+ `required`, `actual` levels), `two_factor_required`, `external_sharing_not_allowed`, `email_not_verified`, `csrf_header_missing`, `reauthentication_failed` (wrong password/code when confirming a sensitive change) |
 | 404 | `not_found` (also for `none`-level resources — no existence leaks; also unknown routes) |
 | 405 | `method_not_allowed` |
-| 409 | `conflict`, `permission_self_lockout` (defensive), `calendar_frozen`, `override_invalid_in_target`, `uid_conflict` |
+| 409 | `conflict`, `permission_self_lockout` (defensive), `calendar_frozen`, `override_invalid_in_target`, `uid_conflict`, `last_owner`, `billing_owner_transfer_required`, `billing_owner_must_be_owner`, `group_frozen` |
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
@@ -100,7 +100,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | Resource | Endpoints |
 |---|---|
 | **Me** | `GET/PATCH /me`, `GET/POST /me/two-factor…` (§3.2), `GET /me/entitlements` (plan, limits, usage), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
-| **Groups** | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/{id}/members`, `PATCH/DELETE /groups/{id}/members/{userId}`, `POST /groups/{id}/invites`, `GET /groups/{id}/invites`, `DELETE /invites/{id}`, `POST /invites/{token}/accept`, `POST /groups/{id}/transfer` |
+| **Groups** | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/{id}/members`, `PATCH/DELETE /groups/{id}/members/{userId}`, `POST /groups/{id}/invites`, `GET /groups/{id}/invites`, `DELETE /invites/{id}`, `POST /invites/{token}/accept`, `POST /groups/{id}/transfer` (billing owner); leaving = `DELETE /groups/{id}/members/{myUserId}` |
 | **Calendars** | `GET /calendars` (all visible, with `myLevel`), `POST /calendars`, `GET/PATCH/DELETE /calendars/{id}`, `POST /calendars/{id}/transfer`, `POST /calendars/{id}/archive` |
 | **Calendar grants** | `GET/POST /calendars/{id}/grants`, `PATCH/DELETE /calendars/{id}/grants/{grantId}` |
 | **Share links** | `GET/POST /calendars/{id}/share-links`, `DELETE /share-links/{id}` |
@@ -137,7 +137,11 @@ Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Gr
 - `GET /groups/{id}` → `{ id, name, description, myRole, billingOwnerId, memberCount, memberListVisibility, frozen, createdAt, updatedAt }` with a strong `ETag` (hash of the representation, like `/me`).
 - `PATCH /groups/{id}` (admins and owners): JSON Merge Patch of `name`, `description` (empty string removes it), `memberListVisibility` (`all_members` | `members_and_above`, the latter hides the member list from viewers). `If-Match` required (428/412).
 - `DELETE /groups/{id}` (owners only, `If-Match`) → `204`: hard delete; memberships and invites are deleted with the group (FK cascade), every former member's `acl_version` is bumped. From M2 on, group-owned calendars must be transferred or deleted first (`409`, the calendars FK is `RESTRICT`), and `group:` grants/overrides naming the group are deleted with it.
-- Audit (resource `group`, subject = billing owner): `group.created`, `group.updated`, `group.deleted` (before/after).
+- `GET /groups/{id}/members?limit&cursor` → `{ items: [{ userId, displayName, email, role, isBillingOwner, joinedAt, etag }], nextCursor }` ordered by user id. Every member sees the list unless `memberListVisibility` is `members_and_above` (viewers: 403); `email` is only filled for admins and owners.
+- `PATCH /groups/{id}/members/{userId} { role }` (`If-Match`: the member's `etag`, or `*`) and `DELETE /groups/{id}/members/{userId}` (`If-Match`) — **leaving** is `DELETE` with one's own user id. Rules (`Core/Groups/MembershipPolicy`, permissions.md §6.1): owners manage everyone and assign every role; admins manage members and viewers only and assign at most `member` (admin acting on an admin/owner, or promoting to admin → `403`); members and viewers manage nobody; everyone may leave and lower their own role. The last owner cannot leave, be demoted or removed (`409 last_owner`); the billing owner only after transferring billing (`409 billing_owner_transfer_required`); frozen groups refuse role changes (`409 group_frozen`) but allow removals. Optional `?revokeEventShares=false` keeps the member's individual event shares (permissions.md §4.6; effective from M2, default `true`). Unknown members are `404`.
+- `POST /groups/{id}/transfer { userId }` → the group: billing-owner transfer, only by the current billing owner and only to a member with role `owner` (`409 billing_owner_must_be_owner`).
+- Every membership change runs in one transaction that bumps the member's `users.acl_version`, calls the `IGroupMembershipObserver`s and touches the group row (its `xmin` serializes concurrent changes, so two owners cannot demote each other into an ownerless group: the later one gets `412`).
+- Audit (resource `group`, subject = billing owner): `group.created`, `group.updated`, `group.deleted`, `group.member.role_changed`, `group.member.removed`, `group.member.left`, `group.billing_owner_transferred` (before/after).
 - Extension points: `IGroupEntitlements` (plan limits for owned groups and members per group — unlimited until the M2 entitlement service replaces it) and `IGroupMembershipObserver` (called in the transaction of every membership change — joined, role changed, removed, left, group deleted — for M2's "membership removal revokes event shares").
 
 ### Event representation (excerpt)

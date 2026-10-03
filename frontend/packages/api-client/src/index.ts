@@ -22,6 +22,12 @@ export type GroupResponse = components['schemas']['GroupResponse']
 /** A page of `GET /api/v1/groups` (`{ items, nextCursor }`). */
 export type GroupListResponse = components['schemas']['GroupListResponse']
 
+/** A member of a group (`GET /api/v1/groups/{id}/members`); `etag` is the `If-Match` for changing it. */
+export type MemberResponse = components['schemas']['MemberResponse']
+
+/** A page of `GET /api/v1/groups/{id}/members`. */
+export type MemberListResponse = components['schemas']['MemberListResponse']
+
 /** A group role, lowest to highest: `viewer`, `member`, `admin`, `owner`. */
 export type GroupRole = 'viewer' | 'member' | 'admin' | 'owner'
 

@@ -341,10 +341,77 @@ export interface paths {
     patch: operations['UpdateGroup']
     trace?: never
   }
+  '/api/v1/groups/{id}/members': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Members of a group (cursor-paginated)
+     * @description Every member sees the list unless memberListVisibility is members_and_above (viewers: 403). Emails are only shown to admins and owners.
+     */
+    get: operations['ListGroupMembers']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/groups/{id}/members/{userId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Remove a member, or leave the group with your own user id (requires If-Match)
+     * @description Owners remove anyone, admins members and viewers; everyone may leave. Last-owner and billing-owner protection as for role changes. revokeEventShares (default true): also revoke the member's individual event shares on the group's calendars.
+     */
+    delete: operations['RemoveGroupMember']
+    options?: never
+    head?: never
+    /**
+     * Change a member's role (requires If-Match)
+     * @description Owners assign any role; admins manage members and viewers only and assign at most member (only owners promote to admin or owner); everyone may lower their own role. The last owner cannot be demoted (409 last_owner), the billing owner only after transferring billing (409 billing_owner_transfer_required); frozen groups refuse role changes (409 group_frozen). revokeEventShares (default true): on demotion also revoke the member's individual event shares on the group's calendars.
+     */
+    patch: operations['ChangeGroupMemberRole']
+    trace?: never
+  }
+  '/api/v1/groups/{id}/transfer': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Make another owner the billing owner (billing owner only)
+     * @description The recipient must be a member with role owner (409 billing_owner_must_be_owner); their plan governs the group from now on.
+     */
+    post: operations['TransferGroupBilling']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    ChangeMemberRoleRequest: {
+      role: string
+    }
     ConfirmEmailRequest: {
       /** Format: uuid */
       userId: string
@@ -363,6 +430,8 @@ export interface components {
      */
     ErrorCode:
       | 'bad_request'
+      | 'billing_owner_must_be_owner'
+      | 'billing_owner_transfer_required'
       | 'calendar_frozen'
       | 'conflict'
       | 'csrf_header_missing'
@@ -370,9 +439,11 @@ export interface components {
       | 'email_not_verified'
       | 'external_sharing_not_allowed'
       | 'feature_not_in_plan'
+      | 'group_frozen'
       | 'insufficient_permission'
       | 'internal_error'
       | 'invalid_credentials'
+      | 'last_owner'
       | 'method_not_allowed'
       | 'not_found'
       | 'override_invalid_in_target'
@@ -448,6 +519,21 @@ export interface components {
       recoveryCode?: null | string
       rememberMe?: boolean
     }
+    MemberListResponse: {
+      items: components['schemas']['MemberResponse'][]
+      nextCursor: null | string
+    }
+    MemberResponse: {
+      /** Format: uuid */
+      userId: string
+      displayName: string
+      email: null | string
+      role: string
+      isBillingOwner: boolean
+      /** Format: date-time */
+      joinedAt: string
+      etag: string
+    }
     MeResponse: {
       /** Format: uuid */
       id: string
@@ -496,6 +582,10 @@ export interface components {
       userId: string
       token: string
       newPassword: string
+    }
+    TransferBillingRequest: {
+      /** Format: uuid */
+      userId: string
     }
     TwoFactorSetupResponse: {
       sharedKey: string
@@ -1235,6 +1325,149 @@ export interface operations {
       content: {
         'application/merge-patch+json': components['schemas']['UpdateGroupRequest']
         'application/json': components['schemas']['UpdateGroupRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListGroupMembers: {
+    parameters: {
+      query?: {
+        limit?: number | string
+        cursor?: string
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MemberListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RemoveGroupMember: {
+    parameters: {
+      query?: {
+        revokeEventShares?: boolean
+      }
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        userId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ChangeGroupMemberRole: {
+    parameters: {
+      query?: {
+        revokeEventShares?: boolean
+      }
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        userId: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChangeMemberRoleRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MemberResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  TransferGroupBilling: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TransferBillingRequest']
       }
     }
     responses: {

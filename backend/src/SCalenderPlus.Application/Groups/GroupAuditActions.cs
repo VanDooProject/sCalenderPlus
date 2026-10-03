@@ -12,4 +12,8 @@ public static class GroupAuditActions
     public const string Created = "group.created";
     public const string Updated = "group.updated";
     public const string Deleted = "group.deleted";
+    public const string BillingOwnerTransferred = "group.billing_owner_transferred";
+    public const string MemberRoleChanged = "group.member.role_changed";
+    public const string MemberRemoved = "group.member.removed";
+    public const string MemberLeft = "group.member.left";
 }
