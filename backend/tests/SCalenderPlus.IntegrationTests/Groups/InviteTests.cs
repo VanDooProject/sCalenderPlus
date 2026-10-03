@@ -185,6 +185,15 @@ public sealed partial class InviteTests(GroupHostFixture fixture) : IClassFixtur
     }
 
     [Fact]
+    public async Task Numbers_sent_as_strings_are_rejected()
+    {
+        using var response = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { role = "member", maxUses = "5" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(await PendingAsync());
+    }
+
+    [Fact]
     public async Task Admins_invite_up_to_member_members_not_at_all()
     {
         var (_, admin) = await MemberAsync("adam", GroupRole.Admin);

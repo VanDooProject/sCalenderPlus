@@ -489,9 +489,9 @@ export interface components {
       email?: null | string
       role: string
       /** Format: int32 */
-      expiresInDays?: null | number | string
+      expiresInDays?: null | number
       /** Format: int32 */
-      maxUses?: null | number | string
+      maxUses?: null | number
     }
     CreateInviteResponse: {
       invite: components['schemas']['InviteResponse']
@@ -558,7 +558,7 @@ export interface components {
       /** Format: uuid */
       billingOwnerId: string
       /** Format: int32 */
-      memberCount: number | string
+      memberCount: number
       memberListVisibility: string
       frozen: boolean
       /** Format: date-time */
@@ -576,7 +576,7 @@ export interface components {
       type?: null | string
       title?: null | string
       /** Format: int32 */
-      status?: null | number | string
+      status?: null | number
       detail?: null | string
       instance?: null | string
       errors?: {
@@ -596,9 +596,9 @@ export interface components {
       email: null | string
       role: string
       /** Format: int32 */
-      maxUses: number | string
+      maxUses: number
       /** Format: int32 */
-      uses: number | string
+      uses: number
       /** Format: date-time */
       expiresAt: string
       /** Format: uuid */
@@ -695,7 +695,7 @@ export interface components {
     TwoFactorStatusResponse: {
       enabled: boolean
       /** Format: int32 */
-      recoveryCodesLeft: number | string
+      recoveryCodesLeft: number
     }
     UpdateGroupRequest: {
       name?: null | string
@@ -1287,7 +1287,7 @@ export interface operations {
   ListGroups: {
     parameters: {
       query?: {
-        limit?: number | string
+        limit?: number
         cursor?: string
       }
       header?: never
@@ -1452,7 +1452,7 @@ export interface operations {
   ListGroupMembers: {
     parameters: {
       query?: {
-        limit?: number | string
+        limit?: number
         cursor?: string
       }
       header?: never
@@ -1595,7 +1595,7 @@ export interface operations {
   ListGroupInvites: {
     parameters: {
       query?: {
-        limit?: number | string
+        limit?: number
         cursor?: string
       }
       header?: never

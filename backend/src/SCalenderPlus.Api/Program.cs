@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
@@ -51,6 +52,10 @@ public sealed class Program
         builder.Services.AddApiProblemDetails();
         builder.Services.AddValidation();
         builder.Services.AddApiDocument();
+
+        // JSON numbers only: the web defaults also accept "5" for an integer, which made the OpenAPI document (and
+        // the typed client) declare every integer as `integer | string`.
+        builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
         if (BuildTimeDocument.IsGenerating)
         {
             builder.Services.UseInMemoryKeyRing();

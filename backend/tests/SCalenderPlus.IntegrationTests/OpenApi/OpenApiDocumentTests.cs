@@ -25,6 +25,24 @@ public sealed class OpenApiDocumentTests
         Assert.NotNull(served?["paths"]?["/health/ready"]?["get"]);
     }
 
+    [Fact]
+    public async Task Integers_are_plain_integers_not_integer_or_string()
+    {
+        var document = JsonNode.Parse(await File.ReadAllTextAsync(CommittedDocumentPath(), TestContext.Current.CancellationToken))!;
+
+        var mixed = Schemas(document).Where(s => s["type"] is JsonArray types
+            && types.Any(t => (string?)t == "integer") && types.Any(t => (string?)t == "string")).ToList();
+
+        Assert.True(mixed.Count == 0, "Integer schemas also allow strings (lenient JSON number handling): " + string.Join(", ", mixed.Select(s => s.GetPath())));
+    }
+
+    private static IEnumerable<JsonObject> Schemas(JsonNode? node) => node switch
+    {
+        JsonObject obj => new[] { obj }.Concat(obj.SelectMany(p => Schemas(p.Value))),
+        JsonArray array => array.SelectMany(Schemas),
+        _ => [],
+    };
+
     private static string CommittedDocumentPath()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
