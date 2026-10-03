@@ -1,6 +1,6 @@
 # Data Model
 
-PostgreSQL 17, EF Core migrations, `snake_case` naming. All primary keys are UUIDv7 (`uuid`). All instants are `timestamptz` (UTC). Every mutable table has `created_at`, `updated_at` and an optimistic concurrency token (Postgres `xmin` mapped as row version). Soft delete only where noted (`deleted_at`).
+PostgreSQL 17, EF Core migrations, `snake_case` naming. All primary keys are UUIDv7 (`uuid`). All instants are `timestamptz` (UTC). Every mutable table has `created_at`, `updated_at` and an optimistic concurrency token (Postgres `xmin` mapped as row version). Soft delete only where noted (`deleted_at`). The EF Core migration history lives in `__ef_migrations_history`; migrations are applied by the `migrate` command under a Postgres advisory lock (see [coolify.md §7](../deployment/coolify.md#7-migrations)).
 
 ## 1. Entity overview
 

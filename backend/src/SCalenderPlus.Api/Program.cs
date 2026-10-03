@@ -12,11 +12,17 @@ public sealed class Program
 
     public static async Task<int> Main(string[] args)
     {
+        if (args is [MigrateCommand.Name, .. var migrateArgs])
+        {
+            return await MigrateCommand.RunAsync(migrateArgs).ConfigureAwait(false);
+        }
+
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services
             .AddApplication(builder.Configuration)
-            .AddInfrastructure(builder.Configuration);
+            .AddInfrastructure(builder.Configuration)
+            .AddDatabaseAutoMigration();
 
         var app = builder.Build();
 

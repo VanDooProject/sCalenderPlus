@@ -15,5 +15,6 @@ public sealed class RequiredConfigurationTests
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("Invalid configuration", result.Output, StringComparison.Ordinal);
         Assert.Contains("PublicBaseUrl", result.Output, StringComparison.Ordinal);
+        Assert.Contains("ConnectionStrings:Default is required", result.Output, StringComparison.Ordinal);
     }
 }

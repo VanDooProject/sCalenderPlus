@@ -138,4 +138,15 @@ pnpm -C frontend install && pnpm -C frontend --filter app dev   # Vite proxies /
 pnpm -C frontend --filter app dev:mock                   # UI only, MSW mocks, no backend
 ```
 
+Database migrations (EF Core, in `SCalenderPlus.Infrastructure/Persistence/Migrations`):
+
+```
+dotnet tool restore                                       # dotnet-ef from dotnet-tools.json
+dotnet ef migrations add <Name> --project backend/src/SCalenderPlus.Infrastructure \
+  --startup-project backend/src/SCalenderPlus.Infrastructure --output-dir Persistence/Migrations
+dotnet run --project backend/src/SCalenderPlus.Api -- migrate   # what the compose `migrate` service runs
+```
+
+Backend tests use Docker (Testcontainers Postgres) for tests marked `[Trait("Category", "Docker")]`. Without a Docker daemon, skip them with `SCAL_SKIP_DOCKER_TESTS=true dotnet test --solution backend` (reported as skipped) or exclude them with `dotnet test --solution backend -- --filter-not-trait "Category=Docker"`. CI always runs them.
+
 Code style: `.editorconfig` + `dotnet format` (CI verify), nullable enabled, warnings as errors; ESLint flat config + Prettier; TypeScript `strict`.

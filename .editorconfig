@@ -54,3 +54,8 @@ dotnet_naming_style.underscore_camel.capitalization = camel_case
 dotnet_naming_style.underscore_camel.required_prefix = _
 
 # Async methods end with Async is not enforced (minimal API handlers, tests)
+
+# EF Core migrations are generated code.
+[backend/src/SCalenderPlus.Infrastructure/Persistence/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

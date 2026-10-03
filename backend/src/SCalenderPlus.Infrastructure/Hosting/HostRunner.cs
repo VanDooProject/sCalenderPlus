@@ -22,10 +22,10 @@ public static partial class HostRunner
             await host.WaitForShutdownAsync().ConfigureAwait(false);
             return Success;
         }
-        catch (OptionsValidationException ex)
+        catch (Exception ex) when (IsConfigurationError(ex))
         {
             // Misconfiguration (ValidateOnStart): fail fast so the orchestrator keeps the old version running.
-            var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SCalenderPlus.Startup");
+            var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(LoggerCategory);
             LogInvalidConfiguration(logger, ex);
             return Failure;
         }
@@ -41,6 +41,16 @@ public static partial class HostRunner
             }
         }
     }
+
+    internal const string LoggerCategory = "SCalenderPlus.Startup";
+
+    /// <summary>
+    /// <see cref="IStartupValidator"/> throws a single <see cref="OptionsValidationException"/>, or an
+    /// <see cref="AggregateException"/> when several options classes are invalid.
+    /// </summary>
+    internal static bool IsConfigurationError(Exception ex) =>
+        ex is OptionsValidationException
+        || (ex is AggregateException aggregate && aggregate.InnerExceptions.All(e => e is OptionsValidationException));
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Invalid configuration; refusing to start")]
     private static partial void LogInvalidConfiguration(ILogger logger, Exception exception);

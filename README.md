@@ -21,9 +21,13 @@ See [docs/architecture/overview.md §2](docs/architecture/overview.md#2-reposito
 Prerequisites: .NET SDK 10.0.1xx (pinned in [`global.json`](global.json)), Node.js ≥ 22.12, pnpm 10 (`corepack enable`).
 
 ```sh
+# Local dependencies (PostgreSQL 17 + Mailpit)
+docker compose -f deploy/docker-compose.dev.yml up -d
+
 # Backend
 dotnet build backend             # restore + build (warnings are errors)
-dotnet test --solution backend   # unit + integration tests (Microsoft.Testing.Platform)
+dotnet test --solution backend   # unit + integration tests (Microsoft.Testing.Platform; integration tests need Docker)
+dotnet run --project backend/src/SCalenderPlus.Api   # http://localhost:5080, migrates the dev database on start
 
 # Frontend (pnpm workspace in frontend/)
 pnpm -C frontend install
