@@ -4,6 +4,8 @@ name: ci
 
 on:
   pull_request:
+    # labeled/unlabeled: re-evaluate the OpenAPI breaking-change gate (label `api-breaking-approved`).
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: ['**']
 
@@ -31,6 +33,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      openapi: ${{ steps.filter.outputs.openapi }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -46,6 +49,9 @@ jobs:
               - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
+              - 'backend/openapi/**'
+              - '.github/workflows/ci.yml'
+            openapi:
               - 'backend/openapi/**'
               - '.github/workflows/ci.yml'
 
@@ -65,8 +71,17 @@ jobs:
       # CI=true (set by GitHub) turns on RestoreLockedMode in Directory.Build.props; --locked-mode makes it explicit.
       - name: Restore
         run: dotnet restore backend/SCalenderPlus.slnx --locked-mode
+      # The build also exports the OpenAPI document (docs/architecture/api.md §5).
       - name: Build
         run: dotnet build backend/SCalenderPlus.slnx --no-restore --configuration Release
+      - name: Check OpenAPI document is committed and up to date
+        run: |
+          if [ -n "$(git status --porcelain -- backend/openapi)" ]; then
+            git status --short -- backend/openapi
+            git --no-pager diff -- backend/openapi
+            echo "::error file=backend/openapi/v1.json::OpenAPI document is stale: run 'dotnet build backend' and commit backend/openapi/v1.json"
+            exit 1
+          fi
       - name: Verify formatting
         run: dotnet format backend/SCalenderPlus.slnx --verify-no-changes --no-restore
       # Includes the Docker (Testcontainers) tests: the ubuntu runner has a Docker daemon.
@@ -93,15 +108,58 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Check typed API client is up to date with the OpenAPI document
+        run: |
+          pnpm --filter @scalenderplus/api-client generate
+          if [ -n "$(git status --porcelain -- packages/api-client)" ]; then
+            git --no-pager diff -- packages/api-client
+            echo "::error file=frontend/packages/api-client/src/schema.d.ts::API client is stale: run 'pnpm -C frontend --filter @scalenderplus/api-client generate' and commit the result"
+            exit 1
+          fi
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
 
+  openapi-breaking:
+    name: openapi breaking changes
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OASDIFF_IMAGE: tufin/oasdiff:v1.33.0
+      # Pull requests: breaking changes fail unless the PR carries the label `api-breaking-approved`.
+      # Pushes: informational only (the change is already on the branch).
+      ENFORCE: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'api-breaking-approved') }}
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: oasdiff breaking (base vs this revision)
+        run: |
+          spec=backend/openapi/v1.json
+          if [ -z "$BASE_REF" ] || ! git show "$BASE_REF:$spec" > "$RUNNER_TEMP/base.json" 2>/dev/null; then
+            echo "No $spec at base '$BASE_REF' (new document or new branch): nothing to compare." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          docker run --rm -v "$RUNNER_TEMP/base.json:/specs/base.json:ro" -v "$PWD/$spec:/specs/revision.json:ro" \
+            "$OASDIFF_IMAGE" breaking /specs/base.json /specs/revision.json --format markdown > "$RUNNER_TEMP/breaking.md"
+          { echo "### OpenAPI breaking changes vs \`$BASE_REF\`"; cat "$RUNNER_TEMP/breaking.md"; } >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/breaking.md"
+          docker run --rm -v "$RUNNER_TEMP/base.json:/specs/base.json:ro" -v "$PWD/$spec:/specs/revision.json:ro" \
+            "$OASDIFF_IMAGE" breaking /specs/base.json /specs/revision.json --format githubactions --fail-on ERR \
+            || { if [ "$ENFORCE" = "true" ]; then
+                   echo "::error::Breaking API change. Bump to /api/v2 or, if intended, add the label 'api-breaking-approved'."
+                   exit 1
+                 fi
+                 echo "::warning::Breaking API change (not enforced for this event or approved by label)."; }
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, backend, frontend]
+    needs: [changes, backend, frontend, openapi-breaking]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

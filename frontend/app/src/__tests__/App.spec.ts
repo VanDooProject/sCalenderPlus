@@ -31,9 +31,7 @@ describe('App shell', () => {
   })
 
   it('renders the home page with a reachable API', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response('{"status":"Healthy"}', { status: 200 }))
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ status: 'Healthy', checks: {} }))
     vi.stubGlobal('fetch', fetchMock)
 
     const wrapper = await mountApp()
@@ -42,7 +40,8 @@ describe('App shell', () => {
     expect(wrapper.text()).toContain('Welcome')
     expect(wrapper.get('[data-testid="environment-badge"]').text()).toBe('Environment: staging')
     expect(wrapper.get('[data-testid="api-status"]').text()).toBe('reachable')
-    expect(fetchMock).toHaveBeenCalledWith('/health/live', expect.anything())
+    const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(new URL(request.url).pathname).toBe('/health/live')
   })
 
   it('shows the API as unreachable when the health check fails', async () => {

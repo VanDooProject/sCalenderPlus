@@ -1,3 +1,4 @@
+using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Application;
 using SCalenderPlus.Infrastructure;
 using SCalenderPlus.Infrastructure.Hosting;
@@ -24,6 +25,11 @@ public sealed class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
+        if (BuildTimeDocument.IsGenerating)
+        {
+            builder.Configuration.AddInMemoryCollection(BuildTimeDocument.PlaceholderSettings);
+        }
+
         builder.WebHost.UseDefaultHttpPort(builder.Configuration, DefaultHttpPort);
         builder.AddPlatformObservability("scalenderplus-api");
 
@@ -32,10 +38,12 @@ public sealed class Program
             .AddInfrastructure(builder.Configuration)
             .AddDatabaseAutoMigration()
             .AddPlatformHealthChecks();
+        builder.Services.AddApiDocument();
 
         var app = builder.Build();
 
         app.MapPlatformHealthEndpoints();
+        app.MapApiDocument();
 
         return await HostRunner.RunAsync(app).ConfigureAwait(false);
     }

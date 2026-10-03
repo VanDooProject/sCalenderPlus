@@ -3,14 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Typed API client. Placeholder until OpenAPI type generation (openapi-typescript + openapi-fetch) lands.",
+  "description": "Typed API client: openapi-typescript types generated from backend/openapi/v1.json and an openapi-fetch client.",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
+    "generate": "openapi-typescript ../../../backend/openapi/v1.json -o src/schema.d.ts && prettier --write --log-level warn src/schema.d.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.3"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
   }
 }

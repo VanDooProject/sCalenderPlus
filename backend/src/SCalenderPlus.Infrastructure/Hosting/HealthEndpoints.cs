@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,21 +25,40 @@ public static class HealthEndpoints
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", HealthStatus.Unhealthy, [ReadyTag], _databaseTimeout);
 
+    /// <summary>
+    /// Maps the health endpoints as minimal API endpoints (rather than <c>MapHealthChecks</c>) so they carry
+    /// OpenAPI metadata and appear in the API document and the typed client (docs/architecture/api.md §4, System).
+    /// </summary>
     public static IEndpointRouteBuilder MapPlatformHealthEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks(LivePath, new HealthCheckOptions
-        {
-            Predicate = _ => false,
-            ResponseWriter = WriteResponseAsync,
-        }).ExcludeFromDescription();
+        var group = endpoints.MapGroup(string.Empty).WithTags(OpenApiTag);
 
-        endpoints.MapHealthChecks(ReadyPath, new HealthCheckOptions
-        {
-            Predicate = check => check.Tags.Contains(ReadyTag),
-            ResponseWriter = WriteResponseAsync,
-        }).ExcludeFromDescription();
+        group.MapGet(LivePath, (HttpContext context, HealthCheckService health) => CheckAsync(context, health, _ => false))
+            .WithName("getHealthLive")
+            .WithSummary("Liveness: the process is up (no dependency checks).")
+            .Produces<HealthResponse>(StatusCodes.Status200OK)
+            .Produces<HealthResponse>(StatusCodes.Status503ServiceUnavailable);
+
+        group.MapGet(ReadyPath, (HttpContext context, HealthCheckService health) => CheckAsync(context, health, check => check.Tags.Contains(ReadyTag)))
+            .WithName("getHealthReady")
+            .WithSummary("Readiness: database reachable and migrated (worker: job loop heartbeat).")
+            .Produces<HealthResponse>(StatusCodes.Status200OK)
+            .Produces<HealthResponse>(StatusCodes.Status503ServiceUnavailable);
 
         return endpoints;
+    }
+
+    /// <summary>OpenAPI tag of the unversioned system endpoints.</summary>
+    public const string OpenApiTag = "System";
+
+    /// <summary>Same status mapping as <c>MapHealthChecks</c>: Healthy/Degraded → 200, Unhealthy → 503.</summary>
+    private static async Task CheckAsync(HttpContext context, HealthCheckService health, Func<HealthCheckRegistration, bool> predicate)
+    {
+        var report = await health.CheckHealthAsync(predicate, context.RequestAborted).ConfigureAwait(false);
+        context.Response.StatusCode = report.Status == HealthStatus.Unhealthy
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status200OK;
+        await WriteResponseAsync(context, report).ConfigureAwait(false);
     }
 
     private static Task WriteResponseAsync(HttpContext context, HealthReport report)

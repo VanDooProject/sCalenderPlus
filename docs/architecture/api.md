@@ -122,18 +122,19 @@ Window query `GET /events?from=…&to=…&expand=occurrences` returns expanded o
 
 - Generated at build time by `Microsoft.AspNetCore.OpenApi` (OpenAPI 3.1) from endpoint metadata (`.WithName`, `.Produces<T>`, `.ProducesProblem`, typed results `Results<Ok<T>, NotFound, ProblemHttpResult>`).
 - Document transformers add: security schemes, problem `code` enum, examples, `x-plan-gated` extension on gated operations.
-- **Build-time export**: `dotnet build` with `Microsoft.Extensions.ApiDescription.Server` writes `backend/openapi/v1.json`, which is **committed**. CI fails if the generated file differs from the committed one (contract changes are visible in PR diffs).
-- **Breaking-change check**: CI runs `oasdiff breaking` between the PR's `v1.json` and `main`'s; breaking changes in `/v1` fail the build unless the PR carries the label `api-breaking-approved`.
+- **Build-time export**: `dotnet build` with `Microsoft.Extensions.ApiDescription.Server` writes `backend/openapi/v1.json`, which is **committed**. CI fails if the generated file differs from the committed one (contract changes are visible in PR diffs); an integration test also asserts that the document served at `/openapi/v1.json` equals the committed file. During build-time generation the api runs inside the `GetDocument.Insider` tool with placeholder values for required options (nothing connects to them). The document's `info.version` is the fixed `v1` (not the product version) so release bumps cause no drift. Container builds skip the export (`-p:OpenApiGenerateDocuments=false`).
+- System endpoints (`/health/live`, `/health/ready`) are minimal API endpoints with OpenAPI metadata (tag `System`), so they are in the document and the typed client.
+- **Breaking-change check**: CI job `openapi-breaking` runs `oasdiff breaking` (`tufin/oasdiff` image) between the PR's `v1.json` and the PR base branch's; breaking changes fail the build unless the PR carries the label `api-breaking-approved` (adding/removing the label re-runs CI). On pushes the result is informational only. The report is written to the job summary.
 - Docs UI: Scalar at `/docs` (dev and staging; prod optional via `Api__PublicDocs=true`).
 
 ## 6. Typed frontend client
 
 ```
 backend/openapi/v1.json
-   └─ pnpm --filter @scal/api-client generate
-        ├─ openapi-typescript → src/schema.d.ts (types only)
-        └─ src/client.ts       → createClient<paths>() from openapi-fetch
-                                  + middleware: X-Requested-With, problem+json → ApiError, auth refresh (native later)
+   └─ pnpm -C frontend --filter @scalenderplus/api-client generate
+        ├─ openapi-typescript → src/schema.d.ts (types only, then prettier)
+        └─ src/client.ts       → createApiClient(): createClient<paths>() from openapi-fetch (hand-written)
+                                  + middleware: X-Requested-With (done); problem+json → ApiError, auth refresh (native) later
 ```
 
 - Usage: `const { data, error } = await api.GET('/api/v1/events', { params: { query: { from, to } } })` — paths, params and responses fully typed; renames break the TS build.

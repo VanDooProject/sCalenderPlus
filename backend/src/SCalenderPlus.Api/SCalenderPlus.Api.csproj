@@ -2,8 +2,23 @@
 
   <!-- Composition root: HTTP host. -->
 
+  <PropertyGroup>
+    <!--
+      Build-time OpenAPI export (docs/architecture/api.md §5): every build writes backend/openapi/v1.json, which
+      is committed; CI fails when it differs. Container builds pass -p:OpenApiGenerateDocuments=false.
+    -->
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name v1</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\SCalenderPlus.Infrastructure\SCalenderPlus.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

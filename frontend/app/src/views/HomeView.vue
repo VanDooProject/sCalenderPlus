@@ -2,19 +2,19 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuery } from '@tanstack/vue-query'
-import { HEALTH_LIVE_PATH } from '@scalenderplus/api-client'
 import { UiButton } from '@scalenderplus/ui'
+import { api } from '@/api'
 
 const { t } = useI18n()
 
 const health = useQuery({
   queryKey: ['health', 'live'],
   queryFn: async () => {
-    const response = await fetch(HEALTH_LIVE_PATH, { headers: { Accept: 'application/json' } })
-    if (!response.ok) {
+    const { data, response } = await api.GET('/health/live')
+    if (!response.ok || !data) {
       throw new Error(`Health check failed with ${response.status}`)
     }
-    return true
+    return data
   },
   retry: false,
 })
