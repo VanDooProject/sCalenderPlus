@@ -67,6 +67,11 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `ReverseProxy__KnownProxies` | api | | comma-separated IPs of individual trusted proxies (optional) |
 | – (Data Protection keys) | api, worker | | no setting: the key ring is stored in the `data_protection_keys` table (`PersistKeysToDbContext`, application name `scalenderplus` shared by api and worker) — no volume needed. Keys are stored unencrypted (DB access = key access; the startup log warns once per new key); a key-encryption certificate is a possible later hardening |
 | `Auth__External__Google__ClientId/Secret` (Microsoft, Apple) | api | | v1 |
+| `RateLimiting__Auth__PermitLimit`, `RateLimiting__Auth__Window` | api | | `10`, `00:01:00` — per client IP: login, 2FA, email confirmation, password reset |
+| `RateLimiting__SignUp__PermitLimit`, `RateLimiting__SignUp__Window` | api | | `5`, `01:00:00` — per client IP: sign-ups |
+| `RateLimiting__Session__PermitLimit`, `RateLimiting__Session__Window` | api | | `600`, `00:01:00` — per signed-in user (web app sessions; abuse limit only) |
+| `RateLimiting__TokenPlans__Free`, `__Pro`, `__Team` | api | | `60`, `600`, `1200` requests/min per API token (v1, API tokens) |
+| `SignUp__BlockDisposableEmailDomains`, `SignUp__BlockedEmailDomains` | api | | `true` (bundled list of disposable-email providers), extra comma-separated domains (subdomains included) |
 | `Smtp__Host`, `Smtp__From` | worker | ✓ | `smtp.example.com`, `noreply@example.com`. The api only queues emails (`email.send` jobs) and needs no SMTP settings |
 | `Smtp__Port`, `Smtp__Security`, `Smtp__User`, `Smtp__Password`, `Smtp__FromName`, `Smtp__Timeout` | worker | | `587`, `Auto` (implicit TLS on 465, STARTTLS when offered; also `StartTls`, `SslOnConnect`, `None`), auth only when `User` is set, `sCalenderPlus`, `00:00:30` |
 | `Jobs__Concurrency`, `Jobs__PollInterval`, `Jobs__LeaseDuration`, `Jobs__LeaseRenewalInterval`, `Jobs__BaseRetryDelay`, `Jobs__MaxRetryDelay` | worker | | `4`, `00:00:01`, `00:05:00`, `00:00:30`, `00:00:30`, `01:00:00` (job queue tuning; defaults suit production) |

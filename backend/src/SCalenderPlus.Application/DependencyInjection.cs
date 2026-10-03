@@ -17,7 +17,12 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<SignUpOptions>()
+            .Bind(configuration.GetSection(SignUpOptions.SectionName))
+            .ValidateOnStart();
+
         services.AddSingleton<AccountEmails>();
+        services.AddSingleton<EmailDomainPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
         services.AddScoped<IJobHandler, SendEmailJobHandler>();
 

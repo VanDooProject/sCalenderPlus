@@ -9,4 +9,8 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Accounts/disposable-email-domains.txt" LogicalName="SCalenderPlus.Application.Accounts.disposable-email-domains.txt" />
+  </ItemGroup>
+
 </Project>

@@ -15,7 +15,7 @@ The web app, future native apps and third-party integrators use **the same publi
 | Idempotency (v1) | `POST` accepts optional `Idempotency-Key` header (stored 24 h per principal) — needed once native/mobile clients exist; not in MVP. |
 | Pagination | Cursor-based: `?limit=50&cursor=…` → response `{ "items": [...], "nextCursor": "…" \| null }`. Max limit 200. Opaque cursor = base64url of (sort key, id). Exception: event window queries return the whole window (bounded by window size limits). |
 | Filtering/sorting | Explicit query params per endpoint (`?calendarIds=…&q=…`); no generic query language. |
-| Rate limits | Plan limits (plans.md) apply to **bearer tokens** only; cookie sessions (the web app) get a generous per-user abuse limit (e.g. 600/min) so normal UI use never hits Free's 60/min; auth endpoints per IP. Headers `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`; `429` + `Retry-After`. |
+| Rate limits | Plan limits (plans.md) apply to **bearer tokens** only; cookie sessions (the web app) get a generous per-user abuse limit (600/min, sliding) so normal UI use never hits Free's 60/min; auth endpoints per client IP (login, 2FA, confirmation, password reset: 10/min; sign-up: 5/h; IPv6 grouped by /64). `429 rate_limited` + `Retry-After` (seconds). Limits are in memory per api replica and configurable (`RateLimiting__*`, `Api/RateLimiting`). `RateLimit-Limit`/`-Remaining`/`-Reset` headers come with the token limits (v1). Sign-up also rejects disposable-email domains (`422 email_domain_not_allowed`; bundled list + `SignUp__BlockedEmailDomains`). |
 | Deprecation | `Deprecation` and `Sunset` headers; listed in changelog. |
 | Localization | `Accept-Language` affects problem `title`/`detail` texts only; data is never localized. |
 
@@ -47,7 +47,7 @@ All errors are `application/problem+json`:
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
-| 422 | `recurrence_invalid`, `time_zone_invalid` (+ `errors` with the field, like `validation_failed`) |
+| 422 | `recurrence_invalid`, `time_zone_invalid`, `email_domain_not_allowed` (both + `errors` with the field, like `validation_failed`) |
 | 429 | `rate_limited` |
 | 500 / 503 | `internal_error` (no details; correlate via `traceId`), `service_unavailable` |
 

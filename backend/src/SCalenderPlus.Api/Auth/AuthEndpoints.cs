@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using SCalenderPlus.Api.Problems;
+using SCalenderPlus.Api.RateLimiting;
 using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Email;
@@ -17,7 +18,9 @@ namespace SCalenderPlus.Api.Auth;
 /// confirmation and password reset. Responses never reveal whether an email address has an account:
 /// register and forgot-password always answer 202, failed logins are <c>401 invalid_credentials</c> whatever
 /// the reason (unknown email, wrong password, locked out). Emails are queued in the same transaction as the
-/// change (<see cref="IEmailOutbox"/>) together with the audit event.
+/// change (<see cref="IEmailOutbox"/>) together with the audit event. Rate limits per client IP: sign-up
+/// (<see cref="RateLimitingSetup.SignUp"/>, plus the disposable-email blocklist) and the other credential
+/// endpoints (<see cref="RateLimitingSetup.Auth"/>).
 /// </summary>
 internal static partial class AuthEndpoints
 {
@@ -30,22 +33,22 @@ internal static partial class AuthEndpoints
     {
         var auth = v1.MapGroup("/auth").WithTags(Tag);
 
-        auth.MapPost("/register", RegisterAsync).WithName("Register").AllowAnonymous()
+        auth.MapPost("/register", RegisterAsync).WithName("Register").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.SignUp)
             .WithSummary("Create an account")
-            .WithDescription("Always answers 202 for a well-formed request: a new account gets a confirmation email, an already registered address gets a hint email instead (no user enumeration). Sign in afterwards with POST /auth/login.");
-        auth.MapPost("/login", LoginAsync).WithName("Login").AllowAnonymous()
+            .WithDescription("Always answers 202 for a well-formed request with an allowed email domain (disposable-email providers: 422 email_domain_not_allowed): a new account gets a confirmation email, an already registered address gets a hint email instead (no user enumeration). Sign in afterwards with POST /auth/login.");
+        auth.MapPost("/login", LoginAsync).WithName("Login").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Sign in with email and password")
             .WithDescription("Sets the session cookie, or answers twoFactorRequired (second step: POST /auth/login/2fa). Failures are 401 invalid_credentials; after 5 failures in a row the account is locked for 15 minutes (still answered as invalid_credentials).");
         auth.MapPost("/logout", LogoutAsync).WithName("Logout")
             .WithSummary("End the session (clears the session cookie)");
-        auth.MapPost("/confirm-email", ConfirmEmailAsync).WithName("ConfirmEmail").AllowAnonymous()
+        auth.MapPost("/confirm-email", ConfirmEmailAsync).WithName("ConfirmEmail").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Confirm an email address with the token from the confirmation link");
-        auth.MapPost("/confirm-email/resend", ResendConfirmationAsync).WithName("ResendEmailConfirmation")
+        auth.MapPost("/confirm-email/resend", ResendConfirmationAsync).WithName("ResendEmailConfirmation").RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Send the confirmation email again to the signed-in user (no-op when already confirmed)");
-        auth.MapPost("/forgot-password", ForgotPasswordAsync).WithName("ForgotPassword").AllowAnonymous()
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).WithName("ForgotPassword").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Request a password reset email")
             .WithDescription("Always answers 202 (no user enumeration); only registered addresses receive an email.");
-        auth.MapPost("/reset-password", ResetPasswordAsync).WithName("ResetPassword").AllowAnonymous()
+        auth.MapPost("/reset-password", ResetPasswordAsync).WithName("ResetPassword").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Set a new password with the token from the reset link")
             .WithDescription("Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions.");
 
@@ -68,6 +71,7 @@ internal static partial class AuthEndpoints
         IAuditLog audit,
         IEmailOutbox outbox,
         AccountEmails emails,
+        EmailDomainPolicy domains,
         CancellationToken cancellationToken)
     {
         var locale = request.Locale ?? UserPreferences.DefaultLocale;
@@ -83,6 +87,13 @@ internal static partial class AuthEndpoints
         }
 
         var email = request.Email.Trim();
+        if (domains.IsBlocked(email))
+        {
+            return ApiProblems.Create(
+                ErrorCodes.EmailDomainNotAllowed,
+                "Sign-up with disposable or blocked email providers is not possible.",
+                ProfileValidation.Errors("email", "Use a permanent email address."));
+        }
 
         return await db.InTransactionAsync<Results<Accepted, ValidationProblem, ProblemHttpResult>>(async ct =>
         {

@@ -69,6 +69,9 @@ public static class ErrorCodes
     public const string RecurrenceInvalid = "recurrence_invalid";
     public const string TimeZoneInvalid = "time_zone_invalid";
 
+    /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
+    public const string EmailDomainNotAllowed = "email_domain_not_allowed";
+
     // 429
     public const string RateLimited = "rate_limited";
 

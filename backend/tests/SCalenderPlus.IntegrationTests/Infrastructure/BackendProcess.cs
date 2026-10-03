@@ -10,7 +10,7 @@ internal static class BackendProcess
     public const string Api = "SCalenderPlus.Api";
     public const string Worker = "SCalenderPlus.Worker";
 
-    private static readonly string[] _inheritedPrefixesToDrop = ["App__", "ConnectionStrings__", "Database__", "Otel__", "Smtp__", "Jobs__", "ReverseProxy__", "ASPNETCORE_", "DOTNET_ENVIRONMENT"];
+    private static readonly string[] _inheritedPrefixesToDrop = ["App__", "ConnectionStrings__", "Database__", "Otel__", "Smtp__", "Jobs__", "ReverseProxy__", "RateLimiting__", "SignUp__", "ASPNETCORE_", "DOTNET_ENVIRONMENT"];
 
     public static async Task<ProcessResult> RunAsync(
         string project,

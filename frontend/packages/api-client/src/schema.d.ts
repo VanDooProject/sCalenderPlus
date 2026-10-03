@@ -49,7 +49,7 @@ export interface paths {
     put?: never
     /**
      * Create an account
-     * @description Always answers 202 for a well-formed request: a new account gets a confirmation email, an already registered address gets a hint email instead (no user enumeration). Sign in afterwards with POST /auth/login.
+     * @description Always answers 202 for a well-formed request with an allowed email domain (disposable-email providers: 422 email_domain_not_allowed): a new account gets a confirmation email, an already registered address gets a hint email instead (no user enumeration). Sign in afterwards with POST /auth/login.
      */
     post: operations['Register']
     delete?: never
@@ -204,6 +204,7 @@ export interface components {
       | 'calendar_frozen'
       | 'conflict'
       | 'csrf_header_missing'
+      | 'email_domain_not_allowed'
       | 'email_not_verified'
       | 'external_sharing_not_allowed'
       | 'feature_not_in_plan'

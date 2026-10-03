@@ -2,6 +2,7 @@ using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Api.Problems;
+using SCalenderPlus.Api.RateLimiting;
 using SCalenderPlus.Application;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Infrastructure;
@@ -46,6 +47,7 @@ public sealed class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IActorContext, HttpActorContext>();
         builder.Services.AddApiAuthentication();
+        builder.Services.AddApiRateLimiting(builder.Configuration);
         builder.Services.AddApiProblemDetails();
         builder.Services.AddValidation();
         builder.Services.AddApiDocument();
@@ -57,13 +59,15 @@ public sealed class Program
         var app = builder.Build();
 
         // Order matters: client scheme/address first, then errors → RFC 9457 problem details for everything below,
-        // then routing (endpoint metadata), the session cookie, CSRF and the endpoint's authorization requirements.
+        // then routing (endpoint metadata), the session cookie, rate limits (per IP / session), CSRF and the
+        // endpoint's authorization requirements.
         // No CORS middleware: the api is same-origin only, cross-origin preflights get no Access-Control-* headers.
         app.UseForwardedHeaders();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         app.UseRouting();
         app.UseAuthentication();
+        app.UseRateLimiter();
         app.UseCsrfProtection();
         app.UseAuthorization();
 
