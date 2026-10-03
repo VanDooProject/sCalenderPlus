@@ -40,6 +40,9 @@ public static class ErrorCodes
     public const string ExternalSharingNotAllowed = "external_sharing_not_allowed";
     public const string EmailNotVerified = "email_not_verified";
 
+    /// <summary>An unsafe request (POST/PUT/PATCH/DELETE) to the api lacks <c>X-Requested-With: scal</c> (CSRF protection).</summary>
+    public const string CsrfHeaderMissing = "csrf_header_missing";
+
     // 404
     /// <summary>Also returned for resources the caller has level <c>none</c> on (no existence leaks).</summary>
     public const string NotFound = "not_found";

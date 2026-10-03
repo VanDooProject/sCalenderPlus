@@ -192,6 +192,21 @@ public sealed class AccountFlowTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Signed_in_post_without_csrf_header_is_rejected_and_keeps_the_session()
+    {
+        var email = ApiTestHost.UniqueEmail();
+        await _host.CreateUserAsync(email);
+        using var client = await _host.SignedInClientAsync(email);
+        client.DefaultRequestHeaders.Remove("X-Requested-With");
+
+        using var logout = await client.PostAsync(new Uri("/api/v1/auth/logout", UriKind.Relative), null, Ct);
+
+        await ProblemResponse.AssertProblemAsync(logout, HttpStatusCode.Forbidden, ErrorCodes.CsrfHeaderMissing);
+        Assert.False(logout.Headers.Contains("Set-Cookie"));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(new Uri("/api/v1/me", UriKind.Relative), Ct)).StatusCode);
+    }
+
+    [Fact]
     public async Task Logout_clears_the_session()
     {
         var email = ApiTestHost.UniqueEmail();

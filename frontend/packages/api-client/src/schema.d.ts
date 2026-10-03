@@ -203,6 +203,7 @@ export interface components {
       | 'bad_request'
       | 'calendar_frozen'
       | 'conflict'
+      | 'csrf_header_missing'
       | 'email_not_verified'
       | 'external_sharing_not_allowed'
       | 'feature_not_in_plan'

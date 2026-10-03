@@ -57,12 +57,14 @@ public sealed class Program
         var app = builder.Build();
 
         // Order matters: client scheme/address first, then errors → RFC 9457 problem details for everything below,
-        // then routing (endpoint metadata), the session cookie and the endpoint's authorization requirements.
+        // then routing (endpoint metadata), the session cookie, CSRF and the endpoint's authorization requirements.
+        // No CORS middleware: the api is same-origin only, cross-origin preflights get no Access-Control-* headers.
         app.UseForwardedHeaders();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         app.UseRouting();
         app.UseAuthentication();
+        app.UseCsrfProtection();
         app.UseAuthorization();
 
         app.MapPlatformHealthEndpoints();
