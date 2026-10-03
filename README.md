@@ -52,6 +52,8 @@ curl http://localhost:8080/health/ready          # served through web (Caddy) �
 docker compose -f deploy/docker-compose.yml --profile with-db down -v
 ```
 
+Published images (multi-arch, GHCR): `ghcr.io/vandooproject/scalenderplus-{api,worker,web}` tagged `X.Y.Z`, `X.Y` and `latest` for releases (release-please) and `main` / `main-<sha>` for every green push to `main` ([workflow.md §4](docs/development/workflow.md#4-releases-with-release-please)). Run one with `APP_VERSION=<tag> docker compose -f deploy/docker-compose.yml --profile with-db up -d --pull always`.
+
 More in [docs/development/workflow.md §7](docs/development/workflow.md#7-local-development).
 
 ## Documentation

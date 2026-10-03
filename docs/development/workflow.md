@@ -67,11 +67,21 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 
 ## 4. Releases with release-please
 
-- `googleapis/release-please-action` on push to `main` maintains a **release PR** with changelog + version bump.
-- **Single product version** (one `.release-please-manifest.json` entry, `release-type: simple`) for the whole monorepo: api, worker, web and landing ship together as one tested set. Version is written to `version.txt`, `backend/Directory.Build.props` (`<Version>`), and `frontend/app/package.json` via `extra-files`.
-- Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the image job runs inside `release-please.yml` gated on the action's `release_created` output (alternative: a GitHub App token so `release.yml` fires). It builds and pushes images `ghcr.io/<owner>/scalenderplus-{api,worker,web,landing}:X.Y.Z` and `:latest`, then call Coolify deploy webhook for production.
-- Every merge to `main` deploys to **staging** (images tagged `:main-<sha>`).
-- Pre-1.0: `bump-minor-pre-major: true` and `bump-patch-for-minor-pre-major: true` (matches the table in §1). XML/JSON `extra-files` use `x-release-please-version` markers or the `xml`/`json` updaters.
+- [`release-please.yml`](../../.github/workflows/release-please.yml) runs `googleapis/release-please-action` on every push to `main` and maintains a **release PR** (`chore: release X.Y.Z`, branch `release-please--branches--main`) with the changelog (`CHANGELOG.md`, created by the first release) and the version bump.
+- **Single product version** for the whole monorepo: api, worker, web (and landing from M7) ship together as one tested set. [`release-please-config.json`](../../release-please-config.json) has one package (`.`, `release-type: simple`, tags `vX.Y.Z` without component); [`.release-please-manifest.json`](../../.release-please-manifest.json) holds the last released version. The version is written to `version.txt`, `backend/Directory.Build.props` (`<Version>` line with the `x-release-please-version` marker, generic updater) and `frontend/app/package.json` (`json` updater, `$.version`) via `extra-files`.
+- Pre-1.0: `bump-minor-pre-major: true` and `bump-patch-for-minor-pre-major: true` (matches the table in §1). The manifest starts at `0.0.0`, which release-please treats as "never released", so the first release PR uses `initial-version` **0.1.0**; afterwards versions are bumped from the last tag. To force a version, put `Release-As: X.Y.Z` in a commit body.
+- Changelog sections: Features, Bug Fixes, Performance Improvements, Reverts, Code Refactoring, Documentation; `build`, `ci`, `test`, `style`, `chore` are hidden. The release PR title passes the `pr-title` check (`pull-request-title-pattern: chore: release ${version}`) and its branch is exempt from `branch-name`.
+- Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the `images` job runs inside `release-please.yml`, gated on the action's `release_created` output. It calls the reusable [`build-images.yml`](../../.github/workflows/build-images.yml), which builds `linux/amd64` + `linux/arm64` and pushes `ghcr.io/vandooproject/scalenderplus-{api,worker,web}` tagged `X.Y.Z`, `X.Y` and `latest` (plus `landing` from M7), with OCI labels and index annotations (title, description, source, version, revision, created), SBOM and provenance attestations. Deploying a release to production (Coolify webhook) is added with the production environment (M4).
+- Every push to `main` whose `ci` run succeeded publishes `:main-<sha>` (full commit SHA, immutable) and `:main` (moving) via [`images.yml`](../../.github/workflows/images.yml) (`workflow_run` after `ci`, also runnable manually on `main`); these tags feed **staging**.
+- **Release PR checks**: pull requests opened with the default `GITHUB_TOKEN` do not trigger `ci`/`pr-checks`, so the release PR would never get its required checks. Set the repository secret `RELEASE_PLEASE_TOKEN` (fine-grained PAT or GitHub App installation token with *Contents* and *Pull requests* read/write) and the workflow uses it instead. Without it, close and reopen the release PR (as a human) to trigger the checks.
+
+### One-time setup by the repository owner
+
+1. Create `main` from the current default branch and make it the **default branch** (Settings → General). Until then `release-please.yml`, `images.yml` and the staging deploy never run (they trigger on `main` only; `workflow_run` workflows must exist on the default branch).
+2. Settings → Actions → General → *Workflow permissions*: allow GitHub Actions to **create and approve pull requests** (needed for the release PR when `RELEASE_PLEASE_TOKEN` is not set).
+3. Optional but recommended: secret `RELEASE_PLEASE_TOKEN` (see above).
+4. After the first image push: make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web` **public** (Package settings → Change visibility) or give the deploy servers a read token, and link them to the repository (done automatically by the `org.opencontainers.image.source` label).
+5. Branch protection / ruleset for `main` as in §3 (required checks in §5).
 
 ## 5. CI pipeline (GitHub Actions)
 
@@ -101,8 +111,9 @@ Other workflows:
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `release-please.yml` | push main | release PR / tags |
-| `release-please.yml` → release job | `release_created` | build+push images, deploy prod (see §4) |
-| `deploy-staging.yml` | push main (after ci) | push `:main-<sha>`, Coolify staging webhook |
+| `release-please.yml` → `images` job | `release_created` | build+push multi-arch images `X.Y.Z`, `X.Y`, `latest` (see §4); prod deploy from M4 |
+| `images.yml` | `ci` succeeded on a push to main, manual | push `:main-<sha>` and `:main` |
+| `build-images.yml` | `workflow_call` only | reusable multi-arch build + push used by the two above |
 | `codeql.yml` | weekly + PR | C# and JS/TS security analysis |
 | `import-eval.yml` | manual / weekly | real-LLM evaluation of import corpus (secret `ANTHROPIC_API_KEY`) |
 | Dependabot | weekly | nuget, npm, github-actions, docker; grouped minor/patch |

@@ -1,0 +1,70 @@
+# Release management, see docs/development/workflow.md §4.
+# On every push to main release-please maintains the release PR (changelog + version bump in version.txt,
+# backend/Directory.Build.props and frontend/app/package.json). Merging that PR creates the tag vX.Y.Z and
+# the GitHub Release; the `images` job then publishes ghcr.io/vandooproject/scalenderplus-{api,worker,web}
+# as X.Y.Z, X.Y and latest. The images are built here because tags and releases created with the default
+# GITHUB_TOKEN do not trigger other workflows.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+# Never run two release-please instances against the same branch at once; never cancel a release.
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # tags, GitHub Releases, release PR branch
+      pull-requests: write # release PR
+      issues: write # labels (`autorelease: pending` / `autorelease: tagged`)
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # Optional secret RELEASE_PLEASE_TOKEN (fine-grained PAT or GitHub App token with contents +
+      # pull-requests write): pull requests opened with the default GITHUB_TOKEN do not trigger `ci`
+      # or `pr-checks`, so the release PR would never get its required checks.
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - name: Summary
+        env:
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+        run: |
+          if [ "$RELEASE_CREATED" = "true" ]; then
+            echo "Released $TAG_NAME: publishing images." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release created: release PR opened or updated (if there are releasable commits)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  images:
+    name: publish release images
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-images.yml
+    with:
+      ref: ${{ needs.release-please.outputs.tag_name }}
+      version: ${{ needs.release-please.outputs.version }}
+      # X.Y.Z, X.Y and latest (metadata-action leaves out {{major}} while the version is 0.x).
+      tags: |
+        type=semver,pattern={{version}},value=${{ needs.release-please.outputs.version }}
+        type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
+        type=raw,value=latest

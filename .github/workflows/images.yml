@@ -1,0 +1,56 @@
+# Images for staging, see docs/development/workflow.md §4–5 and docs/deployment/coolify.md.
+# After `ci` succeeded for a push to main, publish ghcr.io/vandooproject/scalenderplus-{api,worker,web}
+# as `main-<sha>` (immutable, used to pin staging) and `main` (moving).
+# Release images (X.Y.Z, X.Y, latest) are published by release-please.yml.
+name: images
+
+on:
+  # workflow_run only fires for workflow files on the default branch (main).
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  # Manual re-publish of main (e.g. after a failed run); refused for other refs.
+  workflow_dispatch:
+
+# One publish at a time; a newer pending run replaces an older pending one (running ones finish).
+concurrency:
+  group: images-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: resolve commit
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+      tag: ${{ steps.sha.outputs.tag }}
+    steps:
+      - id: sha
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "tag=main-$SHA" >> "$GITHUB_OUTPUT"
+          echo "Publishing images for \`$SHA\` as \`main-$SHA\` and \`main\`." >> "$GITHUB_STEP_SUMMARY"
+
+  publish-main:
+    name: publish main images
+    needs: meta
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-images.yml
+    with:
+      ref: ${{ needs.meta.outputs.sha }}
+      version: ${{ needs.meta.outputs.tag }}
+      tags: |
+        type=raw,value=${{ needs.meta.outputs.tag }}
+        type=raw,value=main
