@@ -48,6 +48,14 @@ public enum OverrideViolationReason
 
     /// <summary>External principal without the right to share externally: 403 <c>external_sharing_not_allowed</c>.</summary>
     ExternalSharing,
+
+    /// <summary>
+    /// Removing this <c>user</c> entry of an outsider would let an existing external <c>group</c> share decide for
+    /// them (e.g. a manager shared with a partner group but excluded one person): 403
+    /// <c>external_sharing_not_allowed</c> without the right to share externally. The violation names the
+    /// removed entry.
+    /// </summary>
+    RemovalExposesExternalShare,
 }
 
 public sealed record OverrideViolation(EventOverride Override, OverrideViolationReason Reason);
@@ -143,9 +151,12 @@ public static class OverridePolicy
 
     /// <summary>
     /// Validates replacing the overrides of <paramref name="ev"/> by <paramref name="proposed"/> (atomic
-    /// replace). Removals are always allowed to rights holders; entries that are unchanged or only lowered are
-    /// not re-checked for selection and external sharing (they decide nothing new); added and raised entries
-    /// are. <paramref name="userCalendarLevels"/>: calendar levels of the users named by proposed entries.
+    /// replace). Entries that are unchanged or only lowered are not re-checked for selection and external
+    /// sharing (they decide nothing new); added and raised entries are. Removals are allowed to rights holders,
+    /// with one exception for actors without external rights: removing the <c>user</c> entry of an outsider
+    /// while an external <c>group</c> share stays (that share would then decide for them, possibly above what
+    /// the calendar gives them). <paramref name="userCalendarLevels"/>: calendar levels of the users named by
+    /// current or proposed entries.
     /// </summary>
     public static OverrideChangeDecision EvaluateChange(
         PrincipalContext actor,
@@ -208,11 +219,16 @@ public static class OverridePolicy
             }
         }
 
+        if (rights == OverrideRights.InternalOnly)
+        {
+            AddRemovalsExposingExternalShares(calendar, source.Overrides, seen, proposed, userCalendarLevels, violations);
+        }
+
         var invalid = false;
         var external = false;
         foreach (var violation in violations)
         {
-            var isExternal = violation.Reason == OverrideViolationReason.ExternalSharing;
+            var isExternal = violation.Reason is OverrideViolationReason.ExternalSharing or OverrideViolationReason.RemovalExposesExternalShare;
             external |= isExternal;
             invalid |= !isExternal;
         }
@@ -223,15 +239,17 @@ public static class OverridePolicy
 
         Debug.Assert(
             verdict != OverrideChangeVerdict.Allowed
-                || PermissionEngine.Resolve(actor, calendar, new EventAcl(source.EventId, source.CalendarId, source.CreatorUserId, proposed)).Level == EventLevel.Manage,
+                || PermissionEngine.ResolveLevel(actor, calendar, new EventAcl(source.EventId, source.CalendarId, source.CreatorUserId, proposed)) == EventLevel.Manage,
             "An allowed override change must not lock its actor out (floors ignore overrides).");
         return new(verdict, violations);
     }
 
     /// <summary>
     /// §4.6 move: the overrides of <paramref name="ev"/> that <paramref name="mover"/> could not set in
-    /// <paramref name="target"/> — external sharing there without external rights there (calendar
-    /// <c>manage</c>, or the creator floor with <c>creatorsMayShareExternally</c> in the target).
+    /// <paramref name="target"/> — all of them when the mover holds no floor on the event in the target (a
+    /// contributor who is not the creator, or a curated target with <c>creatorsManageOwnEvents = false</c>),
+    /// otherwise those sharing externally there without external rights there (calendar <c>manage</c>, or the
+    /// creator floor with <c>creatorsMayShareExternally</c> in the target).
     /// Non-empty → 409 <c>override_invalid_in_target</c> listing them.
     /// </summary>
     public static IReadOnlyList<EventOverride> InvalidInTarget(
@@ -242,18 +260,55 @@ public static class OverridePolicy
     {
         ArgumentNullException.ThrowIfNull(ev);
         var moved = new EventAcl(ev.EventId, target.CalendarId, ev.CreatorUserId, (ev.Series ?? ev).Overrides);
-        var external = RightsOf(PermissionEngine.Resolve(mover, target, moved), target) == OverrideRights.IncludingExternal;
+        var rights = RightsOf(PermissionEngine.Resolve(mover, target, moved), target);
 
         var invalid = new List<EventOverride>();
         foreach (var entry in moved.Overrides)
         {
-            if (!external && IsExternalSharing(entry, target, userCalendarLevelsInTarget))
+            var settable = rights == OverrideRights.IncludingExternal
+                || (rights == OverrideRights.InternalOnly && !IsExternalSharing(entry, target, userCalendarLevelsInTarget));
+            if (!settable)
             {
                 invalid.Add(entry);
             }
         }
 
         return invalid;
+    }
+
+    // Without external rights, removing `user:X` for an outsider X hands the decision for X to the group tier.
+    // If an external group share stays, X may be one of its members and would gain more than the removed entry
+    // and the calendar gave them. The engine does not know other people's memberships, so the best remaining
+    // external group share counts as if X were a member (conservative, and the answer reveals no membership).
+    private static void AddRemovalsExposingExternalShares(
+        CalendarAcl calendar,
+        IReadOnlyList<EventOverride> current,
+        HashSet<Principal> proposedPrincipals,
+        IReadOnlyList<EventOverride> proposed,
+        IReadOnlyDictionary<Guid, CalendarLevel> userCalendarLevels,
+        List<OverrideViolation> violations)
+    {
+        var groupShare = EventLevel.None;
+        foreach (var entry in proposed)
+        {
+            var share = entry.Principal.Type == PrincipalType.Group && IsExternalSharing(entry, calendar, userCalendarLevels);
+            groupShare = share ? PermissionLevels.Max(groupShare, PermissionLevels.Min(entry.Level, PermissionLevels.MaxOverrideLevel)) : groupShare;
+        }
+
+        foreach (var removed in current)
+        {
+            if (removed.Principal.Type != PrincipalType.User || proposedPrincipals.Contains(removed.Principal))
+            {
+                continue;
+            }
+
+            // Insiders (guaranteed read) are not protected here: the creator could elevate them directly.
+            var guaranteed = GuaranteedCalendarLevel(removed.Principal, calendar, userCalendarLevels);
+            if (guaranteed < CalendarLevel.Read & groupShare > removed.Level & groupShare > PermissionLevels.ImpliedEventLevel(guaranteed))
+            {
+                violations.Add(new(removed, OverrideViolationReason.RemovalExposesExternalShare));
+            }
+        }
     }
 
     private static OverrideRights RightsOf(EventAccess access, CalendarAcl calendar) =>

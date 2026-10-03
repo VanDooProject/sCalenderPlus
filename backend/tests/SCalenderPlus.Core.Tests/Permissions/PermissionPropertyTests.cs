@@ -228,6 +228,89 @@ public sealed class PermissionPropertyTests
                 && PermissionEngine.ResolveCalendarLevel(s.Viewer, s.Calendar) == s.CalendarLevel,
             iter: Iterations);
 
+    [Fact]
+    public void Overrides_only_affect_the_principals_they_match() =>
+        Gen.Select(Scenario.Any, Scenario.Override).Sample(
+            t =>
+            {
+                var (s, extra) = t;
+                var before = s.Resolve();
+                return PermissionEngine.Matches(extra.Principal, s.Viewer, before.CalendarLevel)
+                    || s.WithEvent([.. (s.Event.Series ?? s.Event).Overrides, extra]).Resolve().Level == before.Level;
+            },
+            iter: Iterations);
+
+    [Fact]
+    public void Adding_a_none_override_never_raises_anyone() =>
+        Gen.Select(Scenario.Any, Scenario.AnyPrincipal).Sample(
+            t =>
+            {
+                var (s, principal) = t;
+                var more = s.WithEvent([.. (s.Event.Series ?? s.Event).Overrides, new(principal, EventLevel.None)]);
+                return more.Resolve().Level <= s.Resolve().Level;
+            },
+            iter: Iterations);
+
+    /// <summary>
+    /// Atomic replace from any existing set (e.g. shares and exclusions a manager made): a creator without
+    /// external rights never leaves an outsider with more than they had before or the calendar gives them —
+    /// removals included (review 2026-10 permission engine, finding P1).
+    /// </summary>
+    [Fact]
+    public void Creators_without_external_rights_never_raise_an_outsider_by_any_change() =>
+        Gen.Select(
+            Scenario.CreatorWithoutExternalRights,
+            Scenario.ValidOverride.Array[0, 4],
+            Gen.Int[0, 15]).Sample(
+            t =>
+            {
+                var (s, added, keepMask) = t;
+                var current = (s.Event.Series ?? s.Event).Overrides;
+                var proposed = current.Where((_, i) => (keepMask & (1 << i)) != 0).Concat(added).ToList();
+                var levels = s.UserLevels();
+                var decision = OverridePolicy.EvaluateChange(s.Viewer, s.Calendar, s.Event, proposed, levels);
+                if (!decision.IsAllowed)
+                {
+                    return true;
+                }
+
+                var after = s.WithEvent(proposed);
+                return Scenario.Users.Where(u => levels[u] < CalendarLevel.Read).All(u =>
+                {
+                    var was = PermissionEngine.ResolveLevel(s.ContextOf(u), s.Calendar, s.Event);
+                    var now = PermissionEngine.ResolveLevel(after.ContextOf(u), after.Calendar, after.Event);
+                    return now <= PermissionLevels.Max(PermissionLevels.Max(was, PermissionLevels.ImpliedEventLevel(levels[u])), FloorOf(after, u));
+                });
+            },
+            iter: Iterations);
+
+    /// <summary>§4.6: overrides that survive a move are ones the mover could have set in the target themselves.</summary>
+    [Fact]
+    public void A_move_carries_only_overrides_the_mover_could_set_in_the_target() =>
+        Gen.Select(Scenario.Valid, Scenario.CalendarGen, Scenario.ValidOverride.Array[1, 4]).Sample(
+            t =>
+            {
+                var (s, other, overrides) = t;
+                var target = new CalendarAcl(Scenario.OtherCalendarId, other.Owner, other.Grants, other.RoleDefaults, other.CreatorsManageOwnEvents, other.CreatorsMayShareExternally);
+                if (s.Viewer.UserId is null || PermissionEngine.ResolveCalendarLevel(s.Viewer, target) < CalendarLevel.Contribute)
+                {
+                    return true; // AccessPolicy.CanMoveEvent refuses the move anyway.
+                }
+
+                var levels = Scenario.Users.ToDictionary(u => u, u => PermissionEngine.ResolveCalendarLevel(s.ContextOf(u), target));
+                var ev = new EventAcl(Guid.CreateVersion7(), Scenario.CalendarId, (s.Event.Series ?? s.Event).CreatorUserId, overrides);
+                if (OverridePolicy.InvalidInTarget(s.Viewer, target, ev, levels).Count > 0)
+                {
+                    return true;
+                }
+
+                var fresh = new EventAcl(ev.EventId, target.CalendarId, ev.CreatorUserId);
+                var decision = OverridePolicy.EvaluateChange(s.Viewer, target, fresh, overrides, levels);
+                return decision.Verdict is OverrideChangeVerdict.Allowed or OverrideChangeVerdict.Invalid // selection/duplicates are not re-checked on moves
+                    && decision.Violations.All(v => v.Reason != OverrideViolationReason.ExternalSharing);
+            },
+            iter: Iterations);
+
     private static EventLevel FloorOf(Scenario s, Guid user) =>
         (s with { Viewer = s.ContextOf(user) }).HasFloor ? EventLevel.Manage : EventLevel.None;
 }
