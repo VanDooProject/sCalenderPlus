@@ -60,7 +60,7 @@ Identity tables `user_claims`, `user_logins`, `user_tokens` (TOTP authenticator 
 | member_list_visibility | smallint | 0 all members (default), 1 members and above (hidden from viewers) |
 | created_at, updated_at, xmin | | `xmin` = concurrency token |
 
-Groups are **hard-deleted** (owners only): `group_members` and `group_invites` cascade. Group-owned calendars (M2) reference `owner_group_id` with `ON DELETE RESTRICT`, so a group that still owns calendars cannot be deleted until they are transferred or deleted (the api answers `409`).
+Groups are **hard-deleted** (owners only): `group_members` and `group_invites` cascade. Group-owned calendars reference `owner_group_id` with `ON DELETE RESTRICT`, so a group that still owns calendars cannot be deleted until they are transferred or deleted (the api answers `409 group_has_calendars`); `calendar_grants` (and, from M2-D, `event_overrides`) naming the group are deleted with it by the use case (no FK on `principal_id`).
 
 ### `group_members`
 

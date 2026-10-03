@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using SCalenderPlus.Application.Auditing;
+using SCalenderPlus.Application.Calendars;
 using SCalenderPlus.Application.Common;
 using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Persistence;
@@ -28,6 +29,7 @@ public sealed class GroupService(
     IUserDirectory users,
     IEntitlementService entitlements,
     IEnumerable<IGroupMembershipObserver> observers,
+    CalendarGroupLifecycle calendars,
     IClock clock)
 {
     public async Task<GroupView> CreateAsync(Guid actorId, string name, string? description, CancellationToken cancellationToken = default)
@@ -115,14 +117,16 @@ public sealed class GroupService(
 
     /// <summary>
     /// Deletes the group for real with its memberships and invites (owners only). Every former member's
-    /// <c>acl_version</c> is bumped and membership observers learn about each ended membership. From M2 on,
-    /// a group that still owns calendars cannot be deleted (see data-model.md §2).
+    /// <c>acl_version</c> is bumped and membership observers learn about each ended membership. A group that
+    /// still owns calendars cannot be deleted (<c>409 group_has_calendars</c>); grants naming the group are
+    /// removed with it (<see cref="CalendarGroupLifecycle"/>).
     /// </summary>
     public async Task DeleteAsync(Guid actorId, Guid groupId, Action<GroupView>? precondition = null, CancellationToken cancellationToken = default)
     {
         await db.InTransactionAsync(async ct =>
         {
             var (group, _) = await LoadForAsync(actorId, groupId, GroupAction.Delete, precondition, ct).ConfigureAwait(false);
+            await calendars.OnGroupDeletingAsync(groupId, ct).ConfigureAwait(false);
             var members = await db.GroupMembers.Where(m => m.GroupId == groupId).ToListAsync(ct).ConfigureAwait(false);
 
             await users.BumpAclVersionAsync([.. members.Select(m => m.UserId)], ct).ConfigureAwait(false);
