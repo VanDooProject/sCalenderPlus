@@ -120,6 +120,8 @@ Other workflows:
 | `import-eval.yml` | manual / weekly | real-LLM evaluation of import corpus (secret `ANTHROPIC_API_KEY`) |
 | Dependabot ([`dependabot.yml`](../../.github/dependabot.yml)) | weekly (Monday) | nuget (`backend/`), npm/pnpm (`frontend/`, `e2e/`), github-actions (workflows + `.github/actions/*`), docker (`deploy/docker/`); minor/patch grouped per ecosystem, majors as single PRs (runtime majors of the .NET and Node base images ignored); PR titles `build(deps): …` / `ci(deps): …` |
 
+Action pinning: third-party actions (everything outside `actions/*` and `github/*`) are pinned to a full commit SHA with a `# vX.Y.Z` comment, so a moved or compromised tag cannot change what runs with our tokens; Dependabot bumps SHA and comment together.
+
 Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm store, Playwright browsers, Docker buildx GHA cache.
 
 ## 6. Testing strategy

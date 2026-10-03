@@ -46,7 +46,9 @@ updates:
       - dependency-name: typescript
         update-types: [version-update:semver-major]
 
-  # Workflows and the composite actions in .github/actions.
+  # Workflows and the composite actions in .github/actions. Third-party actions are pinned to commit
+  # SHAs with a `# vX.Y.Z` comment (GitHub-owned actions/* and github/* use major tags); Dependabot
+  # updates both.
   - package-ecosystem: github-actions
     directories:
       - /
