@@ -93,6 +93,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
             ┌──────────── lint: markdownlint (.markdownlint-cli2.jsonc), actionlint   [pr-checks.yml: pr-title, branch-name]
             │
  trigger ───┼── backend ── build + format check + analyzers ─┬─ unit tests (Core, Application)
+            │                                               ├─ permission engine coverage gate (100 % lines + branches)
             │                                               ├─ integration tests (Postgres service / Testcontainers)
             │                                               └─ openapi export + diff check + oasdiff breaking
             │
@@ -128,7 +129,7 @@ Caching: NuGet (`~/.nuget/packages` keyed by the `packages.lock.json` files), pn
 
 | Layer | Tooling | Scope | Runs |
 |---|---|---|---|
-| **Unit (backend)** | xUnit v3, FsCheck, Verify | Permission engine (table-driven from permissions.md examples + property tests), recurrence, TZ conversion, dedupe keys, entitlement rules, iCal projection (golden `.ics` files) | every PR, < 30 s |
+| **Unit (backend)** | xUnit v3, CsCheck (property tests), Verify | Permission engine (table-driven from permissions.md examples + property tests), recurrence, TZ conversion, dedupe keys, entitlement rules, iCal projection (golden `.ics` files) | every PR, < 30 s |
 | **Integration (backend)** | xUnit + `WebApplicationFactory` + Testcontainers Postgres (CI: same image), Respawn between tests | Endpoints end-to-end through EF/Postgres: authz on every endpoint (matrix test: each endpoint × each level), migrations apply from scratch, feed ETags, job queue SKIP LOCKED | every PR |
 | **Unit (frontend)** | Vitest + Vue Test Utils + MSW | Composables, components (access badges, override editor), i18n key completeness | every PR |
 | **E2E mocked** ("without backend") | Playwright project `mocked` against the Vite dev server in mock mode (`pnpm --filter app dev:mock` = `vite --mode mock`, MSW in the browser with the shared handlers from `@scalenderplus/api-client/mocks`) | UI flows, error/edge states that are hard to produce for real (402 paywall, 412 conflict, 500), a11y (`@axe-core/playwright`); visual regression snapshots only once the UI stabilises (post-beta) | every PR chromium, nightly 3 browsers |
@@ -141,7 +142,7 @@ Rules:
 - Every bug fix includes a regression test at the lowest possible layer.
 - **Tenant isolation**: the authz matrix includes a cross-tenant case per endpoint (valid id from another user's calendar → 404), and an architecture test forbids reading events/calendars outside the permission-aware query service.
 - **Authorization matrix test is mandatory** for every new endpoint: `AuthorizationMatrixCoverageTests` enumerates the operations of the served OpenAPI document and fails if one has no entry; `AuthorizationMatrixTests` runs every case against the api + PostgreSQL. Protected operations need `anonymous → 401` and, with path parameters, a cross-tenant `404`; public ones are listed explicitly with a reason. How to add cases: [`backend/tests/SCalenderPlus.IntegrationTests/Authorization/README.md`](../../backend/tests/SCalenderPlus.IntegrationTests/Authorization/README.md).
-- Coverage: Core ≥ 90 % lines (permission engine 100 % branches); no global coverage gate otherwise.
+- Coverage: Core ≥ 90 % lines; the permission engine (`Core/Permissions`) needs **100 % lines and branches**, enforced in CI by `python3 backend/scripts/engine-coverage.py` (Microsoft.Testing.Extensions.CodeCoverage, settings `backend/tests/SCalenderPlus.Core.Tests/permission-engine.coverage.xml`; compiler-generated record members are excluded, so keep branching logic out of lambdas there); no global coverage gate otherwise.
 - Test data builders (`A.Calendar().OwnedBy(group).WithGrant(...)`) mirror the permissions doc vocabulary.
 - E2E tests use `data-testid` attributes, never CSS structure; full-stack tests create their own users via a test-only seeding endpoint enabled only when `Testing__SeedEndpoint=true` (never in prod images' default config).
 

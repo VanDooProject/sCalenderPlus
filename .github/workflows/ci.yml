@@ -131,6 +131,9 @@ jobs:
       # Includes the Docker (Testcontainers) tests: the ubuntu runner has a Docker daemon.
       - name: Test
         run: dotnet test --solution backend/SCalenderPlus.slnx --no-build --configuration Release
+      # Runs the Core tests again with coverage; fails below 100 % lines/branches of Core/Permissions.
+      - name: Permission engine coverage (100 % branches)
+        run: python3 backend/scripts/engine-coverage.py --no-build --configuration Release
 
   frontend:
     name: frontend

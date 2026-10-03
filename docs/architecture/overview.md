@@ -100,7 +100,7 @@
 | Resilience | `Microsoft.Extensions.Http.Resilience` (Polly v8) | Retries/timeouts for LLM, fetch, webhooks. |
 | Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting` | Per IP / per token / per feed token. |
 | Observability | `ILogger` JSON console + **OpenTelemetry** (traces, metrics, OTLP exporter optional) | Coolify collects stdout; OTLP if operator wants. |
-| Testing | **xUnit v3** on Microsoft.Testing.Platform (`global.json` `test.runner`), **Testcontainers** (Postgres), **Respawn**, **FsCheck** (property tests), **Verify** (snapshot/golden iCal files) | |
+| Testing | **xUnit v3** on Microsoft.Testing.Platform (`global.json` `test.runner`), **Testcontainers** (Postgres), **Respawn**, **CsCheck** (property tests; plain C#, no F# runtime, works with any test framework), **Verify** (snapshot/golden iCal files) | |
 | Ids | UUIDv7 (`Guid.CreateVersion7()`) | Time-ordered → good B-tree locality; safe to expose. |
 
 ## 4. Frontend key libraries

@@ -55,7 +55,9 @@ Levels are totally ordered. A higher level includes every capability of the lowe
 
 Group roles are ordered `viewer < member < admin < owner` (see §6). There are **no nested groups** in MVP (avoids cycles and expensive resolution; revisit with Team plan "departments").
 
-Anonymous principals (share-link holders; "public" always means a share link, there is no separate public flag) are capped at **`min(read, link level)`**: the link's level is a ceiling, not only a base.
+Anonymous principals (share-link holders; "public" always means a share link, there is no separate public flag) are capped at **`min(read, link level)`**: the link's level is a ceiling, not only a base. A share link belongs to exactly one calendar: its holder has `Lc = link level` there and `none` on every other calendar. Signed-in users never act through a share link (a share-link feed is anonymous whoever fetches it), so a principal is either a user (with group memberships) or a link holder, never both.
+
+Calendar grants name only `user` and `group` principals (levels `free_busy` … `manage`); link holders reach a calendar only through its share links, and `everyone` cannot be granted (it is defined by the calendar's audience).
 
 `everyone` and `anonymous` overrides are **restrict-only**: the engine applies `min(override, base)`. Elevation is only possible through explicit `user`/`group` overrides. (Otherwise a contributor could turn a `free_busy` share link or a `free_busy` calendar audience into `read` for their event.)
 
@@ -113,6 +115,8 @@ Le(U, E):                                   # E belongs to calendar C
   return level
 ```
 
+Notes: the creator test uses the event's `creator_user_id` (null for system/import events and tombstoned creators: no floor). For link holders the last cap never binds today (their base is ≤ the link level and their overrides are restrict-only); it stays as defence in depth. The result does not depend on the order of grants or overrides.
+
 ### 4.3 Rules in plain language
 
 1. **Most specific wins.** A user-level override beats any group override, which beats an `anonymous` override, which beats an `everyone` override, which beats the calendar grant.
@@ -137,10 +141,13 @@ Le(U, E):                                   # E belongs to calendar C
 Constraints:
 
 - Override levels are `none | free_busy | read | edit` (no `manage`, rule 9).
-- **External principal** = a `user` with `Lc < read`, or a `group` that is neither the owner group nor holds a grant ≥ `read`. Adding one requires calendar `manage` (or the setting above) → else `403 external_sharing_not_allowed`.
-- Principal selection: `group` principals must be groups the actor belongs to or that hold a grant on the calendar. `user` principals are picked from people sharing a group/calendar with the actor, or by exact email; an unknown email becomes a *pending share* activated on verified sign-up (same mechanism as pending invites). Responses never reveal whether an email has an account.
+- **External principal** = a principal whose matched people are not all guaranteed `Lc ≥ read`: a `user` with `Lc < read`, or a `group:G[r]` whose *guaranteed* level is below `read` — the guaranteed level is the maximum of (if G owns the calendar) the lowest role default among roles ≥ r and the grants to `G[r']` with r' ≤ r. So `group:Owner[viewer]` is external when the viewer default is `free_busy`, and `group:G[viewer]` is external when only `G[member]` holds a `read` grant. `everyone`/`anonymous` are never external (§3).
+- An override is **external sharing** when its principal is external *and* its level exceeds what the calendar already gives that principal (`level > impliedEventLevel(guaranteed level)`); restricting outsiders (e.g. `user:X → none`) is not sharing. External sharing requires calendar `manage` (or the setting above) → else `403 external_sharing_not_allowed`.
+- Overrides are replaced as a whole set (`PUT`). Removing entries is always allowed to rights holders; entries that stay unchanged or are only lowered are not re-checked for principal selection and external sharing (they decide nothing new, e.g. a creator keeps or narrows a share a manager made); added and raised entries are. The same principal twice, or a level above `edit` → `422`.
+- Principal selection: `group` principals must be groups the actor belongs to, the owner group, or groups that hold a grant on the calendar (→ else `422`). `user` principals are picked from people sharing a group/calendar with the actor, or by exact email; an unknown email becomes a *pending share* activated on verified sign-up (same mechanism as pending invites). Responses never reveal whether an email has an account.
 - **Attendees** (v1): inviting an internal user who lacks `Le ≥ read` creates a `user → read` override and therefore needs override rights (+ the external rule). `edit` users may only add attendees who can already read the event.
-- Self-lockout cannot happen by construction (only floor holders edit overrides, and floors ignore overrides); the engine asserts it and the API keeps `409 permission_self_lockout` as a defensive code.
+- Self-lockout cannot happen by construction (only floor holders edit overrides, and floors ignore overrides); the engine asserts it (debug assertion + property test) and the API keeps `409 permission_self_lockout` as a defensive code.
+- Overrides of a recurrence exception are those of its series (exceptions have no ACL of their own, §4.6).
 - Overrides count against the **calendar owner's plan** (see [plans](../product/plans.md)). On downgrade, existing overrides **remain enforced** (removing them could leak private events); only creating new ones is blocked.
 - Every change is written to the audit log with before/after.
 
@@ -159,7 +166,7 @@ Constraints:
 
 | Situation | Rule |
 |---|---|
-| **Move event** to calendar T | Requires `Le = manage` on E and `Lc(T) ≥ contribute`. Overrides travel with the event and are **re-validated as if the mover set them in T** (external rule, T owner's plan limits) → else `409 override_invalid_in_target` listing them. UID clash in T → `409`. Both calendars' `acl_version` bumped; `calendar_changes` records delete in source, upsert in T. |
+| **Move event** to calendar T | Requires `Le = manage` on E and `Lc(T) ≥ contribute`. Overrides travel with the event and are **re-validated as if the mover set them in T** (external rule, T owner's plan limits): external sharing in T needs the mover's `Lc(T) ≥ manage`, or the creator floor in T with T's `creatorsMayShareExternally` → else `409 override_invalid_in_target` listing them. UID clash in T → `409`. Both calendars' `acl_version` bumped; `calendar_changes` records delete in source, upsert in T. |
 | **Split series** ("this and following") | New series keeps the original `creator_user_id` (an `edit` user who splits must not gain the creator floor) and copies the overrides; the copy is allowed even when over the plan limit (no new privacy decision). |
 | **Recurrence exceptions** | Inherit the series ACL (MVP); changing series overrides affects all occurrences, past included. |
 | **Removed from group / demoted / grant removed** | User `acl_version` bumped → effective immediately incl. feeds. Creator floor lapses with `Lc < contribute`. `user:` overrides naming that user on events of the affected calendars are **deleted by default** (remover can untick "also revoke their individual event shares"); audited. |
@@ -212,7 +219,7 @@ Mia's and Vic's access is *reduced below* their calendar level; managers are una
 |---|---|---|
 | Vic | **edit** | user tier beats group tier; elevation above calendar `read` |
 | Mia (creator) | manage | floor |
-| other members | read | group tier |
+| other members (role `member`) | read | group tier (their calendar level `contribute` implies `read` anyway) |
 
 ### Example E – sharing a single event with Eve: override `user:Eve → read`
 
@@ -220,7 +227,7 @@ Eve gets **read**; the event appears in her "Shared with me" virtual calendar an
 
 ### Example F – contributor attempts to hide an event from admins
 
-Mia sets `group:Lions → none` on her event. Olga/Adam keep `manage` (floor). Mia keeps `manage`. Vic → `none`. This is permitted; managers are never locked out.
+Mia sets `group:Lions → none` on her event. Olga/Adam keep `manage` (floor). Mia keeps `manage`. Vic → `none`. The link holder keeps `free_busy` (the group override does not match link holders; `anonymous → none` would hide it from them too). This is permitted; managers are never locked out.
 
 ### Example G – contributor tries to widen access
 
@@ -264,11 +271,16 @@ Every non-busy VEVENT gets a description footer line, e.g.
 
 ## 8. Implementation notes
 
-- **Pure engine**: `PermissionEngine.Resolve(PrincipalContext, CalendarAcl, EventAcl) → Level`. Inputs are plain records loaded in batch; no EF types. 100% branch coverage plus property tests (FsCheck) for invariants:
-  - managers/owner never get less than `manage`;
-  - anonymous never exceeds `read`;
-  - adding a calendar grant never reduces any calendar level (monotonic);
-  - an event without overrides equals `impliedEventLevel(Lc)` unless a floor applies.
+- **Pure engine** (`SCalenderPlus.Core/Permissions`): `PermissionEngine.Resolve(PrincipalContext, CalendarAcl, EventAcl) → EventAccess` (level, `Lc`, trace) and `PermissionEngine.ResolveCalendar(PrincipalContext, CalendarAcl) → CalendarAccess`; `OverridePolicy` (rights, external sharing, principal selection, `EvaluateChange` for a proposed override set, `InvalidInTarget` for moves) and `AccessPolicy` (required levels of calendar/event actions, 404-vs-403, grants/role defaults/share links). Inputs are plain objects loaded in batch; no EF types, no I/O. Every resolution returns its steps (`ResolutionStep`: share link, owner, matched grants, role default, floors, base, matched overrides with tier, applied tier, restrict-only, caps, result) — the explain endpoint renders them. 100 % line and branch coverage (CI gate) plus property tests (CsCheck) for invariants:
+  - managers/owner never get less than `manage`; floors are never lowered by overrides;
+  - `manage` comes only from a floor (no override yields `manage`, even a stored one);
+  - anonymous never exceeds `read` nor the link level; a link of another calendar sees nothing;
+  - adding a calendar grant never reduces any calendar level, nor any event level (monotonic);
+  - an event without overrides equals `impliedEventLevel(Lc)` unless a floor applies;
+  - `everyone`/`anonymous` overrides never elevate and never reach principals outside the calendar's audience;
+  - a matching `user` override decides alone (capped at `edit`) unless a floor applies;
+  - grant/override order does not matter; exceptions resolve like their series;
+  - only floor holders may change overrides; an allowed change never locks its actor out; without external rights no outsider ends above what the calendar gives them.
 - **Listing performance**: for a time window, (1) compute `Lc` for all calendars visible to the user (small set, cached per request), (2) query events in window for calendars with `Lc ≥ free_busy` **union** events having a `user`/`group` override matching the user (index on `event_overrides(principal_type, principal_id)`), (3) batch-load overrides only for events with `has_overrides = true`, (4) resolve in memory and drop `none`.
 - **Cache invalidation**: `users.acl_version` (bumped on that user's membership/role change and on any override naming the user), `groups.acl_version` (bumped on overrides/grants naming the group) and `calendars.acl_version` (bumped on grant, override, share link, role default, `creators*` setting, ownership, freeze change). Feed ETags and per-request caches key on user + user's groups + included calendars. Token validity is checked on **every** request before any cache lookup.
 - **Single choke point**: event/calendar rows are read only through the permission-aware query service; an architecture test forbids other `DbSet<Event>` access (tenant isolation).
