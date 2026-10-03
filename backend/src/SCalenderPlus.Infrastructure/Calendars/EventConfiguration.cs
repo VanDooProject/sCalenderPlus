@@ -6,8 +6,8 @@ using SCalenderPlus.Core.Events;
 
 namespace SCalenderPlus.Infrastructure.Calendars;
 
-/// <summary><c>events</c> and the sync log <c>calendar_changes</c> (docs/architecture/data-model.md §4).</summary>
-internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEntityTypeConfiguration<CalendarChange>
+/// <summary><c>events</c>, <c>event_overrides</c> and the sync log <c>calendar_changes</c> (docs/architecture/data-model.md §4).</summary>
+internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEntityTypeConfiguration<CalendarChange>, IEntityTypeConfiguration<EventOverrideEntry>
 {
     /// <summary>The GiST index of window queries (asserted by the EXPLAIN test).</summary>
     public const string WindowIndex = "ix_events_calendar_id_occurs_range";
@@ -47,6 +47,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEnt
             .HasColumnName("occurs_range")
             .HasComputedColumnSql(OccursRangeSql, stored: true);
         builder.Ignore(e => e.IsDeleted);
+        builder.Ignore(e => e.OccursUntil);
         builder.Ignore(e => e.Times);
 
         // Window queries per calendar (btree_gist for the uuid column); live events only.
@@ -72,5 +73,32 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEnt
 
         // The log of a deleted calendar goes with it; event ids stay without FK (events are soft-deleted, then purged).
         builder.HasOne<Calendar>().WithMany().HasForeignKey(c => c.CalendarId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    public void Configure(EntityTypeBuilder<EventOverrideEntry> builder)
+    {
+        builder.ToTable("event_overrides", t =>
+        {
+            t.HasCheckConstraint(
+                "ck_event_overrides_principal",
+                "(principal_type = 0 AND principal_id IS NOT NULL AND min_role IS NULL) OR " +
+                "(principal_type = 1 AND principal_id IS NOT NULL AND min_role IS NOT NULL) OR " +
+                "(principal_type IN (2, 3) AND principal_id IS NULL AND min_role IS NULL)");
+            t.HasCheckConstraint("ck_event_overrides_level", "level BETWEEN 0 AND 3"); // manage only through floors (rule 9)
+        });
+        builder.Property(o => o.Id).ValueGeneratedNever();
+        builder.Property(o => o.PrincipalType).HasConversion<short>();
+        builder.Property(o => o.MinRole).HasConversion<short?>();
+        builder.Property(o => o.Level).HasConversion<short>();
+        builder.Ignore(o => o.Principal);
+
+        // One entry per principal and event; NULLS NOT DISTINCT so two `everyone` entries collide too.
+        builder.HasIndex(o => new { o.EventId, o.PrincipalType, o.PrincipalId, o.MinRole }).IsUnique().AreNullsDistinct(false);
+
+        // "Shared with me" (events naming a user or one of their groups) and cleanup when a member or group goes.
+        builder.HasIndex(o => new { o.PrincipalType, o.PrincipalId }).HasFilter("principal_type IN (0, 1)");
+
+        // Overrides go with their event (events are soft-deleted, then purged; calendars hard-delete their events).
+        builder.HasOne<Event>().WithMany().HasForeignKey(o => o.EventId).OnDelete(DeleteBehavior.Cascade);
     }
 }

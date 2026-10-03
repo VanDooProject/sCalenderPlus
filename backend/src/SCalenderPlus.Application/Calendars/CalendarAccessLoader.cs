@@ -39,6 +39,39 @@ public sealed class CalendarAccessLoader(IAppDbContext db)
         return principal;
     }
 
+    /// <summary>
+    /// Several users with their group memberships (one query for the users not cached yet) — e.g. the people an
+    /// event's overrides name, whose calendar levels decide what is external sharing (permissions.md §4.4).
+    /// Users without memberships (also unknown ids) get an empty context.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<Guid, PrincipalContext>> PrincipalsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(userIds);
+        var missing = userIds.Where(id => !_principals.ContainsKey(id)).Distinct().ToList();
+        if (missing.Count > 0)
+        {
+            var memberships = await db.GroupMembers.AsNoTracking()
+                .Where(m => missing.Contains(m.UserId))
+                .Select(m => new { m.UserId, m.GroupId, m.Role })
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            var byUser = memberships.ToLookup(m => m.UserId);
+            foreach (var userId in missing)
+            {
+                _principals[userId] = PrincipalContext.ForUser(userId, byUser[userId].ToDictionary(m => m.GroupId, m => m.Role));
+            }
+        }
+
+        return userIds.Distinct().ToDictionary(id => id, id => _principals[id]);
+    }
+
+    /// <summary>The calendar levels of <paramref name="userIds"/> on <paramref name="acl"/> (engine, untraced).</summary>
+    public async Task<IReadOnlyDictionary<Guid, CalendarLevel>> CalendarLevelsAsync(IReadOnlyCollection<Guid> userIds, CalendarAcl acl, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(acl);
+        var principals = await PrincipalsAsync(userIds, cancellationToken).ConfigureAwait(false);
+        return principals.ToDictionary(p => p.Key, p => PermissionEngine.ResolveCalendarLevel(p.Value, acl));
+    }
+
     /// <summary>Forgets cached principals (after a membership change within the same scope).</summary>
     public void Reset() => _principals.Clear();
 

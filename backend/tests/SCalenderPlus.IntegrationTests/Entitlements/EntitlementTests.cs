@@ -4,6 +4,7 @@ using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.IntegrationTests.Auth;
 using SCalenderPlus.IntegrationTests.Calendars;
+using SCalenderPlus.IntegrationTests.Events;
 using SCalenderPlus.IntegrationTests.Groups;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 using SCalenderPlus.IntegrationTests.Problems;
@@ -126,6 +127,38 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         {
             response.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task Event_overrides_count_against_the_calendar_owners_plan()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:EventsWithOverrides"] = "2", ["Plans:Free:OverridesPerEvent"] = "2" });
+        var (_, olga) = await PersonAsync("olga");
+        var family = await olga.CreateGroupAsync("Family");
+        var calendar = await olga.CreateCalendarAsync("Olga");
+        var a = await olga.CreateEventIdAsync(EventApi.Timed(calendar, start: "2099-01-01T10:00:00", end: "2099-01-01T11:00:00"));
+        var b = await olga.CreateEventIdAsync(EventApi.Timed(calendar, start: "2099-01-02T10:00:00", end: "2099-01-02T11:00:00"));
+        var c = await olga.CreateEventIdAsync(EventApi.Timed(calendar, start: "2099-01-03T10:00:00", end: "2099-01-03T11:00:00"));
+        var past = await olga.CreateEventIdAsync(EventApi.Timed(calendar, start: "2000-01-01T10:00:00", end: "2000-01-01T11:00:00"));
+
+        await olga.SetOverridesAsync(a, EventApi.Everyone("none"));
+        await olga.SetOverridesAsync(b, EventApi.Everyone("none"));
+        using (var third = await olga.PutOverridesAsync(c, [EventApi.Everyone("none")]))
+        {
+            AssertLimit(await ProblemResponse.AssertProblemAsync(third, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "events_with_overrides", max: 2, used: 2);
+        }
+
+        // Past events do not count; an event with overrides already may change them; entries per event are capped.
+        await olga.SetOverridesAsync(past, EventApi.Everyone("none"));
+        await olga.SetOverridesAsync(a, EventApi.Everyone("none"), EventApi.Group(family, "read"));
+        using (var tooMany = await olga.PutOverridesAsync(a, [EventApi.Everyone("none"), EventApi.Group(family, "read"), new { principal = new { type = "anonymous" }, level = "none" }]))
+        {
+            AssertLimit(await ProblemResponse.AssertProblemAsync(tooMany, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "overrides_per_event", max: 2, used: 2);
+        }
+
+        // Removing always passes and makes room.
+        await olga.SetOverridesAsync(b);
+        await olga.SetOverridesAsync(c, EventApi.Everyone("none"));
     }
 
     [Fact]

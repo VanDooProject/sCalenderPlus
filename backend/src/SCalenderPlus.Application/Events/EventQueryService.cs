@@ -69,6 +69,38 @@ public sealed class EventQueryService(
         return (await WithCreatorNamesAsync([view], cancellationToken).ConfigureAwait(false))[0];
     }
 
+    /// <summary>
+    /// Events by id for the permission lifecycle (membership and grant removals, group deletion), tracked for update,
+    /// deleted ones included (their overrides apply again on restore). No actor and no level check: callers are
+    /// system use cases that decide with the engine themselves and never return the rows to anyone.
+    /// </summary>
+    public async Task<IReadOnlyList<Event>> ForLifecycleAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(eventIds);
+        if (eventIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = eventIds.ToList();
+        return await db.Events.Where(e => ids.Contains(e.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Plan limit <c>events_with_overrides</c> (plans.md): live events with overrides that are still active at
+    /// <paramref name="now"/> (<see cref="Core.Entitlements.PlanLimits.IsActive"/> of <see cref="Event.OccursUntil"/>)
+    /// in calendars whose plan subject is <paramref name="billingOwnerId"/> — owned by them or by a group they are
+    /// the billing owner of.
+    /// </summary>
+    public Task<int> ActiveEventsWithOverridesAsync(Guid billingOwnerId, Instant now, CancellationToken cancellationToken = default) =>
+        db.Events.CountAsync(
+            e => e.HasOverrides
+                && e.DeletedAt == null
+                && ((e.Rrule == null && e.EndUtc > now) || (e.Rrule != null && (e.SeriesUntilUtc == null || e.SeriesUntilUtc > now)))
+                && db.Calendars.Any(c => c.Id == e.CalendarId
+                    && (c.OwnerUserId == billingOwnerId || db.Groups.Any(g => g.Id == c.OwnerGroupId && g.OwnerUserId == billingOwnerId))),
+            cancellationToken);
+
     /// <summary>Whether a live event of <paramref name="calendarId"/> has <paramref name="uid"/> (no permission check: UIDs are per calendar).</summary>
     public Task<bool> UidTakenAsync(Guid calendarId, string uid, CancellationToken cancellationToken = default) =>
         db.Events.AnyAsync(e => e.CalendarId == calendarId && e.Uid == uid && e.DeletedAt == null, cancellationToken);

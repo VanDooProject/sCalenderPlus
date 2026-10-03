@@ -186,6 +186,25 @@ export const mockGrant: Grant = {
   etag: '"grant-0401"',
 }
 
+type Override = components['schemas']['OverrideResponse']
+
+/** The overrides of {@link mockEvent}: hidden from Vic, read-only for Eve outside the group. */
+export const mockOverrides: Override[] = [
+  {
+    principal: { type: 'user', id: '0192f2c4-0000-7000-8000-000000000004' },
+    principalName: 'Vic',
+    level: 'none',
+    createdBy: mockUser.id,
+    createdAt: '2026-10-01T08:00:00Z',
+  },
+  {
+    principal: { type: 'everyone' },
+    level: 'free_busy',
+    createdBy: mockUser.id,
+    createdAt: '2026-10-01T08:00:00Z',
+  },
+]
+
 export const handlers = [
   http.get('/health/live', ({ response }) => response(200).json({ status: 'Healthy', checks: {} })),
   http.get('/health/ready', ({ response }) =>
@@ -424,6 +443,35 @@ export const handlers = [
     })
   }),
   http.delete('/api/v1/events/{id}', ({ response }) => response(204).empty()),
+  http.get('/api/v1/events/{id}/overrides', ({ params, response }) =>
+    params.id === mockEvent.id
+      ? response(200).json({
+          eventId: mockEvent.id,
+          items: mockOverrides,
+          etag: '"overrides-0401"',
+        })
+      : response('default').json(notFound(`/api/v1/events/${params.id}/overrides`), {
+          status: 404,
+        }),
+  ),
+  http.put('/api/v1/events/{id}/overrides', async ({ params, request, response }) => {
+    if (params.id !== mockEvent.id) {
+      return response('default').json(notFound(`/api/v1/events/${params.id}/overrides`), {
+        status: 404,
+      })
+    }
+    const { overrides } = await request.json()
+    return response(200).json({
+      eventId: mockEvent.id,
+      items: (overrides ?? []).map((o) => ({
+        principal: { type: o.principal.type, id: o.principal.id, minRole: o.principal.minRole },
+        level: o.level,
+        createdBy: mockUser.id,
+        createdAt: '2026-10-01T08:00:00Z',
+      })),
+      etag: `"overrides-${crypto.randomUUID().slice(0, 8)}"`,
+    })
+  }),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {

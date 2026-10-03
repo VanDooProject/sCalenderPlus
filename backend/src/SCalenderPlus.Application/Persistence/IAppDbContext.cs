@@ -31,6 +31,9 @@ public interface IAppDbContext
     /// <summary>The sync log (<c>calendar_changes</c>), appended by <c>Events.EventWriter</c>.</summary>
     DbSet<CalendarChange> CalendarChanges { get; }
 
+    /// <summary>Event permission overrides (<c>event_overrides</c>), changed only by the override use cases and the membership lifecycle.</summary>
+    DbSet<EventOverrideEntry> EventOverrides { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

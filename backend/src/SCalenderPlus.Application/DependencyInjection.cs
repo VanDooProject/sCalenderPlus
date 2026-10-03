@@ -53,10 +53,11 @@ public static class DependencyInjection
         services.AddScoped<CalendarGrantService>();
         services.AddScoped<CalendarGroupLifecycle>();
 
-        services.TryAddSingleton<IEventOverrideSource, NoEventOverrides>(); // M2-D: event_overrides
+        services.TryAddScoped<IEventOverrideSource, EventOverrideSource>();
         services.AddScoped<EventQueryService>();
         services.AddScoped<EventWriter>();
         services.AddScoped<EventService>();
+        services.AddScoped<EventOverrideService>();
 
         return services;
     }

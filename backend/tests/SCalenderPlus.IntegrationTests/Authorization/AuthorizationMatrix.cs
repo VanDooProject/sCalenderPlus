@@ -405,6 +405,35 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
             .WithRoute(s => Route(s, "event:lions-deleted-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
+
+        // Overrides (#46): only floor holders (event level manage) read and replace them; others who see the event 403.
+        .. For("GET", "/api/v1/events/{id}/overrides")
+            .WithRoute(LionsEvent)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden) // not the creator: read
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden) // edit is not a floor
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("PUT", "/api/v1/events/{id}/overrides")
+            .WithRoute(s => Route(s, "event:lions-overrides"))
+            .WithBody(_ => JsonContent.Create(new { overrides = new[] { new { principal = new { type = "everyone" }, level = "free_busy" } } }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .WithBody(_ => JsonContent.Create(new { overrides = new[] { new { principal = new { type = "everyone" }, level = "manage" } } }))
+            .Expect(Actors.GroupOwner, HttpStatusCode.UnprocessableEntity, "override_invalid") // manage only through floors
+            .WithRoute(s => Route(s, "event:lions-by-member"))
+            .WithBody(s => JsonContent.Create(new { overrides = new[] { new { principal = new { type = "user", id = s.Get("user:" + Actors.CalendarFreeBusy.Name) }, level = "read" } } }))
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden, "external_sharing_not_allowed"), // creator floor, but the free_busy user is outside the audience
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).

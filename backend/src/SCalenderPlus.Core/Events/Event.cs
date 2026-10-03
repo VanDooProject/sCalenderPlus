@@ -115,6 +115,12 @@ public sealed partial class Event
 
     public bool IsDeleted => DeletedAt is not null;
 
+    /// <summary>
+    /// The upper bound of <c>occurs_range</c>: the end of a single event, <see cref="SeriesUntilUtc"/> of a series
+    /// (null = infinite). Plan limits count events with overrides while active (<c>PlanLimits.IsActive</c>).
+    /// </summary>
+    public Instant? OccursUntil => Rrule is null ? EndUtc : SeriesUntilUtc;
+
     /// <summary>The stored times as <see cref="EventTimes"/> (no adjustments).</summary>
     public EventTimes Times => AllDay
         ? new EventTimes(true, null, null, StartDate, EndDate, null, StartUtc, EndUtc, [])

@@ -39,6 +39,7 @@ internal static class EventEndpoints
         events.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteEvent")
             .WithSummary("Delete an event (edit; soft delete, requires If-Match)");
 
+        events.MapOverrideEndpoints();
         return events;
     }
 

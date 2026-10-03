@@ -93,6 +93,12 @@ public static class ErrorCodes
     /// <summary>The request asks for recurrence (RRULE etc.), which is not supported (yet: M2-E); carries <c>errors.recurrence</c>.</summary>
     public const string RecurrenceNotSupported = "recurrence_not_supported";
 
+    /// <summary>
+    /// A proposed set of event overrides has invalid entries (level above <c>edit</c>, the same principal twice, a
+    /// group or user that cannot be selected); carries <c>violations</c> and <c>errors.overrides</c>.
+    /// </summary>
+    public const string OverrideInvalid = "override_invalid";
+
     /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";
 

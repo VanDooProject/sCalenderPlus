@@ -60,7 +60,7 @@ Identity tables `user_claims`, `user_logins`, `user_tokens` (TOTP authenticator 
 | member_list_visibility | smallint | 0 all members (default), 1 members and above (hidden from viewers) |
 | created_at, updated_at, xmin | | `xmin` = concurrency token |
 
-Groups are **hard-deleted** (owners only): `group_members` and `group_invites` cascade. Group-owned calendars reference `owner_group_id` with `ON DELETE RESTRICT`, so a group that still owns calendars cannot be deleted until they are transferred or deleted (the api answers `409 group_has_calendars`); `calendar_grants` (and, from M2-D, `event_overrides`) naming the group are deleted with it by the use case (no FK on `principal_id`).
+Groups are **hard-deleted** (owners only): `group_members` and `group_invites` cascade. Group-owned calendars reference `owner_group_id` with `ON DELETE RESTRICT`, so a group that still owns calendars cannot be deleted until they are transferred or deleted (the api answers `409 group_has_calendars`); `calendar_grants` and `event_overrides` naming the group are deleted with it by the use case (no FK on `principal_id`).
 
 ### `group_members`
 
@@ -180,10 +180,11 @@ Unique `(event_id, recurrence_id_utc)`. Exceptions inherit the series ACL (MVP).
 | principal_type | smallint | 0 user, 1 group, 2 anonymous, 3 everyone |
 | principal_id | uuid null | |
 | min_role | smallint null | |
-| level | smallint | `EventLevel` 0 none … 3 edit (overrides never grant `manage`) |
-| created_by | uuid | |
+| level | smallint | `EventLevel` 0 none … 3 edit (overrides never grant `manage`; CHECK `level BETWEEN 0 AND 3`) |
+| created_by | uuid | who set the entry at its current level (no FK, tombstone) |
+| created_at | timestamptz | |
 
-Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id) WHERE principal_type IN (0,1)` to find "events shared with me".
+FK `event_id → events` (cascade; events are soft-deleted, their overrides stay for a restore). CHECK `ck_event_overrides_principal`: users and groups have an id (groups also `min_role`), `anonymous`/`everyone` neither. Unique `(event_id, principal_type, principal_id, min_role)` (NULLS NOT DISTINCT); index `(principal_type, principal_id) WHERE principal_type IN (0,1)` to find "events shared with me" and the entries of a removed member or deleted group. Written only by `EventOverrideService` (replace) and the permission lifecycle (revocations, group deletion); `events.has_overrides` is kept in step in the same transaction.
 
 ### `event_attendees` (v1)
 
@@ -199,7 +200,7 @@ Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_t
 
 ### `calendar_changes` (sync log)
 
-`seq bigint identity PK, calendar_id FK → calendars (cascade), event_id (no FK), change smallint (0 upsert, 1 delete, 2 acl), at` — index `(calendar_id, seq)`. Appended by `EventWriter` in the transaction of every event change. Powers CalDAV `sync-collection`, webhooks and incremental client sync (`/changes?since=`). Trimmed after 90 days (clients older than that do full resync).
+`seq bigint identity PK, calendar_id FK → calendars (cascade), event_id (no FK), change smallint (0 upsert, 1 delete, 2 acl), at` — index `(calendar_id, seq)`. Appended by `EventWriter` in the transaction of every event change; `acl` = the event's overrides changed: clients re-resolve it, and where it now resolves to `none` for them it counts as a delete (per-user feeds key on `users.acl_version`, bumped for the named users). Powers CalDAV `sync-collection`, webhooks and incremental client sync (`/changes?since=`). Trimmed after 90 days (clients older than that do full resync).
 
 ## 5. Feeds, tokens, integrations
 

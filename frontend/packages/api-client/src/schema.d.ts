@@ -612,6 +612,30 @@ export interface paths {
     patch: operations['UpdateEvent']
     trace?: never
   }
+  '/api/v1/events/{id}/overrides': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The event's permission overrides (event level manage, with ETag)
+     * @description Only those who may change them see them: calendar managers and owners, and the creator while the creator floor applies. Others who see the event: 403 insufficient_permission; no level: 404.
+     */
+    get: operations['GetEventOverrides']
+    /**
+     * Replace the event's permission overrides (event level manage; requires If-Match)
+     * @description Atomic replace of the whole set (an empty list removes all). Levels none … edit; manage, the same principal twice, or a group/user you may not select: 422 override_invalid (violations). Sharing with people outside the calendar's audience needs calendar manage (or the calendar setting creatorsMayShareExternally): else 403 external_sharing_not_allowed (violations). Unchanged and lowered entries are not re-checked. Plan limits: 402 plan_limit_reached (removals always pass). Frozen calendars allow removals only (409 calendar_frozen). If-Match: the ETag of GET /events/{id}/overrides (or *).
+     */
+    put: operations['ReplaceEventOverrides']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -729,6 +753,7 @@ export interface components {
       | 'last_owner'
       | 'method_not_allowed'
       | 'not_found'
+      | 'override_invalid'
       | 'override_invalid_in_target'
       | 'payload_too_large'
       | 'permission_self_lockout'
@@ -752,6 +777,12 @@ export interface components {
       /** Format: uuid */
       id: string
       displayName: null | string
+    }
+    EventOverridesResponse: {
+      /** Format: uuid */
+      eventId: string
+      items: components['schemas']['OverrideResponse'][]
+      etag: string
     }
     EventRecurrenceRequest: {
       rrule?: null | string
@@ -951,6 +982,31 @@ export interface components {
       /** Format: date-time */
       createdAt: string
     }
+    OverrideRequest: {
+      principal: components['schemas']['PrincipalRequest']
+      level: string
+    }
+    OverrideResponse: {
+      principal: components['schemas']['PrincipalResponse']
+      principalName?: null | string
+      level: string
+      /** Format: uuid */
+      createdBy: string
+      /** Format: date-time */
+      createdAt: string
+    }
+    PrincipalRequest: {
+      type: string
+      /** Format: uuid */
+      id?: null | string
+      minRole?: null | string
+    }
+    PrincipalResponse: {
+      type: string
+      /** Format: uuid */
+      id?: null | string
+      minRole?: null | string
+    }
     /** @description RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`). */
     ProblemDetails: {
       /** Format: uri */
@@ -980,6 +1036,9 @@ export interface components {
       displayName: string
       locale?: null | string
       timeZone?: null | string
+    }
+    ReplaceOverridesRequest: {
+      overrides: null | components['schemas']['OverrideRequest'][]
     }
     ResetPasswordRequest: {
       /** Format: uuid */
@@ -2520,6 +2579,74 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetEventOverrides: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventOverridesResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ReplaceEventOverrides: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReplaceOverridesRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventOverridesResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

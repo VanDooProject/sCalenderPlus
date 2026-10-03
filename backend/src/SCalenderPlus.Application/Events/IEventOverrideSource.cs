@@ -1,11 +1,12 @@
+using Microsoft.EntityFrameworkCore;
+using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Permissions;
 
 namespace SCalenderPlus.Application.Events;
 
 /// <summary>
-/// Where the event query service gets event overrides from (permissions.md §4.2): the plug-in point of the
-/// <c>event_overrides</c> table and its API (M2-D). Until then no override exists (<see cref="NoEventOverrides"/>),
-/// every event resolves to <c>impliedEventLevel(Lc)</c> unless a floor applies, and "Shared with me" is empty.
+/// Where the event query service gets event overrides from (permissions.md §4.2): the <c>event_overrides</c>
+/// table (<see cref="EventOverrideSource"/>), loaded in batch for the events of a listing.
 /// </summary>
 public interface IEventOverrideSource
 {
@@ -23,14 +24,45 @@ public interface IEventOverrideSource
     Task<IReadOnlyList<Guid>> EventsNamingAsync(PrincipalContext principal, CancellationToken cancellationToken = default);
 }
 
-/// <summary>No overrides yet (M2-C): replaced by the <c>event_overrides</c>-backed source in M2-D.</summary>
-public sealed class NoEventOverrides : IEventOverrideSource
+/// <summary>The overrides of <c>event_overrides</c>: one query per batch of events.</summary>
+public sealed class EventOverrideSource(IAppDbContext db) : IEventOverrideSource
 {
-    private static readonly IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>> _none = new Dictionary<Guid, IReadOnlyList<EventOverride>>();
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>>> ForEventsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(eventIds);
+        if (eventIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<EventOverride>>();
+        }
 
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>>> ForEventsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default) =>
-        Task.FromResult(_none);
+        var ids = eventIds.ToList();
+        var rows = await db.EventOverrides.AsNoTracking()
+            .Where(o => ids.Contains(o.EventId))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return rows.GroupBy(o => o.EventId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<EventOverride>)[.. g.Select(o => o.ToOverride())]);
+    }
 
-    public Task<IReadOnlyList<Guid>> EventsNamingAsync(PrincipalContext principal, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Guid>>([]);
+    public async Task<IReadOnlyList<Guid>> EventsNamingAsync(PrincipalContext principal, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.UserId is not { } userId)
+        {
+            return []; // link holders are never named (user/group entries do not match them)
+        }
+
+        // Entries that could give something (level > none) naming the user or one of their groups; the group
+        // entries' minimum roles are checked in memory (the engine decides the level anyway).
+        var groupIds = principal.Groups.Keys.ToList();
+        var rows = await db.EventOverrides.AsNoTracking()
+            .Where(o => o.Level > EventLevel.None
+                && ((o.PrincipalType == PrincipalType.User && o.PrincipalId == userId)
+                    || (o.PrincipalType == PrincipalType.Group && groupIds.Contains(o.PrincipalId!.Value))))
+            .Select(o => new { o.EventId, o.PrincipalType, o.PrincipalId, o.MinRole })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return [.. rows
+            .Where(o => o.PrincipalType == PrincipalType.User || principal.RoleIn(o.PrincipalId!.Value) >= o.MinRole)
+            .Select(o => o.EventId)
+            .Distinct()];
+    }
 }

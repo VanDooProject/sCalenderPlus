@@ -29,6 +29,26 @@ public sealed class EventWriter(IAppDbContext db, IClock clock)
         Log(ev, ev.IsDeleted ? CalendarChangeKind.Delete : CalendarChangeKind.Upsert);
     }
 
-    private void Log(Event ev, CalendarChangeKind change) =>
-        db.CalendarChanges.Add(new CalendarChange { CalendarId = ev.CalendarId, EventId = ev.Id, Change = change, At = clock.Now() });
+    /// <summary>
+    /// Logs a change of the (tracked) event's permissions — overrides or <c>has_overrides</c> — as <c>acl</c>: sync
+    /// clients re-resolve the event; for viewers whose level dropped to <c>none</c> it is a delete.
+    /// </summary>
+    public void AclChanged(Event ev)
+    {
+        ArgumentNullException.ThrowIfNull(ev);
+        Log(ev, CalendarChangeKind.Acl);
+    }
+
+    /// <summary>Logs a move of the (tracked) event from <paramref name="sourceCalendarId"/>: <c>delete</c> there, <c>upsert</c> in its new calendar.</summary>
+    public void Moved(Event ev, Guid sourceCalendarId)
+    {
+        ArgumentNullException.ThrowIfNull(ev);
+        Log(sourceCalendarId, ev.Id, CalendarChangeKind.Delete);
+        Log(ev, CalendarChangeKind.Upsert);
+    }
+
+    private void Log(Event ev, CalendarChangeKind change) => Log(ev.CalendarId, ev.Id, change);
+
+    private void Log(Guid calendarId, Guid eventId, CalendarChangeKind change) =>
+        db.CalendarChanges.Add(new CalendarChange { CalendarId = calendarId, EventId = eventId, Change = change, At = clock.Now() });
 }

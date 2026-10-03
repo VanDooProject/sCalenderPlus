@@ -1,9 +1,6 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.DependencyInjection;
 using SCalenderPlus.Application.Errors;
-using SCalenderPlus.Application.Events;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Core.Permissions;
 using SCalenderPlus.IntegrationTests.Auth;
@@ -16,9 +13,9 @@ namespace SCalenderPlus.IntegrationTests.Events;
 
 /// <summary>
 /// Issue #45: <c>GET /events?from&amp;to</c> with permission filtering. Setup follows permissions.md §5: calendar
-/// "FC Lions – Club" of group Lions (Olga owner, Adam admin, Mia member, Vic viewer), Eve outside. Overrides do not
-/// exist before M2-D, so the tests plug the worked examples' overrides in through <see cref="IEventOverrideSource"/>
-/// (the seam the <c>event_overrides</c> table will fill) and mark the events <c>has_overrides</c>.
+/// "FC Lions – Club" of group Lions (Olga owner, Adam admin, Mia member, Vic viewer), Eve outside (she shares the
+/// group "Friends" with Adam, so he may name her). The worked examples' overrides are set through the api
+/// (<c>PUT /events/{id}/overrides</c>, issue #46).
 /// </summary>
 [Trait(PostgresFixture.Category, PostgresFixture.Docker)]
 public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
@@ -26,7 +23,6 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
     private const string November = "from=2026-11-01T00:00:00Z&to=2026-12-01T00:00:00Z";
 
     private readonly List<HttpClient> _clients = [];
-    private readonly FakeOverrides _overrides = new();
     private ApiTestHost _host = null!;
     private HttpClient _olga = null!;
     private HttpClient _adam = null!;
@@ -35,19 +31,22 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
     private HttpClient _eve = null!;
     private Guid _lions;
     private Guid _eveId;
+    private Guid _adamId;
     private Guid _club;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
     {
-        _host = await ApiTestHost.StartAsync(postgres, services: s => s.AddSingleton<IEventOverrideSource>(_overrides));
+        _host = await ApiTestHost.StartAsync(postgres);
         (_, _olga) = await PersonAsync("olga");
         _lions = await _olga.CreateGroupAsync();
-        (_, _adam) = await MemberAsync("adam", GroupRole.Admin);
+        (_adamId, _adam) = await MemberAsync("adam", GroupRole.Admin);
         (_, _mia) = await MemberAsync("mia", GroupRole.Member);
         (_, _vic) = await MemberAsync("vic", GroupRole.Viewer);
         (_eveId, _eve) = await PersonAsync("eve");
+        var friends = await _eve.CreateGroupAsync("Friends");
+        await _host.AddMemberAsync(friends, _adamId, GroupRole.Member);
         _club = await _olga.CreateCalendarAsync("FC Lions – Club", _lions);
     }
 
@@ -71,7 +70,7 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
             start = new { dateTime = "2026-11-02T18:00:00" },
             end = new { dateTime = "2026-11-02T20:00:00" },
         });
-        await WithOverridesAsync(board, new EventOverride(Principal.Everyone, EventLevel.FreeBusy), new EventOverride(Principal.Group(_lions, GroupRole.Admin), EventLevel.Read));
+        await _adam.SetOverridesAsync(board, EventApi.Everyone("free_busy"), EventApi.Group(_lions, "read", "admin"));
         var training = await _mia.CreateEventIdAsync(EventApi.Timed(_club, title: "Training", start: "2026-11-03T17:00:00", end: "2026-11-03T18:30:00"));
 
         foreach (var (client, expected) in new[] { (_olga, "manage"), (_adam, "manage") })
@@ -114,8 +113,7 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
         // Example E: override user:Eve → read on an event of a calendar Eve cannot see.
         var shared = await _adam.CreateEventIdAsync(EventApi.Timed(_club, title: "Open day"));
         await _adam.CreateEventIdAsync(EventApi.Timed(_club, title: "Not shared"));
-        await WithOverridesAsync(shared, new EventOverride(Principal.User(_eveId), EventLevel.Read));
-        _overrides.Naming[_eveId] = [shared];
+        await _adam.SetOverridesAsync(shared, EventApi.User(_eveId, "read"));
 
         var item = Assert.Single(await WindowAsync(_eve, November))!;
 
@@ -228,12 +226,6 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
         return (await response.JsonAsync())["items"]!.AsArray();
     }
 
-    private async Task WithOverridesAsync(Guid eventId, params EventOverride[] overrides)
-    {
-        _overrides.Overrides[eventId] = overrides;
-        await _host.ExecuteSqlAsync($"UPDATE events SET has_overrides = true WHERE id = {eventId}");
-    }
-
     private async Task<(Guid Id, HttpClient Client)> PersonAsync(string name)
     {
         var email = ApiTestHost.UniqueEmail(name);
@@ -248,20 +240,5 @@ public sealed class EventWindowTests(PostgresFixture postgres) : IAsyncLifetime
         var person = await PersonAsync(name);
         await _host.AddMemberAsync(_lions, person.Id, role);
         return person;
-    }
-
-    /// <summary>Stands in for the <c>event_overrides</c> table of M2-D.</summary>
-    private sealed class FakeOverrides : IEventOverrideSource
-    {
-        public ConcurrentDictionary<Guid, IReadOnlyList<EventOverride>> Overrides { get; } = new();
-
-        public ConcurrentDictionary<Guid, IReadOnlyList<Guid>> Naming { get; } = new();
-
-        public Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>>> ForEventsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>>>(
-                eventIds.Where(Overrides.ContainsKey).ToDictionary(id => id, id => Overrides[id]));
-
-        public Task<IReadOnlyList<Guid>> EventsNamingAsync(PrincipalContext principal, CancellationToken cancellationToken = default) =>
-            Task.FromResult(principal.UserId is { } user && Naming.TryGetValue(user, out var ids) ? ids : (IReadOnlyList<Guid>)[]);
     }
 }

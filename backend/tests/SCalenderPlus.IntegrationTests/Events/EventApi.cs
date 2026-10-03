@@ -38,6 +38,58 @@ internal static class EventApi
         return (await response.JsonAsync(), response.Headers.ETag!.ToString());
     }
 
+    /// <summary>An override entry of a request body: <c>everyone</c>, <c>anonymous</c>, <c>user</c> or <c>group</c>.</summary>
+    public static object Everyone(string level) => new { principal = new { type = "everyone" }, level };
+
+    public static object User(Guid userId, string level) => new { principal = new { type = "user", id = userId }, level };
+
+    public static object Group(Guid groupId, string level, string? minRole = null) => new { principal = new { type = "group", id = groupId, minRole }, level };
+
+    public static Task<HttpResponseMessage> PutOverridesAsync(this HttpClient client, Guid eventId, object[] overrides, string? ifMatch = "*") =>
+        client.SendJsonAsync(HttpMethod.Put, $"/api/v1/events/{eventId}/overrides", new { overrides }, ifMatch);
+
+    /// <summary>Replaces the event's overrides through the api (asserts 200) and returns the new set.</summary>
+    public static async Task<JsonNode> SetOverridesAsync(this HttpClient client, Guid eventId, params object[] overrides)
+    {
+        using var response = await client.PutOverridesAsync(eventId, overrides);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        return await response.JsonAsync();
+    }
+
+    public static async Task<(JsonNode Body, string ETag)> GetOverridesAsync(this HttpClient client, Guid eventId)
+    {
+        using var response = await client.GetAsync(new Uri($"/api/v1/events/{eventId}/overrides", UriKind.Relative), Ct);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        return (await response.JsonAsync(), response.Headers.ETag!.ToString());
+    }
+
+    /// <summary>The caller's <c>myLevel</c> on the event, or <c>none</c> when it answers 404.</summary>
+    public static async Task<string> LevelOnAsync(this HttpClient client, Guid eventId)
+    {
+        using var response = await client.GetAsync(new Uri($"/api/v1/events/{eventId}", UriKind.Relative), Ct);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return "none";
+        }
+
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        return (string)(await response.JsonAsync())["myLevel"]!;
+    }
+
+    /// <summary>Gives <paramref name="groupId"/> (members with at least <paramref name="minRole"/>) a group grant directly.</summary>
+    public static Task GrantGroupAsync(this ApiTestHost host, Guid calendarId, Guid groupId, CalendarLevel level, Core.Groups.GroupRole minRole = Core.Groups.GroupRole.Viewer) =>
+        host.QueryAsync(async db =>
+        {
+            var grant = CalendarGrantEntry.For(calendarId, Principal.Group(groupId, minRole), level);
+            grant.CreatedBy = groupId;
+            grant.CreatedAt = grant.UpdatedAt = SystemClock.Instance.GetCurrentInstant();
+            db.CalendarGrants.Add(grant);
+            return await db.SaveChangesAsync(Ct);
+        });
+
+    public static Task<List<EventOverrideEntry>> StoredOverridesAsync(this ApiTestHost host, Guid eventId) =>
+        host.QueryAsync(db => db.EventOverrides.AsNoTracking().Where(o => o.EventId == eventId).ToListAsync(Ct));
+
     /// <summary>Gives <paramref name="userId"/> a user grant directly (grant selection rules are tested elsewhere).</summary>
     public static Task GrantAsync(this ApiTestHost host, Guid calendarId, Guid userId, CalendarLevel level) =>
         host.QueryAsync(async db =>

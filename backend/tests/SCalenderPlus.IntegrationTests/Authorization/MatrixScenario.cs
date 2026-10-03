@@ -125,10 +125,13 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
 
         // Events (#44): in "lions", created by the admin (the member reads it, the editor edits it); one per
         // successful delete case.
-        foreach (var name in new[] { "lions", "lions-deleted-by-editor", "lions-deleted-by-admin", "lions-deleted-by-owner" })
+        foreach (var name in new[] { "lions", "lions-deleted-by-editor", "lions-deleted-by-admin", "lions-deleted-by-owner", "lions-overrides" })
         {
             await SeedEventAsync(name, "lions", Actors.GroupAdmin.Name);
         }
+
+        // Overrides (#46): an event of the member (creator floor: manage on it).
+        await SeedEventAsync("lions-by-member", "lions", Actors.GroupMember.Name);
     }
 
     /// <summary>A timed event created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>

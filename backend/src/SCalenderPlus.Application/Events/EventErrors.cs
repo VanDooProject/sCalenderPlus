@@ -45,6 +45,111 @@ public static class EventErrors
         });
 }
 
+/// <summary>One refused override entry: the entry and why (<c>level_too_high</c>, <c>duplicate_principal</c>, …).</summary>
+public sealed record OverrideProblem(EventOverride Override, string Reason);
+
+/// <summary>Problems of the override use cases (permissions.md §4.4, §4.6).</summary>
+public static class OverrideErrors
+{
+    public const string LevelTooHigh = "level_too_high";
+    public const string DuplicatePrincipal = "duplicate_principal";
+    public const string GroupNotSelectable = "group_not_selectable";
+    public const string UserNotSelectable = "user_not_selectable";
+    public const string ExternalSharingReason = "external_sharing";
+    public const string RemovalExposesExternalShare = "removal_exposes_external_share";
+    public const string NoOverrideRightsInTarget = "no_override_rights_in_target";
+
+    /// <summary>The <c>reason</c> of an engine violation.</summary>
+    public static string Reason(OverrideViolationReason reason) => reason switch
+    {
+        OverrideViolationReason.LevelTooHigh => LevelTooHigh,
+        OverrideViolationReason.DuplicatePrincipal => DuplicatePrincipal,
+        OverrideViolationReason.GroupNotSelectable => GroupNotSelectable,
+        OverrideViolationReason.ExternalSharing => ExternalSharingReason,
+        OverrideViolationReason.RemovalExposesExternalShare => RemovalExposesExternalShare,
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown violation."),
+    };
+
+    /// <summary><c>422 override_invalid</c> with <c>violations</c> and <c>errors.overrides</c>.</summary>
+    public static AppException Invalid(IReadOnlyList<OverrideProblem> problems) =>
+        new(ErrorCodes.OverrideInvalid, "Some permission entries are invalid.", Members(problems, withErrors: true));
+
+    /// <summary><c>403 external_sharing_not_allowed</c> with the entries that would share outside the calendar's audience (<c>violations</c>).</summary>
+    public static AppException ExternalSharing(IReadOnlyList<OverrideProblem> problems) =>
+        new(
+            ErrorCodes.ExternalSharingNotAllowed,
+            "Only calendar managers may share events with people outside the calendar (unless the calendar allows creators to).",
+            Members(problems, withErrors: false));
+
+    /// <summary><c>409 override_invalid_in_target</c>: the overrides the mover could not set in the target calendar (<c>violations</c>).</summary>
+    public static AppException InvalidInTarget(IReadOnlyList<OverrideProblem> problems) =>
+        new(
+            ErrorCodes.OverrideInvalidInTarget,
+            "Some of the event's permission entries could not be set by you in the target calendar. Remove them first, or ask a manager of the target calendar.",
+            Members(problems, withErrors: false));
+
+    private static Dictionary<string, object?> Members(IReadOnlyList<OverrideProblem> problems, bool withErrors)
+    {
+        var members = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["violations"] = problems.Select(p => new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["principal"] = PrincipalMember(p.Override.Principal),
+                ["level"] = PermissionLevels.Format(p.Override.Level),
+                ["reason"] = p.Reason,
+            }).ToList(),
+        };
+        if (withErrors)
+        {
+            members[Validation.ErrorsMember] = new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["overrides"] = [.. problems.Select(p => $"{p.Override.Principal} → {PermissionLevels.Format(p.Override.Level)}: {Message(p.Reason)}")],
+            };
+        }
+
+        return members;
+    }
+
+    /// <summary>A principal as in the api: <c>{ type, id?, minRole? }</c>.</summary>
+    public static Dictionary<string, object?> PrincipalMember(Principal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        var member = new Dictionary<string, object?>(StringComparer.Ordinal) { ["type"] = PrincipalTypes.Format(principal.Type) };
+        if (principal.Id is { } id)
+        {
+            member["id"] = id;
+        }
+
+        if (principal.MinRole is { } role)
+        {
+            member["minRole"] = Core.Groups.GroupRoles.Format(role);
+        }
+
+        return member;
+    }
+
+    private static string Message(string reason) => reason switch
+    {
+        LevelTooHigh => "overrides grant at most edit",
+        DuplicatePrincipal => "the same principal appears twice",
+        GroupNotSelectable => "pick one of your groups, the owning group, or a group with access to the calendar",
+        _ => "pick someone who shares a group with you or sees the calendar",
+    };
+}
+
+/// <summary>API names of principal types: <c>user</c>, <c>group</c>, <c>anonymous</c>, <c>everyone</c>.</summary>
+public static class PrincipalTypes
+{
+    public static string Format(PrincipalType type) => type switch
+    {
+        PrincipalType.User => "user",
+        PrincipalType.Group => "group",
+        PrincipalType.Anonymous => "anonymous",
+        PrincipalType.Everyone => "everyone",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown principal type."),
+    };
+}
+
 /// <summary>
 /// Audit actions of events (<c>audit_events.action</c>, resource type <see cref="ResourceType"/>, resource id =
 /// event id; the subject is the calendar's billing subject).
@@ -56,4 +161,7 @@ public static class EventAuditActions
     public const string Created = "event.created";
     public const string Updated = "event.updated";
     public const string Deleted = "event.deleted";
+
+    /// <summary>The event's overrides were replaced (before/after: <c>["principal → level", …]</c>).</summary>
+    public const string OverridesChanged = "event.overrides.changed";
 }

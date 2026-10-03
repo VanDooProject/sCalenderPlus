@@ -2217,6 +2217,117 @@
           }
         ]
       }
+    },
+    "/api/v1/events/{id}/overrides": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "The event's permission overrides (event level manage, with ETag)",
+        "description": "Only those who may change them see them: calendar managers and owners, and the creator while the creator floor applies. Others who see the event: 403 insufficient_permission; no level: 404.",
+        "operationId": "GetEventOverrides",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOverridesResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Replace the event's permission overrides (event level manage; requires If-Match)",
+        "description": "Atomic replace of the whole set (an empty list removes all). Levels none … edit; manage, the same principal twice, or a group/user you may not select: 422 override_invalid (violations). Sharing with people outside the calendar's audience needs calendar manage (or the calendar setting creatorsMayShareExternally): else 403 external_sharing_not_allowed (violations). Unchanged and lowered entries are not re-checked. Plan limits: 402 plan_limit_reached (removals always pass). Frozen calendars allow removals only (409 calendar_frozen). If-Match: the ETag of GET /events/{id}/overrides (or *).",
+        "operationId": "ReplaceEventOverrides",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceOverridesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOverridesResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2680,6 +2791,7 @@
           "last_owner",
           "method_not_allowed",
           "not_found",
+          "override_invalid",
           "override_invalid_in_target",
           "payload_too_large",
           "permission_self_lockout",
@@ -2719,6 +2831,29 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EventOverridesResponse": {
+        "required": [
+          "eventId",
+          "items",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverrideResponse"
+            }
+          },
+          "etag": {
+            "type": "string"
           }
         }
       },
@@ -3522,6 +3657,100 @@
           }
         }
       },
+      "OverrideRequest": {
+        "required": [
+          "principal",
+          "level"
+        ],
+        "type": "object",
+        "properties": {
+          "principal": {
+            "$ref": "#/components/schemas/PrincipalRequest"
+          },
+          "level": {
+            "type": "string"
+          }
+        }
+      },
+      "OverrideResponse": {
+        "required": [
+          "principal",
+          "level",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "principal": {
+            "$ref": "#/components/schemas/PrincipalResponse"
+          },
+          "principalName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "level": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PrincipalRequest": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minRole": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PrincipalResponse": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minRole": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ProblemDetails": {
         "required": [
           "type",
@@ -3635,6 +3864,23 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ReplaceOverridesRequest": {
+        "required": [
+          "overrides"
+        ],
+        "type": "object",
+        "properties": {
+          "overrides": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OverrideRequest"
+            }
           }
         }
       },
