@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 
 namespace SCalenderPlus.IntegrationTests.Authorization;
@@ -26,6 +27,13 @@ public sealed class AuthorizationMatrixTests(MatrixScenario scenario) : IClassFi
 
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.True(response.StatusCode == matrixCase.Expected, $"{id}: got {(int)response.StatusCode}. Body: {body}");
+        if (matrixCase.ExpectedProblemCode is { } code)
+        {
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+            Assert.True(
+                (string?)JsonNode.Parse(body)?["code"] == code,
+                $"{id}: expected the problem code '{code}'. Body: {body}");
+        }
     }
 
     [Theory]

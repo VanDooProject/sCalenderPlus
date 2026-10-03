@@ -197,7 +197,7 @@ public static class AuthorizationMatrix
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
             .Expect(Actors.NonMember, HttpStatusCode.NotFound)
-            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden) // email_not_verified
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
             .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
             .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
             .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
@@ -223,7 +223,7 @@ public static class AuthorizationMatrix
         .. For("POST", "/api/v1/invites/accept")
             .WithBody(s => JsonContent.Create(new { token = s.Get("token:acceptable") }))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
-            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden) // email_not_verified
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
             .Expect(Actors.User, HttpStatusCode.OK) // joins "lions" as member; no other case depends on it
             .Expect(Actors.GroupMember, HttpStatusCode.OK), // already a member: keeps the role
     ];
@@ -280,9 +280,10 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
         return this;
     }
 
-    public OperationCases Expect(MatrixActor actor, HttpStatusCode expected)
+    /// <param name="code">The problem code of an error status when it is not the default of <see cref="MatrixCase.ExpectedProblemCode"/>.</param>
+    public OperationCases Expect(MatrixActor actor, HttpStatusCode expected, string? code = null)
     {
-        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body, _headers));
+        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body, _headers, code));
         return this;
     }
 
