@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "scalenderplus.application": {
+        "type": "Project",
+        "dependencies": {
+          "SCalenderPlus.Core": "[0.0.0, )"
+        }
+      },
+      "scalenderplus.core": {
+        "type": "Project",
+        "dependencies": {
+          "NodaTime": "[3.3.5, )"
+        }
+      },
+      "scalenderplus.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "SCalenderPlus.Application": "[0.0.0, )"
+        }
+      },
+      "NodaTime": {
+        "type": "CentralTransitive",
+        "requested": "[3.3.5, )",
+        "resolved": "3.3.5",
+        "contentHash": "0qtGKHOYhQGCeUItP4RN8KJktsKD9j/B4IqmoecUL+ymReq69O71qEpZY6x0aQPZa5KDLXY41aEOOHZ9T6Uqgw=="
+      }
+    }
+  }
+}

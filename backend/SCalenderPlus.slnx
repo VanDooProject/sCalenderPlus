@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SCalenderPlus.Api/SCalenderPlus.Api.csproj" />
+    <Project Path="src/SCalenderPlus.Application/SCalenderPlus.Application.csproj" />
+    <Project Path="src/SCalenderPlus.Core/SCalenderPlus.Core.csproj" />
+    <Project Path="src/SCalenderPlus.Infrastructure/SCalenderPlus.Infrastructure.csproj" />
+    <Project Path="src/SCalenderPlus.Worker/SCalenderPlus.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SCalenderPlus.Application.Tests/SCalenderPlus.Application.Tests.csproj" />
+    <Project Path="tests/SCalenderPlus.Core.Tests/SCalenderPlus.Core.Tests.csproj" />
+    <Project Path="tests/SCalenderPlus.IntegrationTests/SCalenderPlus.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

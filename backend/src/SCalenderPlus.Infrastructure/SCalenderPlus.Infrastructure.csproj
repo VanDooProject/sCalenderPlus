@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Implements Application ports and shared hosting concerns for the Api and Worker composition roots. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SCalenderPlus.Application\SCalenderPlus.Application.csproj" />
+  </ItemGroup>
+
+</Project>

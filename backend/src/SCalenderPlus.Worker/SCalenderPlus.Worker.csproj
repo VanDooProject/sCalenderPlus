@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Composition root: background jobs. Uses Kestrel only for health endpoints. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\SCalenderPlus.Infrastructure\SCalenderPlus.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

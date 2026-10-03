@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Composition root: HTTP host. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\SCalenderPlus.Infrastructure\SCalenderPlus.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

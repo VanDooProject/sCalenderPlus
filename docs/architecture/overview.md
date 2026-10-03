@@ -40,8 +40,8 @@
 ```
 /
 ├── backend/
-│   ├── SCalenderPlus.sln
-│   ├── Directory.Build.props          # nullable, warnings-as-errors, analyzers, LangVersion
+│   ├── SCalenderPlus.slnx             # XML solution format (.NET 10 default)
+│   ├── Directory.Build.props          # nullable, warnings-as-errors, analyzers, LangVersion, lock files
 │   ├── Directory.Packages.props       # central package versions
 │   ├── src/
 │   │   ├── SCalenderPlus.Core/         # domain model + permission engine + recurrence + entitlement rules (no EF, no ASP.NET)
@@ -99,7 +99,7 @@
 | Resilience | `Microsoft.Extensions.Http.Resilience` (Polly v8) | Retries/timeouts for LLM, fetch, webhooks. |
 | Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting` | Per IP / per token / per feed token. |
 | Observability | `ILogger` JSON console + **OpenTelemetry** (traces, metrics, OTLP exporter optional) | Coolify collects stdout; OTLP if operator wants. |
-| Testing | **xUnit v3**, **Testcontainers** (Postgres), **Respawn**, **FsCheck** (property tests), **Verify** (snapshot/golden iCal files) | |
+| Testing | **xUnit v3** on Microsoft.Testing.Platform (`global.json` `test.runner`), **Testcontainers** (Postgres), **Respawn**, **FsCheck** (property tests), **Verify** (snapshot/golden iCal files) | |
 | Ids | UUIDv7 (`Guid.CreateVersion7()`) | Time-ordered → good B-tree locality; safe to expose. |
 
 ## 4. Frontend key libraries

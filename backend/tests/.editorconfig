@@ -1,0 +1,5 @@
+[*.cs]
+# Test names use underscores for readability.
+dotnet_diagnostic.CA1707.severity = none
+# xUnit runs tests without a SynchronizationContext; ConfigureAwait is noise in tests.
+dotnet_diagnostic.CA2007.severity = none

@@ -16,6 +16,17 @@ A shared calendar SaaS whose core idea is **different permissions for different 
 
 See [docs/architecture/overview.md §2](docs/architecture/overview.md#2-repository-layout-monorepo) for the full layout.
 
+## Getting started
+
+Prerequisites: .NET SDK 10.0.1xx (pinned in [`global.json`](global.json)).
+
+```sh
+dotnet build backend             # restore + build (warnings are errors)
+dotnet test --solution backend   # unit + integration tests (Microsoft.Testing.Platform)
+```
+
+More in [docs/development/workflow.md §7](docs/development/workflow.md#7-local-development).
+
 ## Documentation
 
 - [Documentation index](docs/README.md)
