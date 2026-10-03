@@ -284,6 +284,68 @@ public sealed partial class InviteTests(GroupHostFixture fixture) : IClassFixtur
         Assert.All(audit, e => Assert.DoesNotContain("token", e.After!, StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task Frozen_groups_take_no_new_members_through_existing_invites()
+    {
+        var token = await CreateLinkAsync();
+        var (email, _, userId) = await UnverifiedPersonAsync("fritz");
+        using (var invited = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { email, role = "member" }))
+        {
+            Assert.Equal(HttpStatusCode.Created, invited.StatusCode);
+        }
+
+        await _host.QueryAsync(async db =>
+        {
+            var group = await db.Groups.SingleAsync(g => g.Id == _groupId, Ct);
+            group.FrozenAt = SystemClock.Instance.GetCurrentInstant();
+            return await db.SaveChangesAsync(Ct);
+        });
+
+        var (_, client) = await PersonAsync("frank");
+        using var accept = await AcceptAsync(client, token);
+        await ProblemResponse.AssertProblemAsync(accept, HttpStatusCode.Conflict, ErrorCodes.GroupFrozen);
+
+        // Confirming the address still works; the email invite stays pending instead of joining.
+        await ConfirmAsync(email);
+        Assert.Null(await _host.RoleOfAsync(_groupId, userId));
+        Assert.Equal(2, (await PendingAsync()).Count);
+        Assert.Equal(1, (int)(await _owner.GetGroupAsync(_groupId)).Body["memberCount"]!);
+    }
+
+    [Fact]
+    public async Task Concurrent_joins_through_one_link_all_succeed_until_it_is_used_up()
+    {
+        var token = await CreateLinkAsync();
+        var people = new List<HttpClient>();
+        for (var i = 0; i < 5; i++)
+        {
+            people.Add((await PersonAsync("crowd" + i)).Client);
+        }
+
+        var joined = await Task.WhenAll(people.Select(c => AcceptAsync(c, token)));
+        Assert.All(joined, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
+        Assert.Equal(6, (int)(await _owner.GetGroupAsync(_groupId)).Body["memberCount"]!);
+
+        // The last use goes to exactly one of several concurrent callers.
+        using var single = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { role = "viewer", maxUses = 1 });
+        var url = (string)(await single.JsonAsync())["url"]!;
+        var lastUse = Uri.UnescapeDataString(url.Split("token=")[1]);
+        var racers = new List<HttpClient>();
+        for (var i = 0; i < 4; i++)
+        {
+            racers.Add((await PersonAsync("racer" + i)).Client);
+        }
+
+        var raced = await Task.WhenAll(racers.Select(c => AcceptAsync(c, lastUse)));
+        Assert.Single(raced, r => r.StatusCode == HttpStatusCode.OK);
+        Assert.All(raced.Where(r => r.StatusCode != HttpStatusCode.OK), r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
+        Assert.Equal(7, (int)(await _owner.GetGroupAsync(_groupId)).Body["memberCount"]!);
+        foreach (var response in joined.Concat(raced))
+        {
+            response.Dispose();
+        }
+    }
+
     /// <summary>Opens the confirmation link of the sign-up email.</summary>
     private async Task ConfirmAsync(string email)
     {

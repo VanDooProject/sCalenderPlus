@@ -27,10 +27,13 @@ internal static class GroupErrors
         MembershipVerdict.LastOwner => new(ErrorCodes.LastOwner, "The group needs at least one owner: make someone else owner first, or delete the group."),
         MembershipVerdict.BillingOwnerTransferRequired => new(ErrorCodes.BillingOwnerTransferRequired, "Transfer billing to another owner first."),
         MembershipVerdict.BillingOwnerMustBeOwner => new(ErrorCodes.BillingOwnerMustBeOwner, "Billing can only be transferred to a member with role owner."),
-        MembershipVerdict.GroupFrozen => new(ErrorCodes.GroupFrozen, "The group is over its plan limit: invites and role changes are paused."),
+        MembershipVerdict.GroupFrozen => Frozen(),
         MembershipVerdict.LinkRoleTooHigh => Validation.Failed("role", "Invite links can carry at most the role member; invite admins and owners by email."),
         _ => throw new ArgumentOutOfRangeException(nameof(decision), decision.Verdict, "Not a refusal."),
     };
+
+    public static AppException Frozen() =>
+        new(ErrorCodes.GroupFrozen, "The group is over its plan limit: new members, invites and role changes are paused.");
 
     public static AppException InviteNotFound() => new(ErrorCodes.NotFound, "Invite not found.");
 

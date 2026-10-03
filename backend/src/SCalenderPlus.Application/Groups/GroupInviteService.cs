@@ -35,6 +35,7 @@ public sealed class GroupInviteService(
     GroupEmails emails,
     IGroupEntitlements entitlements,
     IEnumerable<IGroupMembershipObserver> observers,
+    GroupService groups,
     IClock clock)
 {
     public async Task<CreatedInvite> CreateAsync(Guid actorId, Guid groupId, NewInvite request, CancellationToken cancellationToken = default)
@@ -187,7 +188,7 @@ public sealed class GroupInviteService(
                 return true;
             },
             cancellationToken).ConfigureAwait(false);
-        return await GetViewAsync(actorId, invite.GroupId, cancellationToken).ConfigureAwait(false);
+        return await groups.GetAsync(actorId, invite.GroupId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -215,10 +216,10 @@ public sealed class GroupInviteService(
                     joined.Add(invite.GroupId);
                 }
             }
-            catch (AppException e) when (e.Code is ErrorCodes.PlanLimitReached or ErrorCodes.TokenInvalid)
+            catch (AppException e) when (e.Code is ErrorCodes.PlanLimitReached or ErrorCodes.GroupFrozen or ErrorCodes.TokenInvalid)
             {
-                // Refused before anything was written (group full, invite used up meanwhile): confirming the
-                // address must still succeed; a full group's invite stays pending.
+                // Refused before anything was written (group full or frozen, invite used up meanwhile): confirming
+                // the address must still succeed; the invite of a full or frozen group stays pending.
             }
         }
 
@@ -228,7 +229,7 @@ public sealed class GroupInviteService(
     /// <returns>True when the user became a member (false: already one).</returns>
     private async Task<bool> JoinAsync(GroupInvite invite, Guid userId, bool auto, Instant now, CancellationToken cancellationToken)
     {
-        var group = await db.Groups.SingleAsync(g => g.Id == invite.GroupId, cancellationToken).ConfigureAwait(false);
+        var group = await db.Groups.AsNoTracking().SingleAsync(g => g.Id == invite.GroupId, cancellationToken).ConfigureAwait(false);
         var isMember = await db.GroupMembers.AnyAsync(m => m.GroupId == invite.GroupId && m.UserId == userId, cancellationToken).ConfigureAwait(false);
         if (isMember && invite.IsLink)
         {
@@ -237,6 +238,12 @@ public sealed class GroupInviteService(
 
         if (!isMember)
         {
+            // Frozen groups take no new members (MembershipPolicy), also through invites created before the freeze.
+            if (group.FrozenAt is not null)
+            {
+                throw GroupErrors.Frozen();
+            }
+
             await entitlements.EnsureCanAddMemberAsync(group.Id, group.OwnerUserId, cancellationToken).ConfigureAwait(false);
         }
 
@@ -254,8 +261,17 @@ public sealed class GroupInviteService(
             return false;
         }
 
+        // Touch the group row like every membership change, so a concurrent role change or removal that read the
+        // old state fails with 412. Unconditional (no xmin check): parallel joins don't invalidate each other, and
+        // the invite row lock above already serializes the joiners of one invite. Gone meanwhile → invalid invite.
+        var touched = await db.Groups.Where(g => g.Id == group.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(g => g.UpdatedAt, now), cancellationToken).ConfigureAwait(false);
+        if (touched == 0)
+        {
+            throw GroupErrors.InviteInvalid();
+        }
+
         db.GroupMembers.Add(new GroupMember { GroupId = group.Id, UserId = userId, Role = invite.Role, JoinedAt = now, UpdatedAt = now });
-        group.UpdatedAt = now;
         await users.BumpAclVersionAsync([userId], cancellationToken).ConfigureAwait(false);
         foreach (var observer in observers)
         {
@@ -269,27 +285,8 @@ public sealed class GroupInviteService(
             null,
             new { UserId = userId, Role = GroupRoles.Format(invite.Role), InviteId = invite.Id, Via = invite.IsLink ? "link" : "email", Automatic = auto },
             group.OwnerUserId);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw GroupErrors.Changed();
-        }
-
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
-    }
-
-    private async Task<GroupView> GetViewAsync(Guid actorId, Guid groupId, CancellationToken cancellationToken)
-    {
-        var view = await (
-            from m in db.GroupMembers.AsNoTracking()
-            where m.UserId == actorId && m.GroupId == groupId
-            join g in db.Groups.AsNoTracking() on m.GroupId equals g.Id
-            select new { Group = g, m.Role, Count = db.GroupMembers.Count(x => x.GroupId == g.Id) })
-            .SingleAsync(cancellationToken).ConfigureAwait(false);
-        return new GroupView(view.Group, view.Role, view.Count);
     }
 
     private async Task<(Group Group, GroupMember Actor)> LoadAsync(Guid actorId, Guid groupId, CancellationToken cancellationToken)
