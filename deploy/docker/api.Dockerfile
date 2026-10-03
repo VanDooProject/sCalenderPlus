@@ -8,19 +8,20 @@ WORKDIR /src
 ENV DOTNET_NOLOGO=true DOTNET_CLI_TELEMETRY_OPTOUT=true
 
 # Restore first (cached layer): only project files, lock files and MSBuild/SDK settings.
+# No `--mount=type=cache` for ~/.nuget/packages: the restored packages must live in this layer, because
+# CI's layer cache (cache-to: type=gha) restores the layer but not cache-mount contents, and the
+# `--no-restore` publish below would then find an empty package folder (NETSDK1064).
 COPY global.json .editorconfig ./
 COPY backend/Directory.Build.props backend/Directory.Packages.props backend/
 COPY backend/src/SCalenderPlus.Core/*.csproj backend/src/SCalenderPlus.Core/packages.lock.json backend/src/SCalenderPlus.Core/
 COPY backend/src/SCalenderPlus.Application/*.csproj backend/src/SCalenderPlus.Application/packages.lock.json backend/src/SCalenderPlus.Application/
 COPY backend/src/SCalenderPlus.Infrastructure/*.csproj backend/src/SCalenderPlus.Infrastructure/packages.lock.json backend/src/SCalenderPlus.Infrastructure/
 COPY backend/src/SCalenderPlus.Api/*.csproj backend/src/SCalenderPlus.Api/packages.lock.json backend/src/SCalenderPlus.Api/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --locked-mode
+RUN dotnet restore backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --locked-mode
 
 COPY backend/src/ backend/src/
 # OpenApiGenerateDocuments=false: the committed backend/openapi/v1.json is not part of the image.
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --no-restore --configuration Release --output /app \
+RUN dotnet publish backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --no-restore --configuration Release --output /app \
       -p:UseAppHost=false -p:OpenApiGenerateDocuments=false
 
 # Chiseled Ubuntu: no shell or package manager, runs as the non-root `app` user (UID 1654).
