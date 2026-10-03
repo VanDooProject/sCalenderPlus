@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SCalenderPlus.Application.Tests/SCalenderPlus.Application.Tests.csproj" />
+    <Project Path="tests/SCalenderPlus.ArchitectureTests/SCalenderPlus.ArchitectureTests.csproj" />
     <Project Path="tests/SCalenderPlus.Core.Tests/SCalenderPlus.Core.Tests.csproj" />
     <Project Path="tests/SCalenderPlus.IntegrationTests/SCalenderPlus.IntegrationTests.csproj" />
   </Folder>

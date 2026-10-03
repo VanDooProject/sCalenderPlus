@@ -52,7 +52,8 @@
 │   └── tests/
 │       ├── SCalenderPlus.Core.Tests/           # pure unit + property tests
 │       ├── SCalenderPlus.Application.Tests/    # use cases with fakes
-│       └── SCalenderPlus.IntegrationTests/     # API + Postgres (Testcontainers), iCal golden files
+│       ├── SCalenderPlus.IntegrationTests/     # API + Postgres (Testcontainers), iCal golden files
+│       └── SCalenderPlus.ArchitectureTests/    # NetArchTest layering rules (references every src project)
 ├── frontend/
 │   ├── package.json                   # pnpm workspace root
 │   ├── packages/
@@ -78,7 +79,7 @@
 - `Application` depends on `Core`. Use cases are plain classes (`CreateEventHandler`) invoked directly by endpoints — **no MediatR** (indirection without benefit; MediatR is also commercially licensed now). Application **may use `AppDbContext` directly** via an `IAppDbContext` interface — no generic repository layer over EF.
 - `Infrastructure` implements ports (`ILlmExtractor`, `IEmailSender`, `IBillingProvider`, `IWebFetcher`, `IClock`).
 - `Api` and `Worker` are composition roots only.
-- Architecture rules enforced by a NetArchTest-based test.
+- Architecture rules enforced by NetArchTest-based tests in `SCalenderPlus.ArchitectureTests` (a separate project because it must reference every layer, including the hosts). "Composition root only" means: nothing references Api/Worker, Api and Worker do not reference each other, and neither touches EF Core or Npgsql directly (data access goes through Application/Infrastructure).
 
 ## 3. Backend key libraries
 
