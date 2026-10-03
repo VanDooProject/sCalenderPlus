@@ -98,14 +98,26 @@ internal sealed partial class ApiTestHost : IAsyncDisposable
 
     public async Task<EmailMessage> SingleEmailToAsync(string to) => Assert.Single(await EmailsToAsync(to));
 
-    public async Task<IReadOnlyList<AuditEvent>> AuditEventsAsync(Guid userId)
+    public Task<IReadOnlyList<AuditEvent>> AuditEventsAsync(Guid userId) => AuditEventsAsync("user", userId);
+
+    public async Task<IReadOnlyList<AuditEvent>> AuditEventsAsync(string resourceType, Guid resourceId)
     {
         await using var scope = Api.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<AppDbContext>().Set<AuditEvent>().AsNoTracking()
-            .Where(e => e.ResourceType == "user" && e.ResourceId == userId.ToString())
+            .Where(e => e.ResourceType == resourceType && e.ResourceId == resourceId.ToString())
             .OrderBy(e => e.At).ThenBy(e => e.Id)
             .ToListAsync(TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Runs <paramref name="query"/> on a fresh database context (assertions on stored state).</summary>
+    public async Task<T> QueryAsync<T>(Func<AppDbContext, Task<T>> query)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        return await query(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    }
+
+    public Task<long> AclVersionAsync(Guid userId) =>
+        QueryAsync(db => db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.AclVersion).SingleAsync(TestContext.Current.CancellationToken));
 
     public async Task<AppUser> FindUserAsync(string email)
     {

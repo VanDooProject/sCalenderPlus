@@ -102,7 +102,58 @@ public static class AuthorizationMatrix
             .Expect(Actors.TwoFactorUser, HttpStatusCode.OK)
             .Expect(Actors.UnverifiedUser, HttpStatusCode.Conflict)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+
+        // Groups (#34): members see the group, admins change it, owners delete it; non-members get 404.
+        .. For("GET", "/api/v1/groups")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.OtherTenant, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/groups")
+            .WithBody(_ => JsonContent.Create(new { name = "New group" }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.Created)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Created),
+        .. For("GET", "/api/v1/groups/{id}")
+            .WithRoute(Lions)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.GroupMember, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("PATCH", "/api/v1/groups/{id}")
+            .WithRoute(Lions)
+            .WithBody(_ => JsonContent.Create(new { name = "lions" }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/groups/{id}")
+            .WithRoute(Lions)
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Forbidden)
+            .WithRoute(s => Route(s, "group:doomed"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
     ];
+
+    // A property, not a field: Cases is initialized first (static initializers run in declaration order).
+    private static IReadOnlyDictionary<string, string> IfMatchAny => new Dictionary<string, string>(StringComparer.Ordinal) { ["If-Match"] = "*" };
+
+    private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
+
+    private static Dictionary<string, string> Route(MatrixScenario s, string resource, string name = "id") =>
+        new(StringComparer.Ordinal) { [name] = s.Get(resource) };
 
     private static AnonymousOperation Anonymous(
         string method,

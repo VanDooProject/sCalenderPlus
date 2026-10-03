@@ -1,9 +1,8 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.Problems;
 using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Auditing;
@@ -73,7 +72,7 @@ internal static class MeEndpoints
             return ApiProblems.Create(ErrorCodes.PreconditionRequired, "Send If-Match with the ETag of GET /api/v1/me.");
         }
 
-        if (!Matches(ifMatch, ETagOf(before)))
+        if (!ETags.Matches(ifMatch, ETagOf(before)))
         {
             return ApiProblems.Create(ErrorCodes.PreconditionFailed, "The profile was changed meanwhile. Reload it and try again.");
         }
@@ -134,15 +133,7 @@ internal static class MeEndpoints
     }
 
     /// <summary>Strong ETag of the representation (hash of its JSON), so it only changes when the response does.</summary>
-    internal static string ETagOf(MeResponse me)
-    {
-        var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(me));
-        return "\"" + Convert.ToBase64String(hash, 0, 16).TrimEnd('=').Replace('+', '-').Replace('/', '_') + "\"";
-    }
-
-    private static bool Matches(string ifMatch, string etag) =>
-        ifMatch.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Any(candidate => candidate == "*" || string.Equals(candidate, etag, StringComparison.Ordinal));
+    internal static string ETagOf(MeResponse me) => ETags.Of(me);
 
     private static object Profile(MeResponse me) => new { me.DisplayName, me.Locale, me.TimeZone, me.WeekStart };
 }

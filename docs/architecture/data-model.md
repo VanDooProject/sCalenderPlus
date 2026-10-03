@@ -52,16 +52,19 @@ Identity tables `user_claims`, `user_logins`, `user_tokens` (TOTP authenticator 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| name, description | text | |
-| organization_id | uuid null FK | Team plan |
-| owner_user_id | uuid FK | **billing owner**: one of the role-owners; plan of this user governs when no org |
+| name, description | text | name ≤ 100, description ≤ 1000 (null = none) |
+| organization_id | uuid null | Team plan (FK added with `organizations`) |
+| owner_user_id | uuid FK → users (restrict) | **billing owner**: one of the role-owners; plan of this user governs when no org |
 | acl_version | bigint | bumped on grants/overrides naming the group |
 | frozen_at | timestamptz null | over plan limit: no invites/role changes |
-| member_list_visibility | smallint | members / admins only |
+| member_list_visibility | smallint | 0 all members (default), 1 members and above (hidden from viewers) |
+| created_at, updated_at, xmin | | `xmin` = concurrency token |
+
+Groups are **hard-deleted** (owners only): `group_members` and `group_invites` cascade. Group-owned calendars (M2) reference `owner_group_id` with `ON DELETE RESTRICT`, so a group that still owns calendars cannot be deleted until they are transferred or deleted (the api answers `409`).
 
 ### `group_members`
 
-`group_id, user_id, role smallint (0 viewer,1 member,2 admin,3 owner), joined_at` — PK `(group_id, user_id)`, index `(user_id)`.
+`group_id FK (cascade), user_id FK → users (cascade), role smallint (0 viewer,1 member,2 admin,3 owner), joined_at, updated_at, xmin` — PK `(group_id, user_id)`, index `(user_id)`. Every membership change bumps the member's `users.acl_version`.
 
 ### `group_invites`
 

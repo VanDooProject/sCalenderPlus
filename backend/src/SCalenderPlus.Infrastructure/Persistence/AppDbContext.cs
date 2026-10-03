@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
 
 namespace SCalenderPlus.Infrastructure.Persistence;
@@ -16,6 +17,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 {
     /// <summary>ASP.NET Core Data Protection key ring shared by every api and worker replica (<c>data_protection_keys</c>).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    public DbSet<Group> Groups => Set<Group>();
+
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
 
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {

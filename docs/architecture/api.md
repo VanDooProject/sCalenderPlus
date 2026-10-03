@@ -128,6 +128,18 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 
 `GET /api/v1/me` → `{ id, email, emailVerified, displayName, locale, timeZone, weekStart, twoFactorEnabled, createdAt }` with a strong `ETag` (hash of the representation). `PATCH /api/v1/me` takes a JSON Merge Patch (`application/merge-patch+json`; plain `application/json` is accepted too) of `displayName` (1–100 chars, trimmed), `locale` (`en`, `de`), `timeZone` (IANA id validated against the bundled tzdb with NodaTime; unknown → `422 time_zone_invalid` with `errors.timeZone`) and `weekStart` (`monday` … `sunday`); other invalid values are `400 validation_failed`. Absent **and `null`** members stay unchanged (all fields are required, so none can be removed). `If-Match` (the ETag, or `*`) is required: missing → `428`, stale → `412`. Changes are audited (`user.profile_updated` with before/after).
 
+### Groups (implemented, M1)
+
+Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Groups/GroupService` (permissions.md §6). Every group endpoint answers **404 `not_found`** to non-members (unknown and foreign groups are indistinguishable) and **403 `insufficient_permission`** (+ `required`, `actual` roles) to members whose role is too low.
+
+- `GET /groups?limit&cursor` → `{ items: [group], nextCursor }`: the caller's groups, ordered by creation (UUIDv7 id); `limit` 1–200 (default 50), invalid `limit`/`cursor` → `400 validation_failed`.
+- `POST /groups { name, description? }` → `201` + `Location` + `ETag`: the creator becomes `owner` and **billing owner**. Name 1–100 characters (trimmed), description ≤ 1000. Any signed-in user (verification is only needed to invite).
+- `GET /groups/{id}` → `{ id, name, description, myRole, billingOwnerId, memberCount, memberListVisibility, frozen, createdAt, updatedAt }` with a strong `ETag` (hash of the representation, like `/me`).
+- `PATCH /groups/{id}` (admins and owners): JSON Merge Patch of `name`, `description` (empty string removes it), `memberListVisibility` (`all_members` | `members_and_above`, the latter hides the member list from viewers). `If-Match` required (428/412).
+- `DELETE /groups/{id}` (owners only, `If-Match`) → `204`: hard delete; memberships and invites are deleted with the group (FK cascade), every former member's `acl_version` is bumped. From M2 on, group-owned calendars must be transferred or deleted first (`409`, the calendars FK is `RESTRICT`), and `group:` grants/overrides naming the group are deleted with it.
+- Audit (resource `group`, subject = billing owner): `group.created`, `group.updated`, `group.deleted` (before/after).
+- Extension points: `IGroupEntitlements` (plan limits for owned groups and members per group — unlimited until the M2 entitlement service replaces it) and `IGroupMembershipObserver` (called in the transaction of every membership change — joined, role changed, removed, left, group deleted — for M2's "membership removal revokes event shares").
+
 ### Event representation (excerpt)
 
 ```json

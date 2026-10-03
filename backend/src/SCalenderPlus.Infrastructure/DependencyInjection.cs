@@ -7,8 +7,10 @@ using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Jobs;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Application.Users;
 using SCalenderPlus.Infrastructure.Auditing;
 using SCalenderPlus.Infrastructure.Email;
+using SCalenderPlus.Infrastructure.Identity;
 using SCalenderPlus.Infrastructure.Jobs;
 using SCalenderPlus.Infrastructure.Persistence;
 using SCalenderPlus.Infrastructure.Security;
@@ -25,6 +27,7 @@ public static class DependencyInjection
         services.AddPersistentDataProtection();
         services.AddScoped<IJobScheduler, PostgresJobScheduler>();
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
         services.TryAddScoped<IActorContext, SystemActorContext>(); // the api registers the HTTP request's actor
 
         return services;

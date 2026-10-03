@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
+using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Jobs;
 
 namespace SCalenderPlus.Application;
@@ -25,6 +27,9 @@ public static class DependencyInjection
         services.AddSingleton<EmailDomainPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
         services.AddScoped<IJobHandler, SendEmailJobHandler>();
+
+        services.AddScoped<GroupService>();
+        services.TryAddScoped<IGroupEntitlements, UnlimitedGroupEntitlements>(); // M2: entitlement service
 
         return services;
     }

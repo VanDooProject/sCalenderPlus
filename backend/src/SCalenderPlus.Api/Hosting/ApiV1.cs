@@ -1,4 +1,5 @@
 using SCalenderPlus.Api.Auth;
+using SCalenderPlus.Api.Groups;
 
 namespace SCalenderPlus.Api.Hosting;
 
@@ -18,6 +19,7 @@ internal static class ApiV1
 
         group.MapAuthEndpoints();
         group.MapMeEndpoints();
+        group.MapGroupEndpoints();
 
         return group;
     }

@@ -33,8 +33,7 @@ public sealed class MatrixActor
 
 /// <summary>
 /// The actors known to the matrix. Each signed-in actor is a seeded user (email <c>{name}@matrix.example.test</c>) with its own session
-/// (<see cref="MatrixScenario"/>); add new ones here as features land (M1-C: group owner/admin/member/non-member;
-/// M2: calendar and event levels).
+/// (<see cref="MatrixScenario"/>); add new ones here as features land (M2: calendar and event levels).
 /// </summary>
 public static class Actors
 {
@@ -57,4 +56,22 @@ public static class Actors
 
     /// <summary>A 2FA user who passed the password step only: holds the pending-login cookie, not a session.</summary>
     public static readonly MatrixActor TwoFactorPending = new("two-factor-pending", scenario => scenario.PendingSecondFactorClientAsync("two-factor-pending"));
+
+    /// <summary>Owner (and billing owner) of the seeded group "lions" (and of "doomed", which a case deletes).</summary>
+    public static readonly MatrixActor GroupOwner = new("group-owner", scenario => Task.FromResult(scenario.SessionClient("group-owner")));
+
+    /// <summary>Admin of "lions".</summary>
+    public static readonly MatrixActor GroupAdmin = new("group-admin", scenario => Task.FromResult(scenario.SessionClient("group-admin")));
+
+    /// <summary>Member (role <c>member</c>) of "lions".</summary>
+    public static readonly MatrixActor GroupMember = new("group-member", scenario => Task.FromResult(scenario.SessionClient("group-member")));
+
+    /// <summary>Viewer of "lions".</summary>
+    public static readonly MatrixActor GroupViewer = new("group-viewer", scenario => Task.FromResult(scenario.SessionClient("group-viewer")));
+
+    /// <summary>A verified user in no group: group routes must answer 404 (not 403) — no existence leaks.</summary>
+    public static readonly MatrixActor NonMember = new("non-member", scenario => Task.FromResult(scenario.SessionClient("non-member")));
+
+    /// <summary>Owner of another tenant's group ("other"): owning a group elsewhere grants nothing on "lions" (404).</summary>
+    public static readonly MatrixActor OtherTenant = new("other-tenant", scenario => Task.FromResult(scenario.SessionClient("other-tenant")), isCrossTenant: true);
 }

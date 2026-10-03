@@ -295,6 +295,52 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/groups': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My groups with my role (cursor-paginated)
+     * @description Ordered by creation. limit: 1–200 (default 50); cursor: nextCursor of the previous page.
+     */
+    get: operations['ListGroups']
+    put?: never
+    /** Create a group (the caller becomes owner and billing owner) */
+    post: operations['CreateGroup']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/groups/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * A group I am a member of (with ETag)
+     * @description 404 for groups the caller is not a member of (no existence leaks).
+     */
+    get: operations['GetGroup']
+    put?: never
+    post?: never
+    /** Delete the group with its memberships and invites (owners only, requires If-Match) */
+    delete: operations['DeleteGroup']
+    options?: never
+    head?: never
+    /**
+     * Rename or change settings (admins and owners; JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged; an empty description removes it. Members and viewers: 403 insufficient_permission. If-Match: the ETag of GET /groups/{id} (or *).
+     */
+    patch: operations['UpdateGroup']
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -303,6 +349,10 @@ export interface components {
       /** Format: uuid */
       userId: string
       token: string
+    }
+    CreateGroupRequest: {
+      name: string
+      description?: null | string
     }
     EnableTwoFactorRequest: {
       code: string
@@ -345,6 +395,27 @@ export interface components {
       | 'validation_failed'
     ForgotPasswordRequest: {
       email: string
+    }
+    GroupListResponse: {
+      items: components['schemas']['GroupResponse'][]
+      nextCursor: null | string
+    }
+    GroupResponse: {
+      /** Format: uuid */
+      id: string
+      name: string
+      description: null | string
+      myRole: string
+      /** Format: uuid */
+      billingOwnerId: string
+      /** Format: int32 */
+      memberCount: number | string
+      memberListVisibility: string
+      frozen: boolean
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
     }
     HealthResponse: {
       status: string
@@ -434,6 +505,11 @@ export interface components {
       enabled: boolean
       /** Format: int32 */
       recoveryCodesLeft: number | string
+    }
+    UpdateGroupRequest: {
+      name?: null | string
+      description?: null | string
+      memberListVisibility?: null | string
     }
     UpdateProfileRequest: {
       displayName?: null | string
@@ -1004,6 +1080,171 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['RecoveryCodesResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListGroups: {
+    parameters: {
+      query?: {
+        limit?: number | string
+        cursor?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateGroup: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateGroupRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetGroup: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  DeleteGroup: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateGroup: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateGroupRequest']
+        'application/json': components['schemas']['UpdateGroupRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

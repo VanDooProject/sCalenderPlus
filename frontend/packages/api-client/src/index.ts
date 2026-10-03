@@ -16,6 +16,15 @@ export type MeResponse = components['schemas']['MeResponse']
 /** JSON Merge Patch body of `PATCH /api/v1/me` (requires `If-Match`). */
 export type UpdateProfileRequest = components['schemas']['UpdateProfileRequest']
 
+/** A group as the signed-in member sees it (`GET /api/v1/groups/{id}`, with `ETag`). */
+export type GroupResponse = components['schemas']['GroupResponse']
+
+/** A page of `GET /api/v1/groups` (`{ items, nextCursor }`). */
+export type GroupListResponse = components['schemas']['GroupListResponse']
+
+/** A group role, lowest to highest: `viewer`, `member`, `admin`, `owner`. */
+export type GroupRole = 'viewer' | 'member' | 'admin' | 'owner'
+
 /** Result of `POST /api/v1/auth/login`: a session, or the request for a second factor. */
 export type LoginResponse = components['schemas']['LoginResponse']
 

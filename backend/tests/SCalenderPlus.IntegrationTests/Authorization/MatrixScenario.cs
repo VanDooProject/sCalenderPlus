@@ -4,6 +4,9 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
+using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 using ApiProgram = SCalenderPlus.Api.Program;
@@ -13,7 +16,8 @@ namespace SCalenderPlus.IntegrationTests.Authorization;
 /// <summary>
 /// The seeded world the matrix runs in: one migrated database and api host per test class, plus named
 /// resources (ids) created by <see cref="SeedAsync"/> that cases use as route values, and one signed-in session
-/// (cookie jar) per actor. Seeding grows with the features (M1-C: groups "lions"/"other-tenant" with members per role).
+/// (cookie jar) per actor. Seeding grows with the features: groups "lions" (one member per role), "doomed" (deleted
+/// by a case) and "other" (another tenant's group).
 /// </summary>
 public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
 {
@@ -75,6 +79,40 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         await SeedUserAsync(Actors.FreshSession.Name, emailConfirmed: true, signIn: false);
         await SeedUserAsync(Actors.TwoFactorUser.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled);
         await SeedUserAsync(Actors.TwoFactorPending.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled, signIn: false);
+
+        // Groups (#34–#36).
+        foreach (var actor in new[] { Actors.GroupOwner, Actors.GroupAdmin, Actors.GroupMember, Actors.GroupViewer, Actors.NonMember, Actors.OtherTenant })
+        {
+            await SeedUserAsync(actor.Name, emailConfirmed: true);
+        }
+
+        await SeedGroupAsync("lions", (Actors.GroupOwner.Name, GroupRole.Owner), (Actors.GroupAdmin.Name, GroupRole.Admin), (Actors.GroupMember.Name, GroupRole.Member), (Actors.GroupViewer.Name, GroupRole.Viewer));
+        await SeedGroupAsync("doomed", (Actors.GroupOwner.Name, GroupRole.Owner));
+        await SeedGroupAsync("other", (Actors.OtherTenant.Name, GroupRole.Owner));
+    }
+
+    /// <summary>A group whose first member is its billing owner; resource <c>group:{name}</c>.</summary>
+    private async Task SeedGroupAsync(string name, params (string Actor, GroupRole Role)[] members)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var group = new Group
+        {
+            Id = Guid.CreateVersion7(),
+            Name = name,
+            OwnerUserId = Guid.Parse(Get("user:" + members[0].Actor)),
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Groups.Add(group);
+        foreach (var (actor, role) in members)
+        {
+            db.GroupMembers.Add(new GroupMember { GroupId = group.Id, UserId = Guid.Parse(Get("user:" + actor)), Role = role, JoinedAt = now, UpdatedAt = now });
+        }
+
+        await db.SaveChangesAsync();
+        Set("group:" + name, group.Id.ToString());
     }
 
     private enum TwoFactorSeed

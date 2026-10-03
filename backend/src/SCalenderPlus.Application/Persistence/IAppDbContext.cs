@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using SCalenderPlus.Core.Groups;
+
 namespace SCalenderPlus.Application.Persistence;
 
 /// <summary>
@@ -7,6 +10,10 @@ namespace SCalenderPlus.Application.Persistence;
 /// </summary>
 public interface IAppDbContext
 {
+    DbSet<Group> Groups { get; }
+
+    DbSet<GroupMember> GroupMembers { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
