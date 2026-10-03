@@ -272,6 +272,14 @@ public sealed class UpdateEventRequest : EventDetailsRequest
     public EventTimeRequest? End { get; init; }
 }
 
+/// <summary>Moves an event to another calendar (permissions.md §4.6).</summary>
+public sealed class MoveEventRequest
+{
+    /// <summary>A calendar you have at least contribute on.</summary>
+    [Required]
+    public Guid? TargetCalendarId { get; init; }
+}
+
 /// <summary>Validation of the window query parameters (api.md §4).</summary>
 internal static class EventWindows
 {

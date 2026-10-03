@@ -443,6 +443,14 @@ export const handlers = [
     })
   }),
   http.delete('/api/v1/events/{id}', ({ response }) => response(204).empty()),
+  http.post('/api/v1/events/{id}/move', async ({ params, request, response }) => {
+    const event = mockEvents.find((e) => e.id === params.id)
+    if (!event) {
+      return response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
+    }
+    const { targetCalendarId } = await request.json()
+    return response(200).json({ ...event, calendarId: targetCalendarId ?? event.calendarId })
+  }),
   http.get('/api/v1/events/{id}/overrides', ({ params, response }) =>
     params.id === mockEvent.id
       ? response(200).json({

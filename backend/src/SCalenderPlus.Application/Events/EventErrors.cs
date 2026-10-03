@@ -162,6 +162,9 @@ public static class EventAuditActions
     public const string Updated = "event.updated";
     public const string Deleted = "event.deleted";
 
+    /// <summary>The event moved to another calendar (before/after <c>{ calendarId }</c>; recorded for both plan subjects when they differ).</summary>
+    public const string Moved = "event.moved";
+
     /// <summary>The event's overrides were replaced (before/after: <c>["principal → level", …]</c>).</summary>
     public const string OverridesChanged = "event.overrides.changed";
 }

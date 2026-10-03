@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<EventService>();
         services.AddScoped<EventOverrideService>();
         services.AddScoped<EventAccessExplainer>();
+        services.AddScoped<EventMoveService>();
 
         return services;
     }

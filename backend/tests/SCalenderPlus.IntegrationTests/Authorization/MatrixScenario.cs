@@ -121,6 +121,7 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
             ("grant-removed-by-admin", CalendarLevel.FreeBusy),
             ("grant-removed-by-owner", CalendarLevel.FreeBusy));
         await SeedCalendarAsync("lions-doomed", "lions");
+        await SeedCalendarAsync("lions-target", "lions"); // target of moves (#48): the member contributes there
         await SeedCalendarAsync("other", "other");
 
         // Events (#44): in "lions", created by the admin (the member reads it, the editor edits it); one per
@@ -132,6 +133,10 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
 
         // Overrides (#46): an event of the member (creator floor: manage on it).
         await SeedEventAsync("lions-by-member", "lions", Actors.GroupMember.Name);
+
+        // Moves (#48): one event per successful move.
+        await SeedEventAsync("lions-moved-by-admin", "lions", Actors.GroupAdmin.Name);
+        await SeedEventAsync("lions-moved-by-owner", "lions", Actors.GroupAdmin.Name);
     }
 
     /// <summary>A timed event created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>

@@ -448,6 +448,23 @@ public static class AuthorizationMatrix
             .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
             .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
             .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
+        // Move (#48): manage on the event and contribute on the target.
+        .. For("POST", "/api/v1/events/{id}/move")
+            .WithRoute(LionsEvent)
+            .WithBody(s => JsonContent.Create(new { targetCalendarId = s.Get("calendar:lions-target") }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden) // edit, no floor
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden) // not the creator
+            .WithRoute(s => Route(s, "event:lions-moved-by-admin"))
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .WithRoute(s => Route(s, "event:lions-moved-by-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).

@@ -39,6 +39,9 @@ internal static class EventEndpoints
         events.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteEvent")
             .WithSummary("Delete an event (edit; soft delete, requires If-Match)");
 
+        events.MapPost("/{id:guid}/move", MoveAsync).WithName("MoveEvent")
+            .WithSummary("Move an event to another calendar (event manage, target contribute; requires If-Match)")
+            .WithDescription("Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen source or target: 409 calendar_frozen. Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.");
         events.MapOverrideEndpoints();
         return events;
     }
@@ -111,6 +114,26 @@ internal static class EventEndpoints
             current => ETags.Require(ifMatch, EventResponse.From(current).HeaderETag(), ETagSource),
             cancellationToken).ConfigureAwait(false);
         return TypedResults.NoContent();
+    }
+
+    private static async Task<Ok<EventResponse>> MoveAsync(
+        Guid id,
+        MoveEventRequest request,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        ClaimsPrincipal principal,
+        EventMoveService moves,
+        HttpResponse response,
+        CancellationToken cancellationToken)
+    {
+        var view = await moves.MoveAsync(
+            principal.UserId(),
+            id,
+            request.TargetCalendarId!.Value,
+            current => ETags.Require(ifMatch, EventResponse.From(current).HeaderETag(), ETagSource),
+            cancellationToken).ConfigureAwait(false);
+        var body = EventResponse.From(view);
+        response.Headers.ETag = body.HeaderETag();
+        return TypedResults.Ok(body);
     }
 
     /// <summary>A window item: with its <c>etag</c> unless it is the busy projection (nothing to change there).</summary>

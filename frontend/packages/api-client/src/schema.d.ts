@@ -612,6 +612,26 @@ export interface paths {
     patch: operations['UpdateEvent']
     trace?: never
   }
+  '/api/v1/events/{id}/move': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Move an event to another calendar (event manage, target contribute; requires If-Match)
+     * @description Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen source or target: 409 calendar_frozen. Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.
+     */
+    post: operations['MoveEvent']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/events/{id}/overrides': {
     parameters: {
       query?: never
@@ -1031,6 +1051,10 @@ export interface components {
       twoFactorEnabled: boolean
       /** Format: date-time */
       createdAt: string
+    }
+    MoveEventRequest: {
+      /** Format: uuid */
+      targetCalendarId: null | string
     }
     OverrideRequest: {
       principal: components['schemas']['PrincipalRequest']
@@ -2619,6 +2643,43 @@ export interface operations {
       content: {
         'application/merge-patch+json': components['schemas']['UpdateEventRequest']
         'application/json': components['schemas']['UpdateEventRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  MoveEvent: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MoveEventRequest']
       }
     }
     responses: {

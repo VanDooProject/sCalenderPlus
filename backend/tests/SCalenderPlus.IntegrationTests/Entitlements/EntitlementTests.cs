@@ -162,6 +162,26 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
     }
 
     [Fact]
+    public async Task Moved_overrides_count_against_the_target_owners_plan()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:EventsWithOverrides"] = "1" });
+        var (_, olga) = await PersonAsync("olga");
+        var (miaEmail, mia) = await PersonAsync("mia");
+        var lions = await olga.CreateGroupAsync("Lions");
+        await Host.AddMemberAsync(lions, (await Host.FindUserAsync(miaEmail)).Id, GroupRole.Member);
+        var club = await olga.CreateCalendarAsync("Club", lions);
+        var personal = await mia.CreateCalendarAsync("Mia");
+        var own = await mia.CreateEventIdAsync(EventApi.Timed(personal, start: "2099-01-01T10:00:00", end: "2099-01-01T11:00:00"));
+        await mia.SetOverridesAsync(own, EventApi.Everyone("none"));
+        var training = await mia.CreateEventIdAsync(EventApi.Timed(club, start: "2099-01-02T10:00:00", end: "2099-01-02T11:00:00"));
+        await mia.SetOverridesAsync(training, EventApi.Everyone("none"));
+
+        using var move = await mia.SendJsonAsync(HttpMethod.Post, $"/api/v1/events/{training}/move", new { targetCalendarId = personal }, ifMatch: "*");
+
+        AssertLimit(await ProblemResponse.AssertProblemAsync(move, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "events_with_overrides", max: 1, used: 1);
+    }
+
+    [Fact]
     public async Task Self_hosting_is_unlimited_unless_the_operator_sets_limits()
     {
         await StartAsync([]);
