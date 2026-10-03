@@ -61,7 +61,7 @@ Anonymous principals (share-link holders; "public" always means a share link, th
 
 `everyone` and `anonymous` are **scoped to the calendar's existing audience**. They never pull in strangers; elevating someone without calendar access requires an explicit `user` or `group` override (rule 7):
 
-```
+```text
 matches(everyone, U)  := Lc(U, C) >= free_busy  or  U holds a share link / public access to C
 matches(anonymous, U) := U is anonymous and holds a share link / public access to C
 matches(group:G[r], U):= U is member of G with role >= r
@@ -72,7 +72,7 @@ matches(user:X, U)    := U == X
 
 ### 4.1 Calendar effective level `Lc(U, C)`
 
-```
+```text
 Lc(U, C):
   if C.owner == U or (C.owner is group G and U.role(G) == owner): return owner
   levels = [g.level for g in C.grants if matches(g.principal, U)]
@@ -84,7 +84,7 @@ Calendar grants are **purely additive (max)**. There is no deny at calendar leve
 
 ### 4.2 Event effective level `Le(U, E)` — "most specific override wins, then floors"
 
-```
+```text
 Le(U, E):                                   # E belongs to calendar C
   if E is a recurrence exception: return Le(U, E.series)   # exceptions inherit the series ACL (MVP)
   lc = Lc(U, C)
@@ -253,7 +253,7 @@ Feeds are always personalised (token belongs to a user, or to an anonymous share
 |---|---|
 | `none` | VEVENT omitted. |
 | `free_busy` | `SUMMARY:Busy` (localized), no DESCRIPTION/LOCATION/ATTENDEE/URL/CATEGORIES/X-SCALENDERPLUS-*, `CLASS:CONFIDENTIAL`, times + `TRANSP` kept; `UID` replaced by the opaque `{eventId}@scalenderplus` (imported UIDs can contain text). Exception VEVENTs are stripped the same way. Transparent events omitted. |
-| `read` | Full event; label "read-only" per feed label settings (default: title prefix `🔒 `). |
+| `read` | Full event; label "read-only" per feed label settings (default: title prefix `🔒` followed by a space). |
 | `edit` / `manage` | Full event; label "editable" (default: no title marker, description footer only). |
 
 Every non-busy VEVENT gets a description footer line, e.g.

@@ -13,7 +13,7 @@ The web app, future native apps and third-party integrators use **the same publi
 | Concurrency | Every mutable resource returns `ETag`; `PATCH`/`PUT`/`DELETE` require `If-Match` (missing → `428`, stale → `412`). |
 | Partial update | `PATCH` with JSON Merge Patch (`application/merge-patch+json`). |
 | Idempotency (v1) | `POST` accepts optional `Idempotency-Key` header (stored 24 h per principal) — needed once native/mobile clients exist; not in MVP. |
-| Pagination | Cursor-based: `?limit=50&cursor=…` → response `{ "items": [...], "nextCursor": "…" | null }`. Max limit 200. Opaque cursor = base64url of (sort key, id). Exception: event window queries return the whole window (bounded by window size limits). |
+| Pagination | Cursor-based: `?limit=50&cursor=…` → response `{ "items": [...], "nextCursor": "…" \| null }`. Max limit 200. Opaque cursor = base64url of (sort key, id). Exception: event window queries return the whole window (bounded by window size limits). |
 | Filtering/sorting | Explicit query params per endpoint (`?calendarIds=…&q=…`); no generic query language. |
 | Rate limits | Plan limits (plans.md) apply to **bearer tokens** only; cookie sessions (the web app) get a generous per-user abuse limit (e.g. 600/min) so normal UI use never hits Free's 60/min; auth endpoints per IP. Headers `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`; `429` + `Retry-After`. |
 | Deprecation | `Deprecation` and `Sunset` headers; listed in changelog. |
@@ -84,7 +84,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | **Revisions** (v1) | `GET /events/{id}/revisions`, `POST /events/{id}/revisions/{rev}/restore` |
 | **Availability** (v1) | `POST /availability` (principals + window → busy blocks, respecting permissions) |
 | **Feeds** | `GET/POST /feed-tokens`, `PATCH/DELETE /feed-tokens/{id}`, `POST /feed-tokens/{id}/rotate` |
-| **ICS upload** (MVP) | `POST /calendars/{id}/ics-upload?dryRun=true|false` |
+| **ICS upload** (MVP) | `POST /calendars/{id}/ics-upload?dryRun=true\|false` |
 | **Imports** (v1) | `GET/POST /calendars/{id}/import-sources`, `GET/PATCH/DELETE /import-sources/{id}`, `POST /import-sources/{id}/dry-run`, `POST /import-sources/{id}/run`, `GET /import-sources/{id}/runs`, `GET /import-candidates?state=pending`, `POST /import-candidates/decide` (bulk) |
 | **Changes** (later, with CalDAV/native apps) | `GET /changes?since={seq}&calendarIds=` (incremental sync; must also emit deletes when an event becomes `none` for the caller) |
 | **Notifications** (v1) | `GET /notifications`, `POST /notifications/read`, `PUT /me/push-subscriptions` |
@@ -129,7 +129,7 @@ Window query `GET /events?from=…&to=…&expand=occurrences` returns expanded o
 
 ## 6. Typed frontend client
 
-```
+```text
 backend/openapi/v1.json
    └─ pnpm -C frontend --filter @scalenderplus/api-client generate
         ├─ openapi-typescript → src/schema.d.ts (types only, then prettier)

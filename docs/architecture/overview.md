@@ -2,7 +2,7 @@
 
 ## 1. System context
 
-```
+```text
           Browsers (PWA)                Native calendar apps            Integrators / future native apps
                │                       (Apple, Google, Outlook)                     │
                │ HTTPS (cookie)          │ HTTPS (iCal token / CalDAV)              │ HTTPS (Bearer token)
@@ -37,7 +37,7 @@
 
 ## 2. Repository layout (monorepo)
 
-```
+```text
 /
 ├── backend/
 │   ├── SCalenderPlus.slnx             # XML solution format (.NET 10 default)

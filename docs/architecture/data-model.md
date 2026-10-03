@@ -4,7 +4,7 @@ PostgreSQL 17, EF Core migrations, `snake_case` naming. All primary keys are UUI
 
 ## 1. Entity overview
 
-```
+```text
 users ─┬─< group_members >─ groups ─?─ organizations
        │                       │
        │         owner (user|group)
@@ -25,6 +25,7 @@ subscriptions, plan_limits, audit_events, calendar_changes, jobs, webhooks, webh
 ## 2. Identity and groups
 
 ### `users` (extends ASP.NET Identity `IdentityUser<Guid>`)
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -39,10 +40,12 @@ subscriptions, plan_limits, audit_events, calendar_changes, jobs, webhooks, webh
 Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default schema mapped to snake_case.
 
 ### `organizations` (v1, Team plan)
+
 `id, name, slug unique, billing_subject_id, created_by`.
 `organization_members(org_id, user_id, role [owner|admin|member], PK(org_id,user_id))`.
 
 ### `groups`
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -54,14 +57,17 @@ Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default
 | member_list_visibility | smallint | members / admins only |
 
 ### `group_members`
+
 `group_id, user_id, role smallint (0 viewer,1 member,2 admin,3 owner), joined_at` — PK `(group_id, user_id)`, index `(user_id)`.
 
 ### `group_invites`
+
 `id, group_id, email null, token_hash bytea unique, role, max_uses, uses, expires_at, created_by`. Email null = invite link (role ≤ member). Email invites (and pending event shares) bind only to an account whose **verified** email matches.
 
 ## 3. Calendars and grants
 
 ### `calendars`
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -79,6 +85,7 @@ Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default
 Index: `(owner_user_id)`, `(owner_group_id)`.
 
 ### `calendar_grants`
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -91,14 +98,17 @@ Index: `(owner_user_id)`, `(owner_group_id)`.
 Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id)` to find "calendars shared with me / my groups".
 
 ### `share_links`
+
 `id, calendar_id, token_hash bytea unique, level (free_busy|read), label, expires_at null, revoked_at null, created_by`. The level is a ceiling for link holders (permissions §3). No passwords: iCal clients cannot send them.
 
 ### `user_calendar_prefs`
+
 `user_id, calendar_id, hidden bool, color_override, default_reminders jsonb, sort_order` — PK `(user_id, calendar_id)`. Personal overlay; never affects others.
 
 ## 4. Events
 
 ### `events`
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -130,11 +140,13 @@ Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principa
 | deleted_at | timestamptz null | soft delete (needed for sync & restore); purged after 90 days |
 
 Indexes:
+
 - GiST `(calendar_id, occurs_range)` (btree_gist) → window queries per calendar.
 - Unique `(calendar_id, uid)`; unique partial `(import_source_id, import_key) WHERE import_key IS NOT NULL`.
 - GIN `(search)`.
 
 ### `event_exceptions` (modified/cancelled occurrences of a recurring event)
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -148,6 +160,7 @@ Indexes:
 Unique `(event_id, recurrence_id_utc)`. Exceptions inherit the series ACL (MVP).
 
 ### `event_overrides`
+
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -161,15 +174,19 @@ Unique `(event_id, recurrence_id_utc)`. Exceptions inherit the series ACL (MVP).
 Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id) WHERE principal_type IN (0,1)` to find "events shared with me".
 
 ### `event_attendees` (v1)
+
 `id, event_id, user_id null, email, display_name, role (req/opt), partstat (needs-action/accepted/declined/tentative), rsvp_token_hash` — inviting an internal user also inserts a `user → read` override (permissions rule 7).
 
 ### `event_revisions` (v1)
+
 `id, event_id, revision int, snapshot jsonb, actor_user_id, actor_kind (user|import|api|caldav), created_at` — unique `(event_id, revision)`. Trimmed per plan retention.
 
 ### `reminders`
+
 `id, event_id, user_id, offset_minutes, channel (email|push), next_fire_utc` — index `(next_fire_utc)`. Recomputed when the event changes; recurring events store only the next fire time.
 
 ### `calendar_changes` (sync log)
+
 `seq bigserial PK, calendar_id, event_id, change (upsert|delete|acl), at` — index `(calendar_id, seq)`. Powers CalDAV `sync-collection`, webhooks and incremental client sync (`/changes?since=`). Trimmed after 90 days (clients older than that do full resync).
 
 ## 5. Feeds, tokens, integrations
@@ -221,6 +238,7 @@ Tokens are 32 random bytes (base64url) and stored only as SHA-256 hashes; lookup
 | Ambiguous local time (DST overlap) | Earlier offset. | |
 
 Rules:
+
 - The UTC instant is **derived**, the wall clock + zone is **authoritative** (zone rules change; intent does not).
 - The API accepts and returns `{"dateTime":"2026-11-02T18:00:00","timeZone":"Europe/Berlin"}` for timed and `{"date":"2026-11-02"}` for all-day values, plus read-only `utc` for convenience.
 - iCal output uses `TZID` with generated `VTIMEZONE` components (Ical.Net) for every zone used in the feed.

@@ -71,6 +71,29 @@ jobs:
               - '.editorconfig'
               - '.github/workflows/ci.yml'
 
+  markdownlint:
+    name: markdownlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # Config and globs: .markdownlint-cli2.jsonc
+      - uses: DavidAnson/markdownlint-cli2-action@v24
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+    steps:
+      - uses: actions/checkout@v7
+      # Official download script, pinned version; shellcheck is preinstalled on ubuntu runners.
+      - name: Install actionlint
+        run: bash <(curl -sSfL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION" "$RUNNER_TEMP"
+      - name: Lint workflows
+        run: '"$RUNNER_TEMP/actionlint" -color'
+
   backend:
     name: backend
     needs: changes
@@ -326,7 +349,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, backend, frontend, openapi-breaking, docker, e2e-mocked, e2e-fullstack]
+    needs: [changes, markdownlint, actionlint, backend, frontend, openapi-breaking, docker, e2e-mocked, e2e-fullstack]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

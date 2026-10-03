@@ -51,12 +51,14 @@ Defaults rationale: in most shared calendars the majority of events a member see
 
 **Description footer** (all modes except `none`), appended after a separator, localized to the token owner's locale:
 
-```
+```text
 —
 🔒 Read-only for you · View in sCalenderPlus: https://app.example.com/e/0192f…
 ```
+
 or
-```
+
+```text
 —
 ✏️ You can edit this event: https://app.example.com/e/0192f…/edit
 ```

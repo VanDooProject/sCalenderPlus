@@ -4,7 +4,7 @@
 
 All commits on `main` follow [Conventional Commits 1.0](https://www.conventionalcommits.org/). Because we **squash-merge**, the **PR title** becomes the commit message and is what's validated.
 
-```
+```text
 <type>(<optional scope>)<!>: <description in imperative, lower case>
 
 [body]
@@ -19,6 +19,7 @@ All commits on `main` follow [Conventional Commits 1.0](https://www.conventional
 | `perf` | Performance improvement | patch |
 | `refactor` | No behaviour change | none |
 | `docs` | Documentation only | none |
+| `style` | Formatting only, no code change | none |
 | `test` | Tests only | none |
 | `build` | Build system, dependencies | none |
 | `ci` | CI configuration | none |
@@ -30,13 +31,13 @@ Scopes (optional, enforced list): `api`, `core`, `worker`, `db`, `auth`, `perm`,
 
 Examples: `feat(perm): add event-level permission overrides`, `fix(ical): emit VTIMEZONE for every used TZID`, `docs: add product and architecture specification`.
 
-Tooling: `commitlint` (`@commitlint/config-conventional` + scope enum) runs in CI on the PR title (`amannn/action-semantic-pull-request`) and locally via an optional `lefthook` commit-msg hook.
+Tooling: [`commitlint.config.mjs`](../../commitlint.config.mjs) (`@commitlint/config-conventional` + `types`/`scopes` enums) is the single source of the lists: the `pr-title` job in `.github/workflows/pr-checks.yml` reads them from it and validates the PR title with `amannn/action-semantic-pull-request` (scope optional but from the list, description starting lower case); locally usable via an optional `lefthook` commit-msg hook (not set up yet).
 
 ## 2. Branch naming
 
 Human branches: `type/short-description` in kebab-case, type from the list above.
 
-```
+```text
 feat/event-permission-overrides
 fix/ical-dst-shift
 docs/permission-examples
@@ -45,10 +46,10 @@ chore/bump-dotnet-sdk
 
 Optional issue number: `feat/123-event-overrides`.
 
-**Exempt** (created by automation): `claude/*`, `release-please--*`, `dependabot/*`, `renovate/*`, `gh-readonly-queue/*`. A CI job `branch-name` checks the regex
+**Exempt** (created by automation): `claude/*`, `release-please--*`, `dependabot/*`, `renovate/*`, `gh-readonly-queue/*`. The `branch-name` job in `.github/workflows/pr-checks.yml` (pull requests only) checks the head branch against the regex
 
-```
-^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert)/[a-z0-9][a-z0-9._-]*$
+```text
+^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)/[a-z0-9._-]+$
 ```
 
 and skips exempt prefixes.
@@ -74,10 +75,10 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 
 ## 5. CI pipeline (GitHub Actions)
 
-`ci.yml` on `pull_request` and `push` to any branch (until `main` exists the default branch is an automation branch, and pushes to feature branches get feedback before a PR is opened); a newer run for the same PR/ref cancels the older one. Jobs are path-filtered (`dorny/paths-filter`; changing `ci.yml` itself runs everything) but the required-check aggregator job (`ci-ok`) always runs: it fails if any job it needs failed or was cancelled, and treats skipped jobs as success. Make **only `ci-ok`** a required status check.
+`ci.yml` on `pull_request` and `push` to any branch (until `main` exists the default branch is an automation branch, and pushes to feature branches get feedback before a PR is opened); a newer run for the same PR/ref cancels the older one. Jobs are path-filtered (`dorny/paths-filter`; changing `ci.yml` itself runs everything) but the required-check aggregator job (`ci-ok`) always runs: it fails if any job it needs failed or was cancelled, and treats skipped jobs as success. Required status checks: `ci-ok`, plus `pr-title` and `branch-name` from `pr-checks.yml` (pull-request-only workflow, re-runs when the title is edited).
 
-```
-            ┌──────────── lint-meta (pr title, branch name, markdown lint, actionlint)
+```text
+            ┌──────────── lint: markdownlint (.markdownlint-cli2.jsonc), actionlint   [pr-checks.yml: pr-title, branch-name]
             │
  trigger ───┼── backend ── build + format check + analyzers ─┬─ unit tests (Core, Application)
             │                                               ├─ integration tests (Postgres service / Testcontainers)
@@ -121,6 +122,7 @@ Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm s
 | **Load** (later) | k6 | feed polling and event window queries | pre-release |
 
 Rules:
+
 - Every bug fix includes a regression test at the lowest possible layer.
 - **Tenant isolation**: the authz matrix includes a cross-tenant case per endpoint (valid id from another user's calendar → 404), and an architecture test forbids reading events/calendars outside the permission-aware query service.
 - **Authorization matrix test is mandatory** for every new endpoint (a generated test enumerates endpoints from the OpenAPI document and fails if an endpoint has no authz test case).
@@ -130,7 +132,7 @@ Rules:
 
 ## 7. Local development
 
-```
+```sh
 docker compose -f deploy/docker-compose.dev.yml up -d   # postgres + mailpit
 dotnet run --project backend/src/SCalenderPlus.Api       # applies migrations in Development
 dotnet run --project backend/src/SCalenderPlus.Worker
@@ -140,7 +142,7 @@ pnpm -C frontend --filter app dev:mock                   # UI only, MSW mocks, n
 
 End-to-end tests live in `e2e/`, a standalone pnpm package with its own lockfile (Playwright is not a dependency of the frontend workspace, and the fullstack CI job needs no frontend install):
 
-```
+```sh
 pnpm -C e2e install
 pnpm -C e2e exec playwright install chromium             # once per Playwright version
 pnpm -C e2e test:mocked                                  # starts `dev:mock` itself (port 5173, or E2E_MOCKED_PORT)
@@ -155,7 +157,7 @@ Unit tests reuse the same mock handlers: `useMockApi()` in `frontend/app/src/__t
 
 Database migrations (EF Core, in `SCalenderPlus.Infrastructure/Persistence/Migrations`):
 
-```
+```sh
 dotnet tool restore                                       # dotnet-ef from dotnet-tools.json
 dotnet ef migrations add <Name> --project backend/src/SCalenderPlus.Infrastructure \
   --startup-project backend/src/SCalenderPlus.Infrastructure --output-dir Persistence/Migrations

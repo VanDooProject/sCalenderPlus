@@ -1,0 +1,22 @@
+// markdownlint-cli2 configuration (CI job `markdownlint` in ci.yml).
+// Local: npx markdownlint-cli2   (add --fix to apply automatic fixes)
+{
+  "config": {
+    "default": true,
+    // Prose is written one paragraph per line and tables are wide: no line length limit.
+    "MD013": false,
+    // Compact tables (`| a | b |`) without column alignment are fine.
+    "MD060": false,
+    // Allow inline HTML used for layout (e.g. <details>, <br>) in docs.
+    "MD033": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "**/node_modules/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/dist/**",
+    "**/playwright-report/**",
+    "**/test-results/**"
+  ]
+}

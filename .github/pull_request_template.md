@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 ## Summary
 
 <!-- What does this PR change and why? PR title must be a Conventional Commit (it becomes the squash commit). -->
