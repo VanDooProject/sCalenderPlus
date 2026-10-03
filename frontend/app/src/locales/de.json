@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "sCalenderPlus",
+    "tagline": "Geteilte Kalender mit Berechtigungen pro Termin."
+  },
+  "nav": {
+    "home": "Start",
+    "language": "Sprache"
+  },
+  "home": {
+    "title": "Willkommen",
+    "intro": "Unterschiedliche Berechtigungen für unterschiedliche Termine im selben Kalender — in jeder Kalender-App.",
+    "apiStatus": "API-Status",
+    "apiStatusOk": "erreichbar",
+    "apiStatusDown": "nicht erreichbar",
+    "apiStatusLoading": "wird geprüft…",
+    "retry": "Erneut prüfen"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "back": "Zurück zur Startseite"
+  },
+  "environment": "Umgebung: {name}"
+}

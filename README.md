@@ -18,11 +18,20 @@ See [docs/architecture/overview.md §2](docs/architecture/overview.md#2-reposito
 
 ## Getting started
 
-Prerequisites: .NET SDK 10.0.1xx (pinned in [`global.json`](global.json)).
+Prerequisites: .NET SDK 10.0.1xx (pinned in [`global.json`](global.json)), Node.js ≥ 22.12, pnpm 10 (`corepack enable`).
 
 ```sh
+# Backend
 dotnet build backend             # restore + build (warnings are errors)
 dotnet test --solution backend   # unit + integration tests (Microsoft.Testing.Platform)
+
+# Frontend (pnpm workspace in frontend/)
+pnpm -C frontend install
+pnpm -C frontend lint            # ESLint + Prettier check
+pnpm -C frontend typecheck       # vue-tsc / tsc
+pnpm -C frontend test            # Vitest
+pnpm -C frontend build           # production build of the app
+pnpm -C frontend --filter app dev   # Vite dev server on :5173, proxies /api and /health to :5080
 ```
 
 More in [docs/development/workflow.md §7](docs/development/workflow.md#7-local-development).

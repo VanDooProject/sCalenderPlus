@@ -1,0 +1,7 @@
+packages:
+  - app
+  - packages/*
+
+# vue-demi (via @tanstack/vue-query) defaults to Vue 3 without its postinstall switch.
+ignoredBuiltDependencies:
+  - vue-demi

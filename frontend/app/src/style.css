@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+@import '@scalenderplus/ui/tokens.css';
+
+/* Workspace packages are symlinked under node_modules, which Tailwind skips by default. */
+@source '../../packages/ui/src';

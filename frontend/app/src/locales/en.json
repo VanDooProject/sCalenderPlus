@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "sCalenderPlus",
+    "tagline": "Shared calendars with per-event permissions."
+  },
+  "nav": {
+    "home": "Home",
+    "language": "Language"
+  },
+  "home": {
+    "title": "Welcome",
+    "intro": "Different permissions for different events in the same calendar — in every calendar app.",
+    "apiStatus": "API status",
+    "apiStatusOk": "reachable",
+    "apiStatusDown": "unreachable",
+    "apiStatusLoading": "checking…",
+    "retry": "Check again"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  },
+  "environment": "Environment: {name}"
+}

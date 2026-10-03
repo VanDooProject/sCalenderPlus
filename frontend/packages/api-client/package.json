@@ -1,0 +1,16 @@
+{
+  "name": "@scalenderplus/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed API client. Placeholder until OpenAPI type generation (openapi-typescript + openapi-fetch) lands.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}

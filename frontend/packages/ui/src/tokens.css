@@ -1,0 +1,38 @@
+/*
+ * Design tokens shared by app and landing (Tailwind CSS v4 theme variables).
+ * Import after `@import 'tailwindcss';` in the consuming stylesheet.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: oklch(0.97 0.02 255);
+  --color-brand-100: oklch(0.93 0.04 255);
+  --color-brand-500: oklch(0.6 0.17 255);
+  --color-brand-600: oklch(0.53 0.18 255);
+  --color-brand-700: oklch(0.46 0.16 255);
+
+  --color-surface: var(--scal-surface);
+  --color-surface-muted: var(--scal-surface-muted);
+  --color-on-surface: var(--scal-on-surface);
+  --color-on-surface-muted: var(--scal-on-surface-muted);
+  --color-border: var(--scal-border);
+}
+
+/* Light/dark surfaces via CSS variables (system preference for now; explicit theme toggle in M3). */
+:root {
+  --scal-surface: oklch(1 0 0);
+  --scal-surface-muted: oklch(0.97 0.005 255);
+  --scal-on-surface: oklch(0.21 0.02 255);
+  --scal-on-surface-muted: oklch(0.45 0.02 255);
+  --scal-border: oklch(0.9 0.01 255);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --scal-surface: oklch(0.18 0.02 255);
+    --scal-surface-muted: oklch(0.23 0.02 255);
+    --scal-on-surface: oklch(0.95 0.01 255);
+    --scal-on-surface-muted: oklch(0.72 0.02 255);
+    --scal-border: oklch(0.32 0.02 255);
+  }
+}

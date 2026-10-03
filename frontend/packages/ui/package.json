@@ -1,0 +1,23 @@
+{
+  "name": "@scalenderplus/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared design tokens and components (used by app and landing). Consumed as source.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "~6.0.3",
+    "vue": "^3.5.43",
+    "vue-tsc": "^3.3.12"
+  }
+}
