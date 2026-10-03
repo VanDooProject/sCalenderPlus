@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Jobs;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Infrastructure.Auditing;
 using SCalenderPlus.Infrastructure.Email;
 using SCalenderPlus.Infrastructure.Jobs;
 using SCalenderPlus.Infrastructure.Persistence;
@@ -21,6 +24,8 @@ public static class DependencyInjection
         services.AddPersistence(configuration);
         services.AddPersistentDataProtection();
         services.AddScoped<IJobScheduler, PostgresJobScheduler>();
+        services.AddScoped<IAuditLog, AuditLog>();
+        services.TryAddScoped<IActorContext, SystemActorContext>(); // the api registers the HTTP request's actor
 
         return services;
     }

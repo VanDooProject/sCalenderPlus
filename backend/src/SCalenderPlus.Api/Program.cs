@@ -2,6 +2,7 @@ using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Api.Problems;
 using SCalenderPlus.Application;
+using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Infrastructure;
 using SCalenderPlus.Infrastructure.Hosting;
 
@@ -41,6 +42,8 @@ public sealed class Program
             .AddDatabaseAutoMigration()
             .AddPlatformHealthChecks();
         builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IActorContext, HttpActorContext>();
         builder.Services.AddApiProblemDetails();
         builder.Services.AddValidation();
         builder.Services.AddApiDocument();

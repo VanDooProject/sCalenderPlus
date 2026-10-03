@@ -86,7 +86,8 @@ public static class Observability
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation(o => o.Filter = IsNotHealthProbe)
                 .AddHttpClientInstrumentation()
-                .AddNpgsql())
+                .AddNpgsql()
+                .AddSource(Jobs.JobRunner.ActivitySourceName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()

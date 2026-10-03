@@ -129,7 +129,7 @@
 - **Time**: all instants stored as `timestamptz` (UTC); wall-clock + IANA zone kept for events; server never uses the host time zone. `IClock` (NodaTime) injected for testability.
 - **Feature flags**: simple DB table + config overrides; used for gradual rollout (CalDAV, imports).
 - **Security headers**: CSP (strict, no inline scripts), HSTS, Referrer-Policy `same-origin` (feed tokens must never leak via Referer).
-- **Audit**: domain operations write `audit_events` in the same transaction.
+- **Audit**: domain operations call `IAuditLog.Record(action, resourceType, resourceId, before, after)`, which stages an `audit_events` row in the same unit of work as the mutation (same transaction); see data-model.md §8.
 - **Outbox**: domain changes enqueue jobs (webhooks, notifications) in the same transaction via the `jobs` table.
 
 ## 6. Job types (worker)
