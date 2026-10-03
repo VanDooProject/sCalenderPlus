@@ -25,7 +25,7 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 
 ## M1 — Auth, users, groups
 
-- [x] **feat(api): problem details and error code catalogue** — RFC 9457 mapper, stable `code`s, validation errors format. *AC:* every error in tests is `application/problem+json` with `code`.
+- [ ] **feat(api): problem details and error code catalogue** — RFC 9457 mapper, stable `code`s, validation errors format. *AC:* every error in tests is `application/problem+json` with `code`.
 - [ ] **test(api): authorization matrix test generator** — Enumerates OpenAPI operations and requires a matrix case per endpoint (before the first protected endpoint lands). *AC:* new endpoint without case fails CI.
 - [ ] **feat(worker): Postgres job queue and email sending** — `jobs` table, SKIP LOCKED runner, retries/backoff, MailKit sender, Mailpit in dev. *AC:* two worker instances never process the same job (test); queued email arrives in Mailpit.
 - [ ] **feat(auth): ASP.NET Identity with cookie auth** — Register, login, logout, `GET /me`, email confirmation, password reset, lockout; unverified-account restrictions (api.md §3). *AC:* integration tests for each flow; cookie is `__Host-`, HttpOnly, Secure, SameSite=Lax; unverified user creating a share link → 403 `email_not_verified`.

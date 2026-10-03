@@ -140,7 +140,7 @@ Rules:
 
 - Every bug fix includes a regression test at the lowest possible layer.
 - **Tenant isolation**: the authz matrix includes a cross-tenant case per endpoint (valid id from another user's calendar → 404), and an architecture test forbids reading events/calendars outside the permission-aware query service.
-- **Authorization matrix test is mandatory** for every new endpoint (a generated test enumerates endpoints from the OpenAPI document and fails if an endpoint has no authz test case).
+- **Authorization matrix test is mandatory** for every new endpoint: `AuthorizationMatrixCoverageTests` enumerates the operations of the served OpenAPI document and fails if one has no entry; `AuthorizationMatrixTests` runs every case against the api + PostgreSQL. Protected operations need `anonymous → 401` and, with path parameters, a cross-tenant `404`; public ones are listed explicitly with a reason. How to add cases: [`backend/tests/SCalenderPlus.IntegrationTests/Authorization/README.md`](../../backend/tests/SCalenderPlus.IntegrationTests/Authorization/README.md).
 - Coverage: Core ≥ 90 % lines (permission engine 100 % branches); no global coverage gate otherwise.
 - Test data builders (`A.Calendar().OwnedBy(group).WithGrant(...)`) mirror the permissions doc vocabulary.
 - E2E tests use `data-testid` attributes, never CSS structure; full-stack tests create their own users via a test-only seeding endpoint enabled only when `Testing__SeedEndpoint=true` (never in prod images' default config).
