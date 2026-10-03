@@ -82,6 +82,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 3. Optional but recommended: secret `RELEASE_PLEASE_TOKEN` (see above).
 4. After the first image push: make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web` **public** (Package settings → Change visibility) or give the deploy servers a read token, and link them to the repository (done automatically by the `org.opencontainers.image.source` label).
 5. Branch protection / ruleset for `main` as in §3 (required checks in §5).
+6. Settings → Code security: keep CodeQL **default setup disabled** (`codeql.yml` is the advanced setup; uploads fail while default setup is on). Enable *Dependabot alerts* and *Dependabot security updates*; version updates come from `.github/dependabot.yml`.
 
 ## 5. CI pipeline (GitHub Actions)
 
@@ -114,9 +115,9 @@ Other workflows:
 | `release-please.yml` → `images` job | `release_created` | build+push multi-arch images `X.Y.Z`, `X.Y`, `latest` (see §4); prod deploy from M4 |
 | `images.yml` | `ci` succeeded on a push to main, manual | push `:main-<sha>` and `:main` |
 | `build-images.yml` | `workflow_call` only | reusable multi-arch build + push used by the two above |
-| `codeql.yml` | weekly + PR | C# and JS/TS security analysis |
+| `codeql.yml` | PR, push main, weekly, manual | CodeQL `security-extended` for C#, JS/TS and the workflows (`actions`), all with build-mode `none` (no compilation, independent of the .NET 10 SDK); results under Security → Code scanning |
 | `import-eval.yml` | manual / weekly | real-LLM evaluation of import corpus (secret `ANTHROPIC_API_KEY`) |
-| Dependabot | weekly | nuget, npm, github-actions, docker; grouped minor/patch |
+| Dependabot ([`dependabot.yml`](../../.github/dependabot.yml)) | weekly (Monday) | nuget (`backend/`), npm/pnpm (`frontend/`, `e2e/`), github-actions (workflows + `.github/actions/*`), docker (`deploy/docker/`); minor/patch grouped per ecosystem, majors as single PRs (runtime majors of the .NET and Node base images ignored); PR titles `build(deps): …` / `ci(deps): …` |
 
 Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm store, Playwright browsers, Docker buildx GHA cache.
 

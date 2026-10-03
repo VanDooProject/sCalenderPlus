@@ -1,0 +1,76 @@
+# Dependabot version updates (docs/development/workflow.md §5). Weekly; minor and patch updates are grouped
+# per ecosystem, major updates come as individual PRs. Commit messages (= PR titles) are Conventional
+# Commits accepted by the `pr-title` check: `build(deps): …` for dependencies, `ci(deps): …` for actions.
+# Branches `dependabot/*` are exempt from the `branch-name` check.
+version: 2
+
+updates:
+  # .NET (central package management in backend/Directory.Packages.props, packages.lock.json files).
+  - package-ecosystem: nuget
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps)
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+
+  # pnpm: the frontend workspace and the standalone e2e package (own lockfile each).
+  - package-ecosystem: npm
+    directories:
+      - /frontend
+      - /e2e
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps)
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Workflows and the composite actions in .github/actions.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+  # Base images of deploy/docker/*.Dockerfile.
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: build(deps)
+    groups:
+      docker-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Runtime majors are deliberate upgrades (global.json, NODE_VERSION in ci.yml, engines in package.json).
+      - dependency-name: mcr.microsoft.com/dotnet/*
+        update-types: [version-update:semver-major]
+      - dependency-name: node
+        update-types: [version-update:semver-major]
