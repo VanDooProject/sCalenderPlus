@@ -1,3 +1,4 @@
+using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Api.Problems;
@@ -44,6 +45,7 @@ public sealed class Program
         builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IActorContext, HttpActorContext>();
+        builder.Services.AddApiAuthentication();
         builder.Services.AddApiProblemDetails();
         builder.Services.AddValidation();
         builder.Services.AddApiDocument();
@@ -54,10 +56,14 @@ public sealed class Program
 
         var app = builder.Build();
 
-        // Order matters: client scheme/address first, then errors → RFC 9457 problem details for everything below.
+        // Order matters: client scheme/address first, then errors → RFC 9457 problem details for everything below,
+        // then routing (endpoint metadata), the session cookie and the endpoint's authorization requirements.
         app.UseForwardedHeaders();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         app.MapPlatformHealthEndpoints();
         app.MapApiDocument();

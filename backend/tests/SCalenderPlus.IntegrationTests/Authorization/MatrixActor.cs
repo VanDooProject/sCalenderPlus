@@ -32,10 +32,23 @@ public sealed class MatrixActor
 }
 
 /// <summary>
-/// The actors known to the matrix. Add new ones here as features land (M1-B: signed-in and unverified users,
-/// cross-tenant user; M1-C: group owner/admin/member/non-member; M2: calendar and event levels).
+/// The actors known to the matrix. Each signed-in actor is a seeded user with its own session
+/// (<see cref="MatrixScenario"/>); add new ones here as features land (M1-C: group owner/admin/member/non-member;
+/// M2: calendar and event levels).
 /// </summary>
 public static class Actors
 {
     public static readonly MatrixActor Anonymous = new("anonymous", scenario => Task.FromResult(scenario.CreateAnonymousClient()));
+
+    /// <summary>A signed-in user with a confirmed email address.</summary>
+    public static readonly MatrixActor User = new("user", scenario => Task.FromResult(scenario.SessionClient("user")));
+
+    /// <summary>A signed-in user who has not confirmed the email address (api.md §3 restrictions).</summary>
+    public static readonly MatrixActor UnverifiedUser = new("unverified-user", scenario => Task.FromResult(scenario.SessionClient("unverified-user")));
+
+    /// <summary>A verified user of another tenant: shares nothing with the seeded resources (expects 404 on them).</summary>
+    public static readonly MatrixActor OtherUser = new("other-user", scenario => Task.FromResult(scenario.SessionClient("other-user")), isCrossTenant: true);
+
+    /// <summary>A verified user signed in anew for every case: for operations that end or replace the session (logout).</summary>
+    public static readonly MatrixActor FreshSession = new("fresh-session", scenario => scenario.NewSessionClientAsync("fresh-session"));
 }

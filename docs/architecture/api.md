@@ -38,8 +38,8 @@ All errors are `application/problem+json`:
 
 | Status | `code` |
 |---|---|
-| 400 | `validation_failed` (+ `errors: { "field": ["msg"] }`), `bad_request` (malformed request: invalid JSON, wrong parameter type) |
-| 401 | `unauthenticated`, `token_expired` |
+| 400 | `validation_failed` (+ `errors: { "field": ["msg"] }`, keys are the camelCase JSON member paths), `bad_request` (malformed request: invalid JSON, wrong parameter type), `token_invalid` (email confirmation / password reset link invalid, expired or used) |
+| 401 | `unauthenticated`, `token_expired`, `invalid_credentials` (login: unknown email, wrong password or second factor, locked out — deliberately indistinguishable) |
 | 403 | `insufficient_permission` (+ `required`, `actual` levels), `two_factor_required`, `external_sharing_not_allowed`, `email_not_verified` |
 | 404 | `not_found` (also for `none`-level resources — no existence leaks; also unknown routes) |
 | 405 | `method_not_allowed` |
@@ -47,7 +47,7 @@ All errors are `application/problem+json`:
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
-| 422 | `recurrence_invalid`, `time_zone_invalid` |
+| 422 | `recurrence_invalid`, `time_zone_invalid` (+ `errors` with the field, like `validation_failed`) |
 | 429 | `rate_limited` |
 | 500 / 503 | `internal_error` (no details; correlate via `traceId`), `service_unavailable` |
 
@@ -73,9 +73,19 @@ Implementation:
 
 Token scopes: `calendars:read`, `calendars:write`, `events:read`, `events:write`, `groups:read`, `groups:write`, `imports:write`, `webhooks:write`, `account:read`. Token actions are additionally limited by the user's permissions (scopes never elevate).
 
-Unverified accounts can sign in and use their own calendars, but cannot accept email invites/pending shares, invite others, create share links or import sources (`403 email_not_verified`).
+Unverified accounts can sign in and use their own calendars, but cannot accept email invites/pending shares, invite others, create share links or import sources (`403 email_not_verified`). Endpoints opt in with `.RequireVerifiedEmail()` (authorization policy `verified-email`, `Api/Auth/AuthPolicies.cs`), which reads the confirmation state from the database, so it applies right after confirming.
 
-Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answer `{ "twoFactorRequired": true }`), `login/2fa`, `logout`, `passkeys/options` + `passkeys/login` (v1), `confirm-email`, `forgot-password`, `reset-password`, `external/{provider}` (v1), `sessions` (list/revoke), `me`.
+Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answer `{ "twoFactorRequired": true }`), `login/2fa`, `logout`, `passkeys/options` + `passkeys/login` (v1), `confirm-email`, `forgot-password`, `reset-password`, `external/{provider}` (v1), `sessions` (list/revoke, v1). The signed-in user is `GET /api/v1/me` (§4).
+
+### 3.1 Cookie sessions (implemented, M1)
+
+- **Identity in Infrastructure**: `AppUser : IdentityUser<Guid>` (`Infrastructure/Identity`) with the profile columns of data-model.md §2; the user store also maintains `created_at`/`updated_at`. Core only sees `UserPreferences` (locale, zone, week start); Application only sees ids and the email templates (`Accounts/AccountEmails`). The api uses `UserManager`/`SignInManager`.
+- **Cookies**: `__Host-scal` (session) — `HttpOnly`, `Secure` (always; the api sees `https` through trusted forwarded headers), `SameSite=Lax`, `Path=/`, no `Domain` (local development over `http://localhost` works: browsers treat localhost as a secure context). Without "remember me" it is a browser-session cookie; with it, persistent. Either way the ticket expires after **14 days of inactivity** (sliding). Every minute the session is re-validated against the user's security stamp, so a password reset or 2FA change ends other sessions within a minute. `__Host-scal-2fa` (5 min) carries a login whose second factor is pending. The api never redirects: no session → `401 unauthenticated`, forbidden → `403` problem.
+- **Secure by default**: the `/api/v1` group requires an authenticated user; public endpoints opt out explicitly (`AllowAnonymous`) and are listed with a reason in the authorization matrix.
+- **Passwords**: at least 10 characters, no composition rules (NIST 800-63B), at least 4 distinct characters. **Lockout**: 5 failed attempts in a row lock the account for 15 minutes (the response stays `invalid_credentials`); a password reset lifts it.
+- **No user enumeration**: `register` always answers `202` — a new address gets the confirmation email, a registered one a "you already have an account" email (no second account, no cookie); `forgot-password` always answers `202`; failed logins are always `401 invalid_credentials` (unknown emails are hashed against a dummy for equal timing). `register` does not sign in: the web app calls `login` next.
+- **Email links** (queued with `IEmailOutbox` in the same transaction as the change and the audit event; sent by the worker) point to web app routes below `App__PublicBaseUrl`: `/verify-email?userId=…&token=…` → `POST /auth/confirm-email {userId, token}`; `/reset-password?userId=…&token=…` → `POST /auth/reset-password {userId, token, newPassword}`. Tokens are Data Protection tokens (base64url in links), valid 1 day; a reset token is single-use (it is bound to the security stamp). A successful reset also confirms the email (the link proved mailbox ownership) and lifts a lockout. `POST /auth/confirm-email/resend` sends a new confirmation link to the signed-in user.
+- **Audit** (`audit_events`, resource `user`): `user.registered`, `user.email_confirmed`, `user.login_succeeded`, `user.login_failed` (known accounts only), `user.locked_out`, `user.logged_out`, `user.password_reset_requested`, `user.password_reset`.
 
 ## 4. Resource overview
 

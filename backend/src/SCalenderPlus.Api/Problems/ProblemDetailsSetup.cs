@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using SCalenderPlus.Application.Errors;
@@ -45,6 +46,11 @@ public static class ProblemDetailsSetup
             problem.Title = entry.Title;
         }
 
+        if (problem is HttpValidationProblemDetails validation)
+        {
+            CamelCaseErrorKeys(validation.Errors);
+        }
+
         problem.Instance ??= context.HttpContext.Request.Path;
         problem.Extensions[CodeMember] = code;
         problem.Extensions[TraceIdMember] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
@@ -54,6 +60,24 @@ public static class ProblemDetailsSetup
         {
             problem.Detail = null;
             problem.Extensions.Remove("exception");
+        }
+    }
+
+    /// <summary>
+    /// Built-in validation reports CLR member paths (<c>DisplayName</c>, <c>Items[0].Name</c>); the API's JSON is
+    /// camelCase, so the <c>errors</c> keys are too (<c>displayName</c>, <c>items[0].name</c>).
+    /// </summary>
+    private static void CamelCaseErrorKeys(IDictionary<string, string[]> errors)
+    {
+        foreach (var key in errors.Keys.ToList())
+        {
+            var camel = string.Join('.', key.Split('.').Select(segment => JsonNamingPolicy.CamelCase.ConvertName(segment)));
+            if (camel != key)
+            {
+                var messages = errors[key];
+                errors.Remove(key);
+                errors[camel] = errors.TryGetValue(camel, out var existing) ? [.. existing, .. messages] : messages;
+            }
         }
     }
 

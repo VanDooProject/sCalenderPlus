@@ -28,16 +28,19 @@ subscriptions, plan_limits, audit_events, calendar_changes, jobs, webhooks, webh
 
 | Column | Type | Notes |
 |---|---|---|
-| id | uuid PK | |
-| email, normalized_email | text | unique on normalized |
-| display_name | text | |
+| id | uuid PK | UUIDv7, assigned by the api |
+| email, normalized_email | text | unique on normalized (`ix_users_normalized_email`) |
+| user_name, normalized_user_name | text | Identity requires them; always equal to the email (login is by email) |
+| display_name | text | ≤ 100 |
 | locale | text | `en`, `de` |
 | time_zone | text | IANA id, validated against tzdb |
-| week_start | smallint | 1=Mon |
+| week_start | smallint | 1=Mon … 7=Sun (NodaTime `IsoDayOfWeek`) |
 | acl_version | bigint | bumped on membership/role change and on overrides naming the user (permission caches) |
+| created_at, updated_at | timestamptz | maintained by the user store |
 | deleted_at | timestamptz null | deletion grace period |
+| email_confirmed, password_hash, security_stamp, concurrency_stamp, lockout_end, lockout_enabled, access_failed_count, two_factor_enabled, phone_number, phone_number_confirmed | | ASP.NET Core Identity columns; `concurrency_stamp` changes on every update |
 
-Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default schema mapped to snake_case.
+Identity tables `user_claims`, `user_logins`, `user_tokens` (authenticator key, recovery codes) — `IdentityUserContext<AppUser, Guid>`, no Identity roles (roles are per group). `user_passkeys` follows with passkeys (v1).
 
 ### `organizations` (v1, Team plan)
 

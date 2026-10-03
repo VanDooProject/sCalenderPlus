@@ -66,7 +66,6 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `ReverseProxy__KnownNetworks` | api | | comma-separated CIDRs whose `X-Forwarded-For`/`-Proto` are trusted; compose default (`TRUSTED_PROXY_NETWORKS`): `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7` (web and Traefik on the private Docker networks; the api has no public port). Loopback is always trusted; invalid entries fail startup |
 | `ReverseProxy__KnownProxies` | api | | comma-separated IPs of individual trusted proxies (optional) |
 | – (Data Protection keys) | api, worker | | no setting: the key ring is stored in the `data_protection_keys` table (`PersistKeysToDbContext`, application name `scalenderplus` shared by api and worker) — no volume needed. Keys are stored unencrypted (DB access = key access; the startup log warns once per new key); a key-encryption certificate is a possible later hardening |
-| `Auth__CookieDomain` | api | | empty (host-only cookie) |
 | `Auth__External__Google__ClientId/Secret` (Microsoft, Apple) | api | | v1 |
 | `Smtp__Host`, `Smtp__From` | worker | ✓ | `smtp.example.com`, `noreply@example.com`. The api only queues emails (`email.send` jobs) and needs no SMTP settings |
 | `Smtp__Port`, `Smtp__Security`, `Smtp__User`, `Smtp__Password`, `Smtp__FromName`, `Smtp__Timeout` | worker | | `587`, `Auto` (implicit TLS on 465, STARTTLS when offered; also `StartTls`, `SslOnConnect`, `None`), auth only when `User` is set, `sCalenderPlus`, `00:00:30` |

@@ -16,8 +16,10 @@ public static class ProblemCatalogue
     {
         [ErrorCodes.ValidationFailed] = new(StatusCodes.Status400BadRequest, "One or more validation errors occurred"),
         [ErrorCodes.BadRequest] = new(StatusCodes.Status400BadRequest, "Bad request"),
+        [ErrorCodes.TokenInvalid] = new(StatusCodes.Status400BadRequest, "Invalid or expired link"),
         [ErrorCodes.Unauthenticated] = new(StatusCodes.Status401Unauthorized, "Authentication required"),
         [ErrorCodes.TokenExpired] = new(StatusCodes.Status401Unauthorized, "Token expired"),
+        [ErrorCodes.InvalidCredentials] = new(StatusCodes.Status401Unauthorized, "Invalid credentials"),
         [ErrorCodes.PlanLimitReached] = new(StatusCodes.Status402PaymentRequired, "Plan limit reached"),
         [ErrorCodes.FeatureNotInPlan] = new(StatusCodes.Status402PaymentRequired, "Feature not in plan"),
         [ErrorCodes.InsufficientPermission] = new(StatusCodes.Status403Forbidden, "Insufficient permission"),

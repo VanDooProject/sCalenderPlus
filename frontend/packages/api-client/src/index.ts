@@ -10,6 +10,12 @@ export type { components, operations, paths } from './schema'
 
 export type HealthResponse = components['schemas']['HealthResponse']
 
+/** The signed-in user (`GET /api/v1/me`). */
+export type MeResponse = components['schemas']['MeResponse']
+
+/** Result of `POST /api/v1/auth/login`: a session, or the request for a second factor. */
+export type LoginResponse = components['schemas']['LoginResponse']
+
 /** Stable error `code` of a problem response (api.md §2); map to i18n messages, never to `title`. */
 export type ErrorCode = components['schemas']['ErrorCode']
 

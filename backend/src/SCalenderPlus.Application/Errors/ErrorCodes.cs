@@ -16,9 +16,15 @@ public static class ErrorCodes
     /// <summary>Malformed request the server could not bind (invalid JSON, wrong parameter type, bad header).</summary>
     public const string BadRequest = "bad_request";
 
+    /// <summary>An email confirmation or password reset token is invalid, expired or already used.</summary>
+    public const string TokenInvalid = "token_invalid";
+
     // 401
     public const string Unauthenticated = "unauthenticated";
     public const string TokenExpired = "token_expired";
+
+    /// <summary>Login failed: unknown email, wrong password, wrong second factor or locked-out account (deliberately indistinguishable).</summary>
+    public const string InvalidCredentials = "invalid_credentials";
 
     // 402
     /// <summary>Plan limit reached; the problem carries <c>limit: { key, max, used }</c>.</summary>

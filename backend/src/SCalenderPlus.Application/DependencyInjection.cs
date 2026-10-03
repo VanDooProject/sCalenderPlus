@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Jobs;
@@ -16,6 +17,7 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddSingleton<AccountEmails>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
         services.AddScoped<IJobHandler, SendEmailJobHandler>();
 

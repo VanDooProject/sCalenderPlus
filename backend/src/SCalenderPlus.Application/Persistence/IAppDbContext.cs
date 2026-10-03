@@ -8,4 +8,11 @@ namespace SCalenderPlus.Application.Persistence;
 public interface IAppDbContext
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> in one database transaction, for use cases whose collaborators save on
+    /// their own (e.g. ASP.NET Core Identity's user manager): every <see cref="SaveChangesAsync"/> inside commits
+    /// only when the operation completes; an exception rolls all of them back.
+    /// </summary>
+    Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default);
 }

@@ -23,6 +23,11 @@ public sealed class ProblemDetailsTests : IAsyncDisposable
         {
             ["displayName"] = ["The displayName field is required."],
         }).ExecuteAsync(context),
+        ["/validation-member-paths"] = context => TypedResults.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["DisplayName"] = ["The DisplayName field is required."],
+            ["Items[0].StartTime"] = ["Invalid."],
+        }).ExecuteAsync(context),
         ["/problem-result"] = context => ApiProblems.Create(ErrorCodes.EmailNotVerified, "Verify your email first.").ExecuteAsync(context),
         ["/bare-status"] = context => TypedResults.StatusCode(StatusCodes.Status409Conflict).ExecuteAsync(context),
     };
@@ -86,6 +91,16 @@ public sealed class ProblemDetailsTests : IAsyncDisposable
 
         var body = await ProblemResponse.AssertProblemAsync(response, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed);
         Assert.Equal("The displayName field is required.", (string?)body["errors"]?["displayName"]?[0]);
+    }
+
+    [Fact]
+    public async Task Validation_error_keys_are_camel_case_like_the_json_members()
+    {
+        using var response = await GetAsync("/__test/validation-member-paths");
+
+        var body = await ProblemResponse.AssertProblemAsync(response, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed);
+        var errors = body["errors"]!.AsObject();
+        Assert.Equal(["displayName", "items[0].startTime"], errors.Select(e => e.Key).Order(StringComparer.Ordinal));
     }
 
     [Fact]

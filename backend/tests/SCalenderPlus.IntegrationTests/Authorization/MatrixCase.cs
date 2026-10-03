@@ -19,5 +19,13 @@ public sealed record MatrixCase(
     public override string ToString() => Id;
 }
 
-/// <summary>An operation that is deliberately public (no authentication, no permission check).</summary>
-public sealed record AnonymousOperation(ApiOperation Operation, string Reason);
+/// <summary>
+/// An operation that is deliberately public (no authentication, no permission check). <see cref="Body"/> is a
+/// valid request body; <see cref="Expected"/> the status an anonymous caller gets (default: any 2xx), e.g. 400
+/// for token-based operations where the token in the body is the credential.
+/// </summary>
+public sealed record AnonymousOperation(
+    ApiOperation Operation,
+    string Reason,
+    Func<MatrixScenario, HttpContent?>? Body = null,
+    HttpStatusCode? Expected = null);

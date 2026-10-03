@@ -31,6 +31,8 @@ internal static class OpenApiSetup
                 return Task.CompletedTask;
             });
             options.AddDocumentTransformer((document, _, _) => ProblemSchemas.TransformAsync(document));
+            options.AddDocumentTransformer((document, _, _) => SecuritySchemes.AddSchemesAsync(document));
+            options.AddOperationTransformer((operation, context, _) => SecuritySchemes.AddRequirementAsync(operation, context));
         });
 
     public static IEndpointRouteBuilder MapApiDocument(this IEndpointRouteBuilder endpoints)
