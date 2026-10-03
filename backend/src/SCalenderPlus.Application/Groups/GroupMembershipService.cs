@@ -81,7 +81,8 @@ public sealed class GroupMembershipService(
 
             var oldRole = member.Role;
             member.Role = newRole;
-            member.UpdatedAt = group.UpdatedAt = clock.Now();
+            member.UpdatedAt = clock.Now();
+            Touch(group);
             await users.BumpAclVersionAsync([userId], ct).ConfigureAwait(false);
             await NotifyAsync(new MembershipChange(groupId, userId, oldRole, newRole, MembershipChangeKind.RoleChanged, revokeEventShares && newRole < oldRole), ct).ConfigureAwait(false);
             audit.Record(
@@ -126,7 +127,7 @@ public sealed class GroupMembershipService(
 
             var kind = target.IsSelf ? MembershipChangeKind.Left : MembershipChangeKind.Removed;
             db.GroupMembers.Remove(member);
-            group.UpdatedAt = clock.Now();
+            Touch(group);
             await users.BumpAclVersionAsync([userId], ct).ConfigureAwait(false);
             await NotifyAsync(new MembershipChange(groupId, userId, member.Role, null, kind, revokeEventShares), ct).ConfigureAwait(false);
             audit.Record(
@@ -158,7 +159,7 @@ public sealed class GroupMembershipService(
         {
             var before = new { BillingOwnerId = group.OwnerUserId };
             group.OwnerUserId = newBillingOwnerId;
-            group.UpdatedAt = clock.Now();
+            Touch(group);
             audit.Record(GroupAuditActions.BillingOwnerTransferred, GroupAuditActions.ResourceType, groupId.ToString(), before, new { BillingOwnerId = newBillingOwnerId }, newBillingOwnerId);
             await SaveAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -175,6 +176,17 @@ public sealed class GroupMembershipService(
         var groups = tracked ? db.Groups : db.Groups.AsNoTracking();
         var group = await groups.SingleAsync(g => g.Id == groupId, cancellationToken).ConfigureAwait(false);
         return (group, actor);
+    }
+
+    /// <summary>
+    /// Updates the group row in the same save, so its <c>xmin</c> check serializes concurrent membership changes of
+    /// the group. Marked modified explicitly: an unchanged value (same clock reading) would otherwise skip the
+    /// UPDATE, and with it the concurrency check.
+    /// </summary>
+    private void Touch(Group group)
+    {
+        group.UpdatedAt = clock.Now();
+        db.Groups.Entry(group).Property(g => g.UpdatedAt).IsModified = true;
     }
 
     private async Task<GroupMember> FindMemberAsync(Guid groupId, Guid userId, CancellationToken cancellationToken) =>

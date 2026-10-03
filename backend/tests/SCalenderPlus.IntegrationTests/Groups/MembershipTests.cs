@@ -174,6 +174,38 @@ public sealed class MembershipTests(GroupHostFixture fixture) : IClassFixture<Gr
     }
 
     [Fact]
+    public async Task Concurrent_billing_transfer_and_leaving_never_leave_a_non_owner_paying()
+    {
+        for (var round = 0; round < 5; round++)
+        {
+            var transfer = As("olga").SendJsonAsync(HttpMethod.Post, $"/api/v1/groups/{_groupId}/transfer", new { userId = Id("otto") });
+            var leave = RemoveAsync("otto", "otto");
+            using var transferred = await transfer;
+            using var left = await leave;
+
+            // Whatever the interleaving: the billing owner is a member with role owner.
+            var billingOwner = await _host.QueryAsync(db => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleAsync(
+                db.Groups.Where(g => g.Id == _groupId).Select(g => g.OwnerUserId), Ct));
+            Assert.Equal(GroupRole.Owner, await _host.RoleOfAsync(_groupId, billingOwner));
+            Assert.False(
+                transferred.StatusCode == HttpStatusCode.OK && left.StatusCode == HttpStatusCode.NoContent,
+                $"Both succeeded: transfer {(int)transferred.StatusCode}, leave {(int)left.StatusCode}");
+
+            // Reset: Olga pays again and Otto is an owner.
+            if (billingOwner != Id("olga"))
+            {
+                using var back = await As("otto").SendJsonAsync(HttpMethod.Post, $"/api/v1/groups/{_groupId}/transfer", new { userId = Id("olga") });
+                Assert.Equal(HttpStatusCode.OK, back.StatusCode);
+            }
+
+            if (await _host.RoleOfAsync(_groupId, Id("otto")) is null)
+            {
+                await _host.AddMemberAsync(_groupId, Id("otto"), GroupRole.Owner);
+            }
+        }
+    }
+
+    [Fact]
     public async Task The_billing_owner_transfers_billing_before_stepping_down()
     {
         using var demote = await ChangeRoleAsync("olga", "olga", "admin");
