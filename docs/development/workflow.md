@@ -68,9 +68,9 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 
 - `googleapis/release-please-action` on push to `main` maintains a **release PR** with changelog + version bump.
 - **Single product version** (one `.release-please-manifest.json` entry, `release-type: simple`) for the whole monorepo: api, worker, web and landing ship together as one tested set. Version is written to `version.txt`, `backend/Directory.Build.props` (`<Version>`), and `frontend/app/package.json` via `extra-files`.
-- Merging the release PR creates tag `vX.Y.Z` + GitHub Release → triggers `release.yml`: build and push images `ghcr.io/<owner>/scalenderplus-{api,worker,web,landing}:X.Y.Z` and `:latest`, then call Coolify deploy webhook for production.
+- Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the image job runs inside `release-please.yml` gated on the action's `release_created` output (alternative: a GitHub App token so `release.yml` fires). It builds and pushes images `ghcr.io/<owner>/scalenderplus-{api,worker,web,landing}:X.Y.Z` and `:latest`, then call Coolify deploy webhook for production.
 - Every merge to `main` deploys to **staging** (images tagged `:main-<sha>`).
-- Pre-1.0: `bump-minor-pre-major: true`.
+- Pre-1.0: `bump-minor-pre-major: true` and `bump-patch-for-minor-pre-major: true` (matches the table in §1). XML/JSON `extra-files` use `x-release-please-version` markers or the `xml`/`json` updaters.
 
 ## 5. CI pipeline (GitHub Actions)
 
@@ -86,11 +86,11 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
             ├── frontend ─ install (pnpm cache) ─ lint (eslint, prettier) ─ typecheck (vue-tsc) ─ unit (vitest) ─ build app + landing
             │                                     └─ api-client regenerate + diff check
             │
-            ├── e2e-mocked ── (needs frontend) Playwright vs built app with MSW (chromium, webkit, mobile viewport)
+            ├── e2e-mocked ── (needs frontend) Playwright vs built app with MSW (chromium on PR; webkit + mobile viewport nightly)
             │
             ├── docker ── build api/worker/web/landing images (no push on PR), trivy scan (HIGH/CRITICAL fail)
             │
-            └── e2e-fullstack ── (needs docker) docker compose up (postgres, api, worker, web, mailpit, fake LLM)
+            └── e2e-fullstack ── (needs docker; images handed over as artifact) docker compose up (postgres, api, worker, web, mailpit, fake LLM from M6)
                                   ─ run migrations ─ Playwright fullstack suite (chromium)
  ci-ok ── needs all ── single required status check
 ```
@@ -100,7 +100,7 @@ Other workflows:
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `release-please.yml` | push main | release PR / tags |
-| `release.yml` | tag `v*` | build+push images, deploy prod |
+| `release-please.yml` → release job | `release_created` | build+push images, deploy prod (see §4) |
 | `deploy-staging.yml` | push main (after ci) | push `:main-<sha>`, Coolify staging webhook |
 | `codeql.yml` | weekly + PR | C# and JS/TS security analysis |
 | `import-eval.yml` | manual / weekly | real-LLM evaluation of import corpus (secret `ANTHROPIC_API_KEY`) |
@@ -115,13 +115,14 @@ Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm s
 | **Unit (backend)** | xUnit v3, FsCheck, Verify | Permission engine (table-driven from permissions.md examples + property tests), recurrence, TZ conversion, dedupe keys, entitlement rules, iCal projection (golden `.ics` files) | every PR, < 30 s |
 | **Integration (backend)** | xUnit + `WebApplicationFactory` + Testcontainers Postgres (CI: same image), Respawn between tests | Endpoints end-to-end through EF/Postgres: authz on every endpoint (matrix test: each endpoint × each level), migrations apply from scratch, feed ETags, job queue SKIP LOCKED | every PR |
 | **Unit (frontend)** | Vitest + Vue Test Utils + MSW | Composables, components (access badges, override editor), i18n key completeness | every PR |
-| **E2E mocked** ("without backend") | Playwright against `vite preview` with `VITE_API_MOCK=1` (MSW in browser) | UI flows, error/edge states that are hard to produce for real (402 paywall, 412 conflict, 500), visual regression snapshots, a11y (`@axe-core/playwright`) | every PR, 3 browsers |
+| **E2E mocked** ("without backend") | Playwright against `vite preview` with `VITE_API_MOCK=1` (MSW in browser) | UI flows, error/edge states that are hard to produce for real (402 paywall, 412 conflict, 500), a11y (`@axe-core/playwright`); visual regression snapshots only once the UI stabilises (post-beta) | every PR chromium, nightly 3 browsers |
 | **E2E full-stack** ("with backend") | Playwright against docker compose stack (Postgres, api, worker, web, Mailpit, fake LLM server) | Critical journeys: sign-up + email verify (Mailpit API), create group + invite, calendar + per-event override seen differently by two users, iCal feed download & assertions, import dry-run with fake LLM, paywall on limit | every PR (chromium), nightly (all browsers) |
 | **Contract** | OpenAPI diff + oasdiff, typed MSW handlers | API compatibility | every PR |
 | **Load** (later) | k6 | feed polling and event window queries | pre-release |
 
 Rules:
 - Every bug fix includes a regression test at the lowest possible layer.
+- **Tenant isolation**: the authz matrix includes a cross-tenant case per endpoint (valid id from another user's calendar → 404), and an architecture test forbids reading events/calendars outside the permission-aware query service.
 - **Authorization matrix test is mandatory** for every new endpoint (a generated test enumerates endpoints from the OpenAPI document and fails if an endpoint has no authz test case).
 - Coverage: Core ≥ 90 % lines (permission engine 100 % branches); no global coverage gate otherwise.
 - Test data builders (`A.Calendar().OwnedBy(group).WithGrant(...)`) mirror the permissions doc vocabulary.

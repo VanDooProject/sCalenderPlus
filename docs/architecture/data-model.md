@@ -33,7 +33,7 @@ subscriptions, plan_limits, audit_events, calendar_changes, jobs, webhooks, webh
 | locale | text | `en`, `de` |
 | time_zone | text | IANA id, validated against tzdb |
 | week_start | smallint | 1=Mon |
-| acl_version | bigint | bumped on group membership change (permission caches) |
+| acl_version | bigint | bumped on membership/role change and on overrides naming the user (permission caches) |
 | deleted_at | timestamptz null | deletion grace period |
 
 Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default schema mapped to snake_case.
@@ -48,14 +48,16 @@ Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default
 | id | uuid PK | |
 | name, description | text | |
 | organization_id | uuid null FK | Team plan |
-| owner_user_id | uuid FK | billing subject when no org (plan of this user governs) |
+| owner_user_id | uuid FK | **billing owner**: one of the role-owners; plan of this user governs when no org |
+| acl_version | bigint | bumped on grants/overrides naming the group |
+| frozen_at | timestamptz null | over plan limit: no invites/role changes |
 | member_list_visibility | smallint | members / admins only |
 
 ### `group_members`
 `group_id, user_id, role smallint (0 viewer,1 member,2 admin,3 owner), joined_at` — PK `(group_id, user_id)`, index `(user_id)`.
 
 ### `group_invites`
-`id, group_id, email null, token_hash bytea unique, role, max_uses, uses, expires_at, created_by`. Email null = invite link.
+`id, group_id, email null, token_hash bytea unique, role, max_uses, uses, expires_at, created_by`. Email null = invite link (role ≤ member). Email invites (and pending event shares) bind only to an account whose **verified** email matches.
 
 ## 3. Calendars and grants
 
@@ -68,8 +70,9 @@ Identity tables (`user_logins`, `user_tokens`, `user_passkeys`, …) use default
 | name, description, color | text | |
 | default_time_zone | text | IANA |
 | creators_manage_own_events | bool | default true (permissions rule 6) |
+| creators_may_share_externally | bool | default false (permissions rule 7) |
 | group_role_defaults | jsonb | `{"admin":"manage","member":"contribute","viewer":"read"}` |
-| acl_version | bigint | bumped on any grant/override change in the calendar |
+| acl_version | bigint | bumped on grant/override/share-link/role-default/setting/ownership/freeze change |
 | frozen_at | timestamptz null | over plan limit |
 | archived_at | timestamptz null | |
 
@@ -83,12 +86,12 @@ Index: `(owner_user_id)`, `(owner_group_id)`.
 | principal_type | smallint | 0 user, 1 group |
 | principal_id | uuid | |
 | min_role | smallint null | for group principals |
-| level | smallint | 1 free_busy … 5 manage |
+| level | smallint | `CalendarLevel` 1 free_busy … 5 manage (numbers differ from `EventLevel`) |
 
 Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id)` to find "calendars shared with me / my groups".
 
 ### `share_links`
-`id, calendar_id, token_hash bytea unique, level (free_busy|read), label, expires_at null, password_hash null, revoked_at null, created_by`.
+`id, calendar_id, token_hash bytea unique, level (free_busy|read), label, expires_at null, revoked_at null, created_by`. The level is a ceiling for link holders (permissions §3). No passwords: iCal clients cannot send them.
 
 ### `user_calendar_prefs`
 `user_id, calendar_id, hidden bool, color_override, default_reminders jsonb, sort_order` — PK `(user_id, calendar_id)`. Personal overlay; never affects others.
@@ -100,8 +103,8 @@ Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principa
 |---|---|---|
 | id | uuid PK | |
 | calendar_id | uuid FK | |
-| uid | text | iCalendar UID, unique per calendar; `{id}@scalenderplus` for native events, preserved for imports |
-| creator_user_id | uuid null FK | null for system/import (then import source creator acts as creator) |
+| uid | text | iCalendar UID, unique per calendar; `{id}@scalenderplus` for native events, preserved for imports/CalDAV. Multi-calendar feeds emit `{id}@scalenderplus` instead (the same external UID may exist in two calendars). |
+| creator_user_id | uuid null | null for system/import (then import source creator acts as creator); kept as tombstone after user deletion (no FK, no floor). Preserved on series split. |
 | title | text | ≤ 500 chars |
 | description | text | markdown subset, ≤ 20k |
 | location | text | |
@@ -112,7 +115,7 @@ Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principa
 | start_local, end_local | timestamp (no tz) | wall clock for timed events |
 | start_date, end_date | date | for all-day events (end exclusive) |
 | time_zone | text null | IANA; null only for all-day |
-| start_utc, end_utc | timestamptz | computed first occurrence instant (all-day: start of day in calendar TZ, for indexing) |
+| start_utc, end_utc | timestamptz | computed first occurrence instant (all-day: date at UTC−14h/UTC+14h bounds so window queries in any viewer zone find it) |
 | rrule | text null | RFC 5545 RRULE value |
 | rdates, exdates | timestamptz[] / date[] | |
 | series_until_utc | timestamptz null | end of last occurrence; null = infinite |
@@ -124,7 +127,7 @@ Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principa
 | import_key | bytea null | dedupe key (see llm-import) |
 | locally_modified_at | timestamptz null | user edited an imported event → import won't overwrite those fields |
 | search | tsvector | generated from title/description/location, `simple` config + unaccent |
-| deleted_at | timestamptz null | soft delete (needed for sync tokens & restore) |
+| deleted_at | timestamptz null | soft delete (needed for sync & restore); purged after 90 days |
 
 Indexes:
 - GiST `(calendar_id, occurs_range)` (btree_gist) → window queries per calendar.
@@ -152,7 +155,7 @@ Unique `(event_id, recurrence_id_utc)`. Exceptions inherit the series ACL (MVP).
 | principal_type | smallint | 0 user, 1 group, 2 anonymous, 3 everyone |
 | principal_id | uuid null | |
 | min_role | smallint null | |
-| level | smallint | 0 none … 4 manage |
+| level | smallint | `EventLevel` 0 none … 3 edit (overrides never grant `manage`) |
 | created_by | uuid | |
 
 Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id) WHERE principal_type IN (0,1)` to find "events shared with me".
@@ -171,7 +174,7 @@ Unique `(event_id, principal_type, principal_id, min_role)`; index `(principal_t
 
 ## 5. Feeds, tokens, integrations
 
-- `feed_tokens`: `id, user_id, scope (calendar|aggregate|shared_with_me), calendar_id null, token_hash bytea unique, label_mode, label_texts jsonb, include_past_days, last_used_at, revoked_at`.
+- `feed_tokens`: `id, user_id, scope (calendar|aggregate|shared_with_me), calendar_id null, token_hash bytea unique, label_mode, label_texts jsonb, include_past_days, include_reminders bool, last_used_at, revoked_at`.
 - `api_tokens`: `id, user_id, name, token_prefix (first 8 chars, for display), token_hash bytea unique, scopes text[], expires_at, last_used_at, revoked_at`.
 - `webhooks`: `id, owner_subject, calendar_ids uuid[], url, secret (encrypted), events text[], disabled_at, failure_count`.
 - `webhook_deliveries`: `id, webhook_id, payload jsonb, status, attempts, next_attempt_at, response_code` (trimmed 30 days).

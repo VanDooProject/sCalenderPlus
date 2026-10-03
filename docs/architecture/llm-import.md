@@ -37,9 +37,9 @@ schedule fires (jobs: import.run)
 
 `import_sources` fields (see data-model): URL, target calendar, schedule (cron, clamped to plan minimum interval), source time zone (default = calendar zone), free-text **hints** ("only home games", "ignore workshops", ≤ 500 chars), mode `review|auto`, `auto_threshold` (default 0.85), default categories, ToS attestation.
 
-Creation flow: user enters URL → **dry run** immediately (doesn't count against monthly quota on first run, max 3 dry runs/day) → preview of extracted events → user saves the source. This gives instant value and catches bad sources before scheduling.
+Creation flow: user enters URL → **dry run** immediately (doesn't count against the monthly run quota, but max 3 dry runs/day per user **and** per billing subject, verified email required, Free on the cheapest model) → preview of extracted events → user saves the source. This gives instant value and catches bad sources before scheduling.
 
-Only calendar managers (`Lc ≥ manage`) can configure sources; imported events are created with `creator_user_id = source.created_by` and `import_source_id` set.
+Only calendar managers (`Lc ≥ manage`) can configure sources; imported events are created with `creator_user_id = source.created_by` and `import_source_id` set. Each run re-checks that the creator still has `Lc ≥ manage`, else the source pauses (permissions §4.6).
 
 ## 3. LLM extraction
 
@@ -140,6 +140,7 @@ Review UI: grouped by run, shows diff for updates, bulk accept/reject, edit-then
 - Plan quotas: sources, minimum interval, LLM runs/month, events/run (see [plans.md](../product/plans.md)). Runs skipped as unchanged, ICS and JSON-LD paths **do not consume** LLM runs.
 - Token caps per run (`MaxInputTokens`); oversized pages truncated at section boundaries, with `hasMoreEvents=true` so removals are not inferred.
 - Every run stores `tokens_in`, `tokens_out`, `cost_micros` (price table in config) → admin dashboard, per-subject monthly cost, alert if a subject exceeds 3× its plan's expected cost.
+- **Sybil protection:** Free LLM usage (runs + dry runs) requires a verified, non-disposable email and is additionally bounded by a **global daily Free LLM budget** (`Import__FreeDailyBudgetMicros`); when exhausted, Free HTML runs are deferred to the next day (ICS/JSON-LD unaffected). Per-IP sign-up throttling (M1) limits account farming.
 - Global kill switch `Import__Enabled=false` and per-provider circuit breaker.
 - Failing sources: exponential backoff; auto-disable after 5 consecutive failures with notification.
 

@@ -90,7 +90,7 @@
 | ORM | **EF Core 10 + Npgsql**, `EFCore.NamingConventions` (snake_case) | Requirement; migrations in Infrastructure. Raw SQL (via EF `SqlQuery`) for hot listing queries. |
 | Time | **NodaTime** (+ `Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime`) | `ZonedDateTime`/`LocalDate`/IANA tzdb done right; `DateTime` is a known source of TZ bugs. |
 | iCalendar | **Ical.Net** (v5) | Mature RFC 5545 parse/serialize + RRULE evaluation. Wrapped behind `IICalendarSerializer` so we can patch/replace. |
-| Auth | **ASP.NET Core Identity** (cookie auth, TOTP 2FA, **passkeys** in .NET 10), PAT bearer handler (custom) | Proven password hashing, lockout, 2FA. OpenIddict added later for OAuth2/PKCE for native apps. No self-made JWT for the web (cookies are safer for a same-origin SPA). |
+| Auth | **ASP.NET Core Identity** (cookie auth, TOTP 2FA; **passkeys** in .NET 10 from v1), PAT bearer handler (custom) | Proven password hashing, lockout, 2FA. OpenIddict added later for OAuth2/PKCE for native apps. No self-made JWT for the web (cookies are safer for a same-origin SPA). |
 | Jobs / scheduling | **Own Postgres job queue** (`jobs` table, `SKIP LOCKED`) + **Cronos** for cron parsing, run by a `BackgroundService` | Transparent, zero extra infra, transactional enqueue with business data (outbox for free). Alternatives: Hangfire (good dashboard, but extra schema and pro features licensed), Quartz.NET (heavyweight clustering config). |
 | HTML processing | **AngleSharp** | Sanitize/strip HTML, extract JSON-LD, readable text. |
 | LLM | Provider abstraction `ILlmExtractor`; default **Anthropic** via official Anthropic .NET SDK; `OpenAiCompatibleExtractor` for self-host/local models | See [llm-import.md](llm-import.md). |

@@ -30,9 +30,10 @@ sCalenderPlus is a shared calendar SaaS whose core idea is **different permissio
 | [development/workflow.md](development/workflow.md) | Conventional commits, branch naming, PR process, release-please, CI stages, testing strategy |
 | [deployment/coolify.md](deployment/coolify.md) | Coolify deployment: services, env vars, health checks, migrations, backups |
 | [roadmap.md](roadmap.md) | Milestones M0–M9 with issue-sized work items, open questions |
+| [reviews/2026-10-spec-review.md](reviews/2026-10-spec-review.md) | Spec review findings and resolutions |
 
 ## Key decisions at a glance
 
-- **Permissions**: ordered levels `none < free_busy < read < (contribute) < edit < manage < owner`; calendar grants are additive; event overrides replace the calendar-derived level, most specific principal tier wins (user > group > anonymous > everyone), ties take the max; overrides may restrict or elevate; calendar managers and event creators have floors that overrides cannot reduce; anonymous access is capped at `read`.
+- **Permissions**: ordered levels `none < free_busy < read < (contribute) < edit < manage < owner`; calendar grants are additive; event overrides replace the calendar-derived level, most specific principal tier wins (user > group > anonymous > everyone), ties take the max; `user`/`group` overrides may restrict or elevate (max `edit`), `everyone`/`anonymous` overrides only restrict; `manage` on an event comes only from floors (calendar managers, creators); sharing with people outside the calendar's audience needs calendar `manage`; anonymous access is capped at the share link's level (≤ `read`).
 - **Stack**: .NET 10 (ASP.NET Core Minimal APIs, EF Core + Npgsql, NodaTime, Ical.Net, Identity with passkeys), PostgreSQL 17 (also the job queue), Vue 3 + Vite + TypeScript (TanStack Query, FullCalendar, Tailwind + Reka UI), Playwright, GitHub Actions, release-please, Coolify.
 - **Plans**: Free (forever, power features limited — e.g. 10 active events with overrides, 1 import source weekly with review), Pro €12/month, Team €8/seat/month with free viewers; billing via pluggable `IBillingProvider` (Stripe or none).

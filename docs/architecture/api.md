@@ -12,10 +12,10 @@ The web app, future native apps and third-party integrators use **the same publi
 | Time values | Timed: `{"dateTime":"2026-11-02T18:00:00","timeZone":"Europe/Berlin"}`; all-day: `{"date":"2026-11-02"}`. Instants (`createdAt`) are RFC 3339 UTC. Ranges in queries: `from`/`to` RFC 3339 instants. |
 | Concurrency | Every mutable resource returns `ETag`; `PATCH`/`PUT`/`DELETE` require `If-Match` (missing → `428`, stale → `412`). |
 | Partial update | `PATCH` with JSON Merge Patch (`application/merge-patch+json`). |
-| Idempotency | `POST` accepts optional `Idempotency-Key` header (stored 24 h per principal) — important for flaky mobile networks. |
+| Idempotency (v1) | `POST` accepts optional `Idempotency-Key` header (stored 24 h per principal) — needed once native/mobile clients exist; not in MVP. |
 | Pagination | Cursor-based: `?limit=50&cursor=…` → response `{ "items": [...], "nextCursor": "…" | null }`. Max limit 200. Opaque cursor = base64url of (sort key, id). Exception: event window queries return the whole window (bounded by window size limits). |
 | Filtering/sorting | Explicit query params per endpoint (`?calendarIds=…&q=…`); no generic query language. |
-| Rate limits | Per plan (see plans.md); headers `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`; `429` + `Retry-After`. |
+| Rate limits | Plan limits (plans.md) apply to **bearer tokens** only; cookie sessions (the web app) get a generous per-user abuse limit (e.g. 600/min) so normal UI use never hits Free's 60/min; auth endpoints per IP. Headers `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`; `429` + `Retry-After`. |
 | Deprecation | `Deprecation` and `Sunset` headers; listed in changelog. |
 | Localization | `Accept-Language` affects problem `title`/`detail` texts only; data is never localized. |
 
@@ -40,9 +40,9 @@ All errors are `application/problem+json`:
 |---|---|
 | 400 | `validation_failed` (+ `errors: { "field": ["msg"] }`) |
 | 401 | `unauthenticated`, `token_expired` |
-| 403 | `insufficient_permission` (+ `required`, `actual` levels), `two_factor_required` |
+| 403 | `insufficient_permission` (+ `required`, `actual` levels), `two_factor_required`, `external_sharing_not_allowed`, `email_not_verified` |
 | 404 | `not_found` (also for `none`-level resources — no existence leaks) |
-| 409 | `conflict`, `permission_self_lockout`, `calendar_frozen` |
+| 409 | `conflict`, `permission_self_lockout` (defensive), `calendar_frozen`, `override_invalid_in_target`, `uid_conflict` |
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 422 | `recurrence_invalid`, `time_zone_invalid` |
@@ -62,19 +62,21 @@ All errors are `application/problem+json`:
 
 Token scopes: `calendars:read`, `calendars:write`, `events:read`, `events:write`, `groups:read`, `groups:write`, `imports:write`, `webhooks:write`, `account:read`. Token actions are additionally limited by the user's permissions (scopes never elevate).
 
-Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answer `{ "twoFactorRequired": true }`), `login/2fa`, `logout`, `passkeys/options` + `passkeys/login`, `confirm-email`, `forgot-password`, `reset-password`, `external/{provider}` (v1), `sessions` (list/revoke), `me`.
+Unverified accounts can sign in and use their own calendars, but cannot accept email invites/pending shares, invite others, create share links or import sources (`403 email_not_verified`).
+
+Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answer `{ "twoFactorRequired": true }`), `login/2fa`, `logout`, `passkeys/options` + `passkeys/login` (v1), `confirm-email`, `forgot-password`, `reset-password`, `external/{provider}` (v1), `sessions` (list/revoke), `me`.
 
 ## 4. Resource overview
 
 | Resource | Endpoints |
 |---|---|
-| **Me** | `GET/PATCH /me`, `GET /me/entitlements` (plan, limits, usage), `GET /me/export` (GDPR, async job), `DELETE /me` |
+| **Me** | `GET/PATCH /me`, `GET /me/entitlements` (plan, limits, usage), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
 | **Groups** | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/{id}/members`, `PATCH/DELETE /groups/{id}/members/{userId}`, `POST /groups/{id}/invites`, `GET /groups/{id}/invites`, `DELETE /invites/{id}`, `POST /invites/{token}/accept`, `POST /groups/{id}/transfer` |
 | **Calendars** | `GET /calendars` (all visible, with `myLevel`), `POST /calendars`, `GET/PATCH/DELETE /calendars/{id}`, `POST /calendars/{id}/transfer`, `POST /calendars/{id}/archive` |
 | **Calendar grants** | `GET/POST /calendars/{id}/grants`, `PATCH/DELETE /calendars/{id}/grants/{grantId}` |
 | **Share links** | `GET/POST /calendars/{id}/share-links`, `DELETE /share-links/{id}` |
 | **My calendar prefs** | `PUT /calendars/{id}/prefs` (hidden, color, default reminders) |
-| **Events** | `GET /events?from&to&calendarIds&expand=occurrences` (window), `POST /events`, `GET/PATCH/DELETE /events/{id}`, `GET /events/search?q=` (v1) |
+| **Events** | `GET /events?from&to&calendarIds&expand=occurrences` (window), `POST /events`, `GET/PATCH/DELETE /events/{id}`, `POST /events/{id}/move` (`{targetCalendarId}`, permissions §4.6), `GET /events/search?q=` (v1, only `Le ≥ read`) |
 | **Occurrences** | `PATCH /events/{id}/occurrences/{recurrenceId}` (this), `POST /events/{id}/split` (this and following), `DELETE /events/{id}/occurrences/{recurrenceId}` |
 | **Event overrides** | `GET /events/{id}/overrides`, `PUT /events/{id}/overrides` (replace full set, atomic), `GET /events/{id}/access` (my level + capabilities), `GET /events/{id}/access/explain?userId=` |
 | **Attendees/RSVP** (v1) | `POST/DELETE /events/{id}/attendees`, `POST /events/{id}/rsvp` |
@@ -82,8 +84,9 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | **Revisions** (v1) | `GET /events/{id}/revisions`, `POST /events/{id}/revisions/{rev}/restore` |
 | **Availability** (v1) | `POST /availability` (principals + window → busy blocks, respecting permissions) |
 | **Feeds** | `GET/POST /feed-tokens`, `PATCH/DELETE /feed-tokens/{id}`, `POST /feed-tokens/{id}/rotate` |
-| **Imports** (v1) | `GET/POST /calendars/{id}/import-sources`, `GET/PATCH/DELETE /import-sources/{id}`, `POST /import-sources/{id}/dry-run`, `POST /import-sources/{id}/run`, `GET /import-sources/{id}/runs`, `GET /import-candidates?state=pending`, `POST /import-candidates/decide` (bulk), `POST /calendars/{id}/ics-upload` |
-| **Changes** | `GET /changes?since={seq}&calendarIds=` (incremental sync for native clients) |
+| **ICS upload** (MVP) | `POST /calendars/{id}/ics-upload?dryRun=true|false` |
+| **Imports** (v1) | `GET/POST /calendars/{id}/import-sources`, `GET/PATCH/DELETE /import-sources/{id}`, `POST /import-sources/{id}/dry-run`, `POST /import-sources/{id}/run`, `GET /import-sources/{id}/runs`, `GET /import-candidates?state=pending`, `POST /import-candidates/decide` (bulk) |
+| **Changes** (later, with CalDAV/native apps) | `GET /changes?since={seq}&calendarIds=` (incremental sync; must also emit deletes when an event becomes `none` for the caller) |
 | **Notifications** (v1) | `GET /notifications`, `POST /notifications/read`, `PUT /me/push-subscriptions` |
 | **API tokens** (v1) | `GET/POST /api-tokens`, `DELETE /api-tokens/{id}` |
 | **Webhooks** (v1) | `GET/POST /webhooks`, `PATCH/DELETE /webhooks/{id}`, `GET /webhooks/{id}/deliveries`, `POST /webhooks/{id}/test` |

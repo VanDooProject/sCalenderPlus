@@ -3,7 +3,7 @@
 ## Principles
 
 1. **Free forever, no trial clock.** Free is a complete product for a family or a small club. We gate **power** — scale, automation, fine-grained control, retention, integrations — never basic usefulness.
-2. **The resource owner's plan governs.** Limits and features on a calendar are determined by the plan of the calendar's owner (user, or the organization owning the group). A free user inside a Pro-owned group calendar enjoys Pro features *in that calendar*. This makes one paying organizer enough for a whole club — the right buyer.
+2. **The resource owner's plan governs.** Limits and features on a calendar are determined by the plan of the calendar's owner (user; for group-owned calendars the group's billing owner `groups.owner_user_id`, or the organization owning the group). A free user inside a Pro-owned group calendar enjoys Pro features *in that calendar*. This makes one paying organizer enough for a whole club — the right buyer.
 3. **Downgrades never delete and never leak.** Over-limit resources are frozen (read-only), not removed. Existing permission overrides **stay enforced**; only creating new ones is blocked.
 4. **Limits are visible.** Every gated resource shows a usage meter; hitting a limit shows what upgrading unlocks.
 5. **Server-side enforcement only** through one `IEntitlementService`; the UI merely reflects it.
@@ -18,7 +18,7 @@
 
 ### Seat definition (Team)
 
-A seat is an organization member with role ≥ `member` in any organization group (people who can create content). **Viewers are free** up to 10 × seats. Clubs with 200 members and 8 organizers pay for 8 seats. This is a deliberate differentiator against per-user pricing.
+A seat is a distinct user who can **create or change content** in any org-owned calendar — effective `Lc ≥ contribute` via role default *or* direct grant, or holding an `edit` override on an org event (otherwise individual grants/overrides to viewers would bypass seats). **Read-only people are free** up to 10 × seats; beyond that each further 10 read-only people count as one seat. Clubs with 200 members and 8 organizers pay for 8 seats. This is a deliberate differentiator against per-user pricing.
 
 ## Limits
 
@@ -27,11 +27,12 @@ A seat is an organization member with role ≥ `member` in any organization grou
 | Owned calendars | 3 | 30 | 300 | 3 covers personal + family + one club; power users split by topic. |
 | Owned groups | 1 | 10 | unlimited | One club/family free; organizers of several groups pay. |
 | Members per owned group | 15 | 150 | 1,000 | 15 = family or small team; a typical club section exceeds it → natural upgrade trigger. |
+| **Editors** (distinct users with `Lc ≥ contribute` across all owned calendars) | 15 | 25 | = seats | *Proposed.* Stops one €12 Pro account from running a many-organizer organisation (10 groups × 150 members) that should be on Team; read-only audiences stay unlimited. |
 | Group roles | fixed 4 | fixed 4 | + custom roles (later) | |
 | **Events with permission overrides** (active, i.e. not ended, per owner) | **10** | unlimited | unlimited | Lets users *experience* the core feature weekly but not run a whole calendar on it. Past events don't count, so the limit doesn't punish history. |
 | Override entries per event | 3 | 25 | 100 | Free covers "hide from everyone except X"; complex ACLs are power use. |
 | `contribute` level & group-role defaults | ✓ | ✓ | ✓ | Core club workflow; gating it would kill adoption. |
-| Share links | 1 read-only per calendar | unlimited, expiry, free/busy or read | same as Pro | |
+| Share links | 1 per calendar (read or free/busy) | unlimited, with expiry | same as Pro | Gating the *more* private free/busy option made no sense. |
 | Public embeddable widget | 1 calendar, with "Powered by" | unlimited, no branding | unlimited | Free widget = acquisition loop. |
 | Personalised iCal feeds | ✓ unlimited | ✓ | ✓ | Native integration is the hook — never gate it. |
 | Custom feed labels (own text/emoji, per-feed mode) | default labels only | ✓ | ✓ | |
@@ -43,12 +44,12 @@ A seat is an organization member with role ≥ `member` in any organization grou
 | Auto-publish (skip review queue) | ✗ review always | ✓ | ✓ | Review on Free also limits abuse. |
 | ICS subscription import (external .ics URL) | 1, every 24 h | 20, every 1 h | 100, every 15 min | No LLM cost but load. |
 | Event history / audit log retention | 7 days | 1 year | 3 years | Retention is cheap to gate and valued by orgs. |
-| Restore previous event version | ✗ | ✓ | ✓ | |
+| Restore previous event version (later, M8) | ✗ | ✓ | ✓ | Not sold at paid launch. |
 | Reminders | email + web push | same | same | Retention driver; keep free. |
 | Email digests | weekly | daily/weekly | daily/weekly | |
 | Personal API tokens | 1 (read-only scope) | 10 | 100 | Free can try the API. |
 | Webhooks | ✗ | 5 endpoints | 50 endpoints | Integrations = power. |
-| API rate limit | 60 req/min | 600 req/min | 1,200 req/min per org | |
+| API rate limit (bearer tokens; web app sessions exempt, see api.md) | 60 req/min | 600 req/min | 1,200 req/min per org | |
 | Attachments (later) | ✗ | 1 GB | 5 GB + 1 GB/seat | |
 | Admin console, org-wide audit export | ✗ | ✗ | ✓ | |
 | SSO (OIDC/SAML, later) | ✗ | ✗ | ✓ | |
@@ -63,7 +64,7 @@ All numbers live in a single configuration (`plans.json` / DB table `plan_limits
 | Creating the 11th active event with an override | "Private and locked entries are Pro's superpower — unlimited with Pro." |
 | Inviting the 16th member into a group | "Your group is growing. Pro supports up to 150 members per group." |
 | Creating a 2nd import source or choosing daily schedule | "Keep calendars filled automatically: 10 sources, daily, auto-publish." |
-| Opening history older than 7 days | "See and restore a year of changes with Pro." |
+| Opening history older than 7 days | "See a year of changes with Pro." |
 | Adding a webhook / 2nd API token | "Connect sCalenderPlus to your tools with Pro." |
 | Org with > 1 Pro user in same group | Suggest Team (central billing, seats, admin console). |
 
@@ -73,12 +74,18 @@ Paywalls appear **in context, after the user tried to do something**, with a one
 
 | Situation | Behaviour |
 |---|---|
-| Over calendar/group limits | Excess (newest first) become **frozen**: visible, read-only, feeds keep working. Owner chooses which to keep active. |
-| Overrides over limit | Existing overrides remain **enforced and editable only to remove**; no new overrides. |
-| Members over limit | Existing members stay; no new invites. |
-| Import sources | Over-limit sources paused; schedule clamped to plan minimum. |
+| Over calendar limit | Excess (newest first) become **frozen**: visible, feeds keep working; no create/edit/move-in, deletes and override *removal* allowed (so owners can clean up). Owner chooses which to keep active. |
+| Over group limit | Excess groups frozen: membership unchanged, no invites/role changes; their calendars follow the calendar rule. |
+| Overrides over limit (count or entries/event) | Existing overrides remain **enforced and editable only to remove**; no new overrides. |
+| Members / editors over limit | Existing stay; no new invites or editor grants. |
+| Import sources | Over-limit sources paused; schedule clamped to plan minimum; auto-publish → review. |
+| Share links, API tokens, webhooks over limit | Existing share links keep working (revoking is the owner's choice); newest over-limit API tokens and all webhooks (Free) disabled, not deleted. |
+| Custom feed labels / CalDAV write | Revert to default labels / read-only. |
 | Audit/history | Retention job trims to new retention after 30-day grace. |
 | Payment failed | Stripe dunning (3 retries over 14 days) → then downgrade as above. |
+| Ownership transfer to a lower-plan subject | Same rules, applied immediately; UI warns before the transfer. |
+
+**Shared-quota note:** on a Free group calendar every contributor's overrides count against the billing owner's 10. A single member can exhaust it; the usage meter shows usage per creator and managers can remove overrides. Accepted for MVP; revisit with beta data.
 
 ## Billing architecture (summary)
 

@@ -73,7 +73,9 @@ services:
     healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost/healthz"], interval: 15s }
 ```
 
-Coolify specifics: assign the domain to `web` only (Coolify's `SERVICE_FQDN_WEB` magic variable), mark secrets as "secret" in the UI, enable "connect to predefined network" so the stack reaches the Coolify-managed Postgres.
+Coolify specifics: assign the domain to `web` only (Coolify's `SERVICE_FQDN_WEB` magic variable), mark secrets as "secret" in the UI, enable "connect to predefined network" so the stack reaches the Coolify-managed Postgres, and label the one-shot `migrate` service `exclude_from_hc: true` so its exited state doesn't mark the stack unhealthy.
+
+**Token-bearing URLs**: Traefik access logs (if enabled on the Coolify server) and Caddy logs in `web` must not record `/ical/` paths in clear — disable access logs for that path or mask the token segment. Verified by the M4 log redaction test.
 
 ## 4. Environment variables
 
@@ -129,7 +131,7 @@ Health responses contain no secrets; detailed checks only for requests from inte
 
 - Coolify scheduled Postgres backups: **every 6 h** (`pg_dump -Fc`), retention 7 daily + 4 weekly + 6 monthly, uploaded to S3-compatible storage in a **different provider/region** (e.g. Hetzner Storage Box / Backblaze B2 EU), encrypted at rest.
 - Additionally WAL archiving / PITR (e.g. via `pgBackRest` sidecar) once paying customers exist (target RPO 15 min, RTO 2 h).
-- **Quarterly restore drill**: restore latest backup into staging, run smoke e2e suite; documented in `docs/deployment/runbook.md` (to be written in M8).
+- **Restore drill before public beta (M4)**, then quarterly: restore latest backup into staging, run smoke e2e suite; documented in `docs/deployment/runbook.md` (minimal version in M4, full runbook M8).
 - GDPR: deleted accounts disappear from backups by rotation (≤ 6 months); documented in privacy policy.
 
 ## 9. Operations
@@ -137,7 +139,7 @@ Health responses contain no secrets; detailed checks only for requests from inte
 - Logs: JSON to stdout (Coolify log viewer); optional OTLP to Grafana/Loki/Tempo or similar.
 - Uptime monitoring: external monitor on `/health/ready` and a synthetic feed request.
 - Scaling: increase api replicas in compose (`deploy.replicas`) — stateless; worker replicas safe via `SKIP LOCKED`; scheduled cron jobs use per-job `dedupe_key` to avoid double enqueue.
-- Rollback: redeploy previous image tag in Coolify (safe due to expand/contract migrations).
+- Rollback: redeploy previous image tag in Coolify (safe due to expand/contract migrations). Note: Coolify compose deploys recreate containers, so expect a few seconds of downtime per deploy unless blue/green is configured; expand/contract still matters for rollback.
 - Secrets rotation: Stripe/LLM/SMTP keys via Coolify UI + redeploy; feed tokens and API tokens by users.
 
 ## 10. Self-hosting outside Coolify
