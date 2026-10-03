@@ -8,7 +8,8 @@ import { msw } from 'msw/vite'
 // Same-origin in every environment: in dev Vite proxies backend paths to the api (port 5080),
 // in production the `web` container (Caddy) does.
 const apiTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:5080'
-const proxiedPaths = ['/api', '/ical', '/dav', '/.well-known', '/health']
+// Same list as the `@api` matcher in deploy/caddy/web.Caddyfile.
+const proxiedPaths = ['/api', '/ical', '/dav', '/.well-known', '/health', '/openapi']
 
 // `--mode mock` (`pnpm dev:mock`): no backend; MSW intercepts requests in the browser with the
 // shared handlers from @scalenderplus/api-client/mocks. The plugin serves the service worker

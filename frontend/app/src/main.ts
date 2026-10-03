@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import { configKey, loadConfig } from './config'
-import { createAppI18n } from './i18n'
+import { createAppI18n, detectLocale } from './i18n'
 import { createAppRouter } from './router'
 import './style.css'
 
@@ -20,9 +20,13 @@ async function bootstrap() {
     defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
   })
 
+  const locale = detectLocale()
+  // index.html says `en`; announce the detected locale to assistive technology from the start.
+  document.documentElement.lang = locale
+
   createApp(App)
     .provide(configKey, config)
-    .use(createAppI18n())
+    .use(createAppI18n(locale))
     .use(createAppRouter())
     .use(VueQueryPlugin, { queryClient })
     .mount('#app')
