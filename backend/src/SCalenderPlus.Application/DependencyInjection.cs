@@ -30,6 +30,8 @@ public static class DependencyInjection
 
         services.AddScoped<GroupService>();
         services.AddScoped<GroupMembershipService>();
+        services.AddScoped<GroupInviteService>();
+        services.AddSingleton<GroupEmails>();
         services.TryAddScoped<IGroupEntitlements, UnlimitedGroupEntitlements>(); // M2: entitlement service
 
         return services;

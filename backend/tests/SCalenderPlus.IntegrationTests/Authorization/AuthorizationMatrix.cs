@@ -189,6 +189,43 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
             .Expect(Actors.GroupAdmin, HttpStatusCode.Forbidden)
             .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
+        // Group invites (#36): admins and owners invite (verified email required), verified users accept.
+        .. For("POST", "/api/v1/groups/{id}/invites")
+            .WithRoute(Lions)
+            .WithBody(_ => JsonContent.Create(new { role = "member" }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden) // email_not_verified
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+        .. For("GET", "/api/v1/groups/{id}/invites")
+            .WithRoute(Lions)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/invites/{id}")
+            .WithRoute(s => Route(s, "invite:revocable"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent) // idempotent: either may run first
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
+        .. For("POST", "/api/v1/invites/accept")
+            .WithBody(s => JsonContent.Create(new { token = s.Get("token:acceptable") }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden) // email_not_verified
+            .Expect(Actors.User, HttpStatusCode.OK) // joins "lions" as member; no other case depends on it
+            .Expect(Actors.GroupMember, HttpStatusCode.OK), // already a member: keeps the role
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).

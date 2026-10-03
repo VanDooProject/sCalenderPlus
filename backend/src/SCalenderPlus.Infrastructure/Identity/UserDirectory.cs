@@ -21,6 +21,22 @@ internal sealed class UserDirectory(AppDbContext db) : IUserDirectory
             .ToDictionaryAsync(u => u.Id, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<UserSummary?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeEmail(email);
+        return await db.Users.AsNoTracking()
+            .Where(u => u.NormalizedEmail == normalized)
+            .Select(u => new UserSummary(u.Id, u.Email!, u.DisplayName, u.Locale, u.EmailConfirmed))
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Same as Identity's <c>UpperInvariantLookupNormalizer</c> (the user manager's default).</summary>
+    public string NormalizeEmail(string email)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        return email.Trim().Normalize().ToUpperInvariant();
+    }
+
     public async Task BumpAclVersionAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(ids);

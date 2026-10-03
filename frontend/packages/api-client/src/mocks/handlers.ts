@@ -71,6 +71,22 @@ export const mockMembers: Member[] = [
   },
 ].map((m) => ({ ...m, joinedAt: '2026-10-01T08:00:00Z', etag: `"${m.userId.slice(-4)}"` }))
 
+type Invite = components['schemas']['InviteResponse']
+
+/** A pending invite link of {@link mockGroup}. */
+export const mockInvite: Invite = {
+  id: '0192f2c4-0000-7000-8000-000000000201',
+  groupId: mockGroup.id,
+  kind: 'link',
+  email: null,
+  role: 'member',
+  maxUses: 50,
+  uses: 3,
+  expiresAt: '2026-10-08T08:00:00Z',
+  createdBy: mockUser.id,
+  createdAt: '2026-10-01T08:00:00Z',
+}
+
 export const handlers = [
   http.get('/health/live', ({ response }) => response(200).json({ status: 'Healthy', checks: {} })),
   http.get('/health/ready', ({ response }) =>
@@ -139,6 +155,31 @@ export const handlers = [
     const { userId } = await request.json()
     return response(200).json({ ...mockGroup, billingOwnerId: userId })
   }),
+  http.get('/api/v1/groups/{id}/invites', ({ response }) =>
+    response(200).json({ items: [mockInvite], nextCursor: null }),
+  ),
+  http.post('/api/v1/groups/{id}/invites', async ({ params, request, response }) => {
+    const body = await request.json()
+    const email = body.email ?? null
+    const invite: Invite = {
+      ...mockInvite,
+      id: crypto.randomUUID(),
+      groupId: params.id,
+      kind: email ? 'email' : 'link',
+      email,
+      role: body.role,
+      maxUses: email ? 1 : (body.maxUses ?? 50),
+      uses: 0,
+    }
+    return response(201).json({
+      invite,
+      url: email ? null : 'http://localhost:5173/invite?token=mock-invite-token',
+    })
+  }),
+  http.delete('/api/v1/invites/{id}', ({ response }) => response(204).empty()),
+  http.post('/api/v1/invites/accept', ({ response }) =>
+    response(200).json({ ...mockGroup, myRole: 'member' }),
+  ),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {

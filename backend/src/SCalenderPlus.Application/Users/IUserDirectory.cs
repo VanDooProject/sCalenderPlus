@@ -8,6 +8,12 @@ public interface IUserDirectory
 {
     Task<IReadOnlyDictionary<Guid, UserSummary>> GetAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
+    /// <summary>The account with this email address (any confirmation state), if one exists.</summary>
+    Task<UserSummary?> FindByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>The lookup form of an email address, as Identity stores it in <c>normalized_email</c>.</summary>
+    string NormalizeEmail(string email);
+
     /// <summary>
     /// Bumps <c>acl_version</c> of the users (membership or role changed): effective immediately for permission
     /// caches and feeds. Executes right away — call it inside <c>IAppDbContext.InTransactionAsync</c> so it commits

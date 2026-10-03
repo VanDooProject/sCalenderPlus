@@ -7,6 +7,7 @@ using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Errors;
+using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Users;
 using SCalenderPlus.Infrastructure.Identity;
@@ -263,6 +264,7 @@ internal static partial class AuthEndpoints
         UserManager<AppUser> users,
         IAppDbContext db,
         IAuditLog audit,
+        GroupInviteService invites,
         CancellationToken cancellationToken)
     {
         var user = await users.FindByIdAsync(request.UserId.ToString()).ConfigureAwait(false);
@@ -285,6 +287,7 @@ internal static partial class AuthEndpoints
             {
                 audit.Record(AccountAuditActions.EmailConfirmed, AccountAuditActions.ResourceType, user.Id.ToString(), new { EmailVerified = false }, new { EmailVerified = true }, user.Id);
                 await db.SaveChangesAsync(ct).ConfigureAwait(false);
+                await invites.JoinPendingEmailInvitesAsync(user.Id, user.Email!, ct).ConfigureAwait(false);
             }
 
             return TypedResults.NoContent();
@@ -341,6 +344,7 @@ internal static partial class AuthEndpoints
         UserManager<AppUser> users,
         IAppDbContext db,
         IAuditLog audit,
+        GroupInviteService invites,
         CancellationToken cancellationToken)
     {
         var user = await users.FindByIdAsync(request.UserId.ToString()).ConfigureAwait(false);
@@ -359,11 +363,17 @@ internal static partial class AuthEndpoints
             }
 
             // The link proved control of the mailbox; a lockout from someone guessing the old password ends.
+            var wasConfirmed = user.EmailConfirmed;
             user.EmailConfirmed = true;
             await users.SetLockoutEndDateAsync(user, null).ConfigureAwait(false);
             await users.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
             audit.Record(AccountAuditActions.PasswordReset, AccountAuditActions.ResourceType, user.Id.ToString(), null, null, user.Id);
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            if (!wasConfirmed)
+            {
+                await invites.JoinPendingEmailInvitesAsync(user.Id, user.Email!, ct).ConfigureAwait(false);
+            }
+
             return TypedResults.NoContent();
         }, cancellationToken).ConfigureAwait(false);
     }

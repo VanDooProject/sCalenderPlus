@@ -20,6 +20,7 @@ internal static class ApiV1
         group.MapAuthEndpoints();
         group.MapMeEndpoints();
         group.MapGroupEndpoints();
+        group.MapInviteEndpoints();
 
         return group;
     }

@@ -114,3 +114,72 @@ public sealed class TransferBillingRequest
     [Required]
     public Guid UserId { get; init; }
 }
+
+public sealed class CreateInviteRequest
+{
+    /// <summary>Invite this address (single use, sent by email); leave out for an invite link.</summary>
+    [EmailAddress]
+    [MaxLength(GroupInvite.EmailMaxLength)]
+    public string? Email { get; init; }
+
+    /// <summary>
+    /// Role on joining: at most what the inviter may assign (owners any, admins up to <c>member</c>); links
+    /// carry at most <c>member</c>.
+    /// </summary>
+    [Required]
+    public string Role { get; init; } = string.Empty;
+
+    /// <summary>1–30 days; default 14 for email invites, 7 for links.</summary>
+    [Range(1, GroupInvite.MaxExpiryDays)]
+    public int? ExpiresInDays { get; init; }
+
+    /// <summary>Links only: 1–1000 uses, default 50.</summary>
+    [Range(1, GroupInvite.MaxLinkUses)]
+    public int? MaxUses { get; init; }
+}
+
+/// <summary>A pending invite (never contains the token).</summary>
+/// <param name="Kind"><c>email</c> or <c>link</c>.</param>
+/// <param name="Email">The invited address (email invites).</param>
+public sealed record InviteResponse(
+    Guid Id,
+    Guid GroupId,
+    string Kind,
+    string? Email,
+    string Role,
+    int MaxUses,
+    int Uses,
+    DateTimeOffset ExpiresAt,
+    Guid CreatedBy,
+    DateTimeOffset CreatedAt)
+{
+    public static InviteResponse From(GroupInvite invite)
+    {
+        ArgumentNullException.ThrowIfNull(invite);
+        return new InviteResponse(
+            invite.Id,
+            invite.GroupId,
+            invite.IsLink ? "link" : "email",
+            invite.Email,
+            GroupRoles.Format(invite.Role),
+            invite.MaxUses,
+            invite.Uses,
+            invite.ExpiresAt.ToDateTimeOffset(),
+            invite.CreatedBy,
+            invite.CreatedAt.ToDateTimeOffset());
+    }
+}
+
+/// <param name="Url">Links only: the invite link (contains the token; shown only now). Null for email invites, which are sent by email.</param>
+public sealed record CreateInviteResponse(InviteResponse Invite, string? Url);
+
+/// <summary>One page of a group's pending invites.</summary>
+public sealed record InviteListResponse(IReadOnlyList<InviteResponse> Items, string? NextCursor);
+
+public sealed class AcceptInviteRequest
+{
+    /// <summary>The <c>token</c> query value of the invite link.</summary>
+    [Required]
+    [MaxLength(200)]
+    public string Token { get; init; } = string.Empty;
+}

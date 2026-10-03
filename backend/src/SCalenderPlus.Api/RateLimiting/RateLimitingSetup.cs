@@ -15,6 +15,8 @@ namespace SCalenderPlus.Api.RateLimiting;
 /// <list type="bullet">
 /// <item><see cref="Auth"/> and <see cref="SignUp"/> policies: per client IP (after trusted forwarded headers;
 /// IPv6 grouped by /64), fixed windows, on the anonymous auth endpoints.</item>
+/// <item><see cref="InviteCreate"/> and <see cref="InviteAccept"/> policies: per signed-in user, fixed windows
+/// (invite-email spam, invite-token guessing).</item>
 /// <item>Global limiter: per signed-in user for cookie sessions (generous sliding window); per API token by
 /// plan once tokens exist (<see cref="ApiTokenAuthenticationType"/>); anonymous requests are only limited by
 /// the endpoint policies.</item>
@@ -25,6 +27,8 @@ public static class RateLimitingSetup
 {
     public const string Auth = "auth";
     public const string SignUp = "sign-up";
+    public const string InviteCreate = "invite-create";
+    public const string InviteAccept = "invite-accept";
 
     /// <summary>
     /// <see cref="ClaimsIdentity.AuthenticationType"/> the API token handler (v1) will give its identities; it
@@ -39,7 +43,9 @@ public static class RateLimitingSetup
         services.AddOptions<RateLimitingOptions>()
             .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
             .ValidateDataAnnotations()
-            .Validate(o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session), "RateLimiting: every PermitLimit must be ≥ 1 and every Window between 1 second and 1 day.")
+            .Validate(
+                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept),
+                "RateLimiting: every PermitLimit must be ≥ 1 and every Window between 1 second and 1 day.")
             .ValidateOnStart();
 
         services.AddRateLimiter(_ => { });
@@ -50,6 +56,8 @@ public static class RateLimitingSetup
             options.OnRejected = OnRejectedAsync;
             options.AddPolicy(Auth, context => FixedWindowPerClient(context, Auth, settings.Auth));
             options.AddPolicy(SignUp, context => FixedWindowPerClient(context, SignUp, settings.SignUp));
+            options.AddPolicy(InviteCreate, context => FixedWindowPerUser(context, InviteCreate, settings.InviteCreate));
+            options.AddPolicy(InviteAccept, context => FixedWindowPerUser(context, InviteAccept, settings.InviteAccept));
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => GlobalPartition(context.User, settings));
         });
         return services;
@@ -119,6 +127,17 @@ public static class RateLimitingSetup
             Window = limit.Window,
             QueueLimit = 0,
         });
+
+    /// <summary>Per signed-in user (falls back to the client address; the endpoints require a session anyway).</summary>
+    private static RateLimitPartition<string> FixedWindowPerUser(HttpContext context, string policy, WindowLimit limit) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            policy + ":" + (context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ClientKey(context.Connection.RemoteIpAddress)),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit.PermitLimit,
+                Window = limit.Window,
+                QueueLimit = 0,
+            });
 
     private static async ValueTask OnRejectedAsync(OnRejectedContext context, CancellationToken cancellationToken)
     {

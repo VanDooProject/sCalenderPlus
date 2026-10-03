@@ -16,4 +16,7 @@ public static class GroupAuditActions
     public const string MemberRoleChanged = "group.member.role_changed";
     public const string MemberRemoved = "group.member.removed";
     public const string MemberLeft = "group.member.left";
+    public const string MemberJoined = "group.member.joined";
+    public const string InviteCreated = "group.invite.created";
+    public const string InviteRevoked = "group.invite.revoked";
 }

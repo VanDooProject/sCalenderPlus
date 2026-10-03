@@ -19,6 +19,9 @@ public enum MembershipVerdict
 
     /// <summary>The group is over its plan limit: no invites or role changes (409).</summary>
     GroupFrozen,
+
+    /// <summary>Invite links carry at most <see cref="MembershipPolicy.MaxLinkInviteRole"/> (a request error, 400).</summary>
+    LinkRoleTooHigh,
 }
 
 public sealed record MembershipDecision(MembershipVerdict Verdict, GroupRole? RequiredRole = null)
@@ -97,6 +100,31 @@ public static class MembershipPolicy
 
         return target.Role == GroupRole.Owner ? CheckOwnerLeaving(target) : MembershipDecision.Allow;
     }
+
+    /// <summary>
+    /// Creating an invite with <paramref name="role"/>: the inviter must be allowed to assign the role (owners any,
+    /// admins up to member), links carry at most member, and frozen groups take no new members.
+    /// </summary>
+    public static MembershipDecision CheckInvite(GroupRole actor, GroupRole role, bool isLink, bool groupFrozen)
+    {
+        if (MaxAssignableRole(actor) is not { } max || role > max)
+        {
+            return MembershipDecision.Forbid(MaxAssignableRole(actor) is null || role <= GroupRole.Member ? GroupRole.Admin : GroupRole.Owner);
+        }
+
+        if (isLink && role > MaxLinkInviteRole)
+        {
+            return new(MembershipVerdict.LinkRoleTooHigh);
+        }
+
+        return groupFrozen ? new(MembershipVerdict.GroupFrozen) : MembershipDecision.Allow;
+    }
+
+    /// <summary>Revoking an invite: whoever could have created it (role within the actor's assignable range).</summary>
+    public static MembershipDecision CheckInviteRevocation(GroupRole actor, GroupRole inviteRole) =>
+        MaxAssignableRole(actor) is { } max && inviteRole <= max
+            ? MembershipDecision.Allow
+            : MembershipDecision.Forbid(inviteRole <= GroupRole.Member ? GroupRole.Admin : GroupRole.Owner);
 
     /// <summary>Removing a member, or leaving (<see cref="MembershipTarget.IsSelf"/>).</summary>
     public static MembershipDecision CheckRemoval(GroupRole actor, MembershipTarget target)

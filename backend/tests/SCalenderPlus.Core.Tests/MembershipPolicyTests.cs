@@ -129,4 +129,34 @@ public sealed class MembershipPolicyTests
 
     [Fact]
     public void Links_carry_at_most_member() => Assert.Equal(Member, MembershipPolicy.MaxLinkInviteRole);
+
+    [Theory]
+    [InlineData(Owner, Owner, false, MembershipVerdict.Allowed, null)]
+    [InlineData(Owner, Admin, false, MembershipVerdict.Allowed, null)]
+    [InlineData(Owner, Member, true, MembershipVerdict.Allowed, null)]
+    [InlineData(Owner, Admin, true, MembershipVerdict.LinkRoleTooHigh, null)]
+    [InlineData(Admin, Member, false, MembershipVerdict.Allowed, null)]
+    [InlineData(Admin, Viewer, true, MembershipVerdict.Allowed, null)]
+    [InlineData(Admin, Admin, false, MembershipVerdict.Forbidden, Owner)]
+    [InlineData(Member, Viewer, true, MembershipVerdict.Forbidden, Admin)]
+    [InlineData(Viewer, Viewer, false, MembershipVerdict.Forbidden, Admin)]
+    public void Invites_carry_at_most_what_the_inviter_may_assign_and_links_at_most_member(GroupRole actor, GroupRole role, bool isLink, MembershipVerdict verdict, GroupRole? required)
+    {
+        var decision = MembershipPolicy.CheckInvite(actor, role, isLink, groupFrozen: false);
+
+        Assert.Equal(verdict, decision.Verdict);
+        Assert.Equal(required, decision.RequiredRole);
+    }
+
+    [Fact]
+    public void Frozen_groups_take_no_invites() =>
+        Assert.Equal(MembershipVerdict.GroupFrozen, MembershipPolicy.CheckInvite(Owner, Member, isLink: true, groupFrozen: true).Verdict);
+
+    [Theory]
+    [InlineData(Owner, Owner, true)]
+    [InlineData(Admin, Member, true)]
+    [InlineData(Admin, Admin, false)]
+    [InlineData(Member, Viewer, false)]
+    public void Invites_are_revoked_by_whoever_could_have_created_them(GroupRole actor, GroupRole inviteRole, bool allowed) =>
+        Assert.Equal(allowed, MembershipPolicy.CheckInviteRevocation(actor, inviteRole).IsAllowed);
 }

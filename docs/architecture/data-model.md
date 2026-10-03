@@ -68,7 +68,7 @@ Groups are **hard-deleted** (owners only): `group_members` and `group_invites` c
 
 ### `group_invites`
 
-`id, group_id, email null, token_hash bytea unique, role, max_uses, uses, expires_at, created_by`. Email null = invite link (role ≤ member). Email invites (and pending event shares) bind only to an account whose **verified** email matches.
+`id, group_id FK (cascade), email null, normalized_email null, token_hash bytea unique, role smallint, max_uses, uses (CHECK 0 ≤ uses ≤ max_uses), expires_at, created_by (no FK, kept as tombstone), created_at, revoked_at null, xmin` — index `(group_id)`, partial index `(normalized_email) WHERE normalized_email IS NOT NULL AND revoked_at IS NULL`. Email null = invite link (role ≤ member, several uses); email invites are single-use. Email invites (and pending event shares) bind only to an account whose **verified** email matches: confirming an address joins its pending invites. Pending = not revoked, not expired, `uses < max_uses`; revoked/used invites stay for the audit trail.
 
 ## 3. Calendars and grants
 

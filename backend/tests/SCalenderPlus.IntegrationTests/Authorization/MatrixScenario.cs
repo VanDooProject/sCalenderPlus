@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
@@ -17,7 +18,7 @@ namespace SCalenderPlus.IntegrationTests.Authorization;
 /// The seeded world the matrix runs in: one migrated database and api host per test class, plus named
 /// resources (ids) created by <see cref="SeedAsync"/> that cases use as route values, and one signed-in session
 /// (cookie jar) per actor. Seeding grows with the features: groups "lions" (one member per role), "doomed" (deleted
-/// by a case) and "other" (another tenant's group).
+/// by a case) and "other" (another tenant's group), plus invite links of "lions".
 /// </summary>
 public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
 {
@@ -99,7 +100,22 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
                 .. LionsTargets.Select(t => (t.Name, t.Role)),
             ]);
         await SeedGroupAsync("doomed", (Actors.GroupOwner.Name, GroupRole.Owner));
+        await SeedInviteAsync("lions", "revocable");
+        await SeedInviteAsync("lions", "acceptable");
         await SeedGroupAsync("other", (Actors.OtherTenant.Name, GroupRole.Owner));
+    }
+
+    /// <summary>An invite link (role member) of the group, created by its owner: resources <c>invite:{name}</c> and <c>token:{name}</c>.</summary>
+    private async Task SeedInviteAsync(string group, string name)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var invites = scope.ServiceProvider.GetRequiredService<GroupInviteService>();
+        var created = await invites.CreateAsync(
+            Guid.Parse(Get("user:" + Actors.GroupOwner.Name)),
+            Guid.Parse(Get("group:" + group)),
+            new NewInvite(Email: null, GroupRole.Member, MaxUses: GroupInvite.MaxLinkUses));
+        Set("invite:" + name, created.Invite.Id.ToString());
+        Set("token:" + name, System.Web.HttpUtility.ParseQueryString(created.Link!.Query)["token"]!);
     }
 
     /// <summary>Further members of "lions" (resource <c>user:{name}</c>): targets of role changes and removals.</summary>

@@ -60,6 +60,32 @@ public sealed class RateLimitingTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Invite_acceptance_is_limited_per_user()
+    {
+        await using var host = await StartAsync(s => s["RateLimiting:InviteAccept:PermitLimit"] = "2");
+        var email = ApiTestHost.UniqueEmail();
+        await host.CreateUserAsync(email);
+        using var client = await host.SignedInClientAsync(email);
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var guess = await client.PostAsJsonAsync("/api/v1/invites/accept", new { token = "guess" + i }, TestContext.Current.CancellationToken);
+            await ProblemResponse.AssertProblemAsync(guess, HttpStatusCode.BadRequest, ErrorCodes.TokenInvalid);
+        }
+
+        using var limited = await client.PostAsJsonAsync("/api/v1/invites/accept", new { token = "guess" }, TestContext.Current.CancellationToken);
+        await ProblemResponse.AssertProblemAsync(limited, HttpStatusCode.TooManyRequests, ErrorCodes.RateLimited);
+        Assert.True(limited.Headers.Contains("Retry-After"));
+
+        // Another user has their own budget.
+        var other = ApiTestHost.UniqueEmail("other");
+        await host.CreateUserAsync(other);
+        using var otherClient = await host.SignedInClientAsync(other);
+        using var allowed = await otherClient.PostAsJsonAsync("/api/v1/invites/accept", new { token = "guess" }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, allowed.StatusCode);
+    }
+
+    [Fact]
     public async Task Session_abuse_limit_applies_per_signed_in_user()
     {
         await using var host = await StartAsync(s => s["RateLimiting:Session:PermitLimit"] = "5");

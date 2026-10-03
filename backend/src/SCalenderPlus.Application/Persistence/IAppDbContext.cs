@@ -14,6 +14,8 @@ public interface IAppDbContext
 
     DbSet<GroupMember> GroupMembers { get; }
 
+    DbSet<GroupInvite> GroupInvites { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

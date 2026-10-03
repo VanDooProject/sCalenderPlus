@@ -38,6 +38,7 @@ internal static class GroupEndpoints
         groups.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteGroup")
             .WithSummary("Delete the group with its memberships and invites (owners only, requires If-Match)");
         groups.MapMemberEndpoints();
+        groups.MapGroupInviteEndpoints();
 
         return groups;
     }

@@ -22,6 +22,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
 
+    public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
+
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);

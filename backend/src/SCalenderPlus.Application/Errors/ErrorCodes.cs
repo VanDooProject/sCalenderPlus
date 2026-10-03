@@ -16,7 +16,7 @@ public static class ErrorCodes
     /// <summary>Malformed request the server could not bind (invalid JSON, wrong parameter type, bad header).</summary>
     public const string BadRequest = "bad_request";
 
-    /// <summary>An email confirmation or password reset token is invalid, expired or already used.</summary>
+    /// <summary>An email confirmation, password reset or group invite token is invalid, expired, revoked or used up.</summary>
     public const string TokenInvalid = "token_invalid";
 
     // 401
@@ -45,6 +45,9 @@ public static class ErrorCodes
 
     /// <summary>A sensitive account change (disable 2FA, new recovery codes) needs the current password or an authenticator code, and the one given is wrong.</summary>
     public const string ReauthenticationFailed = "reauthentication_failed";
+
+    /// <summary>An email invite is used by an account whose verified email is a different address.</summary>
+    public const string InviteEmailMismatch = "invite_email_mismatch";
 
     // 404
     /// <summary>Also returned for resources the caller has level <c>none</c> on (no existence leaks).</summary>

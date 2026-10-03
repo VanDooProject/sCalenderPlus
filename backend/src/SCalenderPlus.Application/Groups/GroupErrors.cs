@@ -1,3 +1,4 @@
+using SCalenderPlus.Application.Common;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Groups;
 
@@ -27,8 +28,15 @@ internal static class GroupErrors
         MembershipVerdict.BillingOwnerTransferRequired => new(ErrorCodes.BillingOwnerTransferRequired, "Transfer billing to another owner first."),
         MembershipVerdict.BillingOwnerMustBeOwner => new(ErrorCodes.BillingOwnerMustBeOwner, "Billing can only be transferred to a member with role owner."),
         MembershipVerdict.GroupFrozen => new(ErrorCodes.GroupFrozen, "The group is over its plan limit: invites and role changes are paused."),
+        MembershipVerdict.LinkRoleTooHigh => Validation.Failed("role", "Invite links can carry at most the role member; invite admins and owners by email."),
         _ => throw new ArgumentOutOfRangeException(nameof(decision), decision.Verdict, "Not a refusal."),
     };
+
+    public static AppException InviteNotFound() => new(ErrorCodes.NotFound, "Invite not found.");
+
+    /// <summary>Unknown, expired, revoked and used-up invites are indistinguishable.</summary>
+    public static AppException InviteInvalid() =>
+        new(ErrorCodes.TokenInvalid, "This invitation is invalid, has expired or was already used. Ask for a new one.");
 
     public static AppException Changed() =>
         new(ErrorCodes.PreconditionFailed, "The group was changed meanwhile. Reload it and try again.");

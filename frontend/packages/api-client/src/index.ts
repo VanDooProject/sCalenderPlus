@@ -28,6 +28,15 @@ export type MemberResponse = components['schemas']['MemberResponse']
 /** A page of `GET /api/v1/groups/{id}/members`. */
 export type MemberListResponse = components['schemas']['MemberListResponse']
 
+/** A pending group invite (`GET /api/v1/groups/{id}/invites`); never contains the token. */
+export type InviteResponse = components['schemas']['InviteResponse']
+
+/** Body of `POST /api/v1/groups/{id}/invites`: with `email` an email invite, without an invite link. */
+export type CreateInviteRequest = components['schemas']['CreateInviteRequest']
+
+/** Result of creating an invite; `url` (links only) contains the token and is shown once. */
+export type CreateInviteResponse = components['schemas']['CreateInviteResponse']
+
 /** A group role, lowest to highest: `viewer`, `member`, `admin`, `owner`. */
 export type GroupRole = 'viewer' | 'member' | 'admin' | 'owner'
 

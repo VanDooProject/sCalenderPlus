@@ -405,10 +405,74 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/groups/{id}/invites': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Pending invites of a group (admins and owners, cursor-paginated) */
+    get: operations['ListGroupInvites']
+    put?: never
+    /**
+     * Invite by email or create an invite link (admins and owners)
+     * @description With email: a single-use invite sent to that address (en/de), usable only by an account whose verified email matches; a new invite replaces pending ones for the address. Without email: an invite link (role at most member, maxUses 1–1000, default 50) returned once in url. role: owners invite any role, admins up to member. expiresInDays: 1–30 (default 14 for email, 7 for links). Frozen groups: 409 group_frozen.
+     */
+    post: operations['CreateGroupInvite']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/invites/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Revoke an invite (admins and owners; idempotent)
+     * @description Admins can revoke invites with roles up to member. Revoking an expired, used or revoked invite is a no-op.
+     */
+    delete: operations['RevokeGroupInvite']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/invites/accept': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Join a group with an invite token
+     * @description Needs a verified email address (403 email_not_verified); email invites only for the invited address (403 invite_email_mismatch). Unknown, expired, revoked and used-up tokens are 400 token_invalid alike. Members accepting again keep their role. Returns the group.
+     */
+    post: operations['AcceptGroupInvite']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    AcceptInviteRequest: {
+      token: string
+    }
     ChangeMemberRoleRequest: {
       role: string
     }
@@ -420,6 +484,18 @@ export interface components {
     CreateGroupRequest: {
       name: string
       description?: null | string
+    }
+    CreateInviteRequest: {
+      email?: null | string
+      role: string
+      /** Format: int32 */
+      expiresInDays?: null | number | string
+      /** Format: int32 */
+      maxUses?: null | number | string
+    }
+    CreateInviteResponse: {
+      invite: components['schemas']['InviteResponse']
+      url: null | string
     }
     EnableTwoFactorRequest: {
       code: string
@@ -443,6 +519,7 @@ export interface components {
       | 'insufficient_permission'
       | 'internal_error'
       | 'invalid_credentials'
+      | 'invite_email_mismatch'
       | 'last_owner'
       | 'method_not_allowed'
       | 'not_found'
@@ -504,6 +581,29 @@ export interface components {
       errors?: {
         [key: string]: string[]
       }
+    }
+    InviteListResponse: {
+      items: components['schemas']['InviteResponse'][]
+      nextCursor: null | string
+    }
+    InviteResponse: {
+      /** Format: uuid */
+      id: string
+      /** Format: uuid */
+      groupId: string
+      kind: string
+      email: null | string
+      role: string
+      /** Format: int32 */
+      maxUses: number | string
+      /** Format: int32 */
+      uses: number | string
+      /** Format: date-time */
+      expiresAt: string
+      /** Format: uuid */
+      createdBy: string
+      /** Format: date-time */
+      createdAt: string
     }
     LoginRequest: {
       email: string
@@ -1468,6 +1568,137 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['TransferBillingRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListGroupInvites: {
+    parameters: {
+      query?: {
+        limit?: number | string
+        cursor?: string
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['InviteListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateGroupInvite: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateInviteRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CreateInviteResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RevokeGroupInvite: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  AcceptGroupInvite: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AcceptInviteRequest']
       }
     }
     responses: {

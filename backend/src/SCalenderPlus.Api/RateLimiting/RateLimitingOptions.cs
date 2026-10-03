@@ -15,6 +15,14 @@ public sealed class RateLimitingOptions
     [Required]
     public WindowLimit SignUp { get; set; } = new() { PermitLimit = 5, Window = TimeSpan.FromHours(1) };
 
+    /// <summary>Per signed-in user: group invites created (fixed window); stops invite-email spam.</summary>
+    [Required]
+    public WindowLimit InviteCreate { get; set; } = new() { PermitLimit = 50, Window = TimeSpan.FromHours(1) };
+
+    /// <summary>Per signed-in user: invite acceptance attempts (fixed window); stops token guessing.</summary>
+    [Required]
+    public WindowLimit InviteAccept { get; set; } = new() { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) };
+
     /// <summary>
     /// Per signed-in user of a cookie session, all requests (sliding window): an abuse limit generous enough that
     /// normal use of the web app never reaches it (api.md §1: web sessions are exempt from plan limits).
