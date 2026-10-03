@@ -31,6 +31,7 @@ sCalenderPlus is a shared calendar SaaS whose core idea is **different permissio
 | [deployment/coolify.md](deployment/coolify.md) | Coolify deployment: services, env vars, health checks, migrations, backups |
 | [roadmap.md](roadmap.md) | Milestones M0–M9 with issue-sized work items, open questions |
 | [reviews/2026-10-spec-review.md](reviews/2026-10-spec-review.md) | Spec review findings and resolutions |
+| [reviews/2026-10-m0-review.md](reviews/2026-10-m0-review.md) | M0 code review (scaffolding, CI, Docker, release, e2e) findings and resolutions |
 
 ## Key decisions at a glance
 
