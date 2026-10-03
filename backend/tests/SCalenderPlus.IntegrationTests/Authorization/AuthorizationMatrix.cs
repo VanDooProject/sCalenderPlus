@@ -82,12 +82,14 @@ public static class AuthorizationMatrix
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
         .. For("POST", "/api/v1/me/two-factor/setup")
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
-            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
+            .Expect(Actors.OtherUser, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorUser, HttpStatusCode.Conflict)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
         .. For("POST", "/api/v1/me/two-factor/enable")
-            .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.User.Name) }))
+            .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.User.Name), password = MatrixScenario.Password }))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
             .Expect(Actors.User, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorUser, HttpStatusCode.Conflict)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),

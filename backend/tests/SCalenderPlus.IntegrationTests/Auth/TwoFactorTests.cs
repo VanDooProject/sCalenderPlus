@@ -40,13 +40,13 @@ public sealed class TwoFactorTests(PostgresFixture postgres) : IAsyncLifetime
             $"otpauth://totp/sCalenderPlus:{Uri.EscapeDataString(email)}?secret={secret}&issuer=sCalenderPlus&digits=6",
             (string?)setup["authenticatorUri"]);
 
-        using (var wrong = await client.PostAsJsonAsync("/api/v1/me/two-factor/enable", new { code = "000000" }, Ct))
+        using (var wrong = await client.PostAsJsonAsync("/api/v1/me/two-factor/enable", new { code = "000000", password = ApiTestHost.Password }, Ct))
         {
             var problem = await ProblemResponse.AssertProblemAsync(wrong, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed);
             Assert.NotNull(problem["errors"]!["code"]);
         }
 
-        var enabled = await PostJsonAsync(client, "/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret) }, HttpStatusCode.OK);
+        var enabled = await PostJsonAsync(client, "/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret), password = ApiTestHost.Password }, HttpStatusCode.OK);
         var codes = enabled["recoveryCodes"]!.AsArray().Select(c => (string)c!).ToList();
         Assert.Equal(10, codes.Distinct().Count());
 
@@ -167,7 +167,7 @@ public sealed class TwoFactorTests(PostgresFixture postgres) : IAsyncLifetime
     {
         var (email, _, codes) = await CreateTwoFactorUserAsync();
         using var client = await SignedInTwoFactorClientAsync(email, codes[0]);
-        var secret = await AuthenticatorKeyAsync(email);
+        var secret = (await AuthenticatorKeyAsync(email))!;
 
         var regenerated = await PostJsonAsync(client, "/api/v1/me/two-factor/recovery-codes", new { code = Totp.Compute(secret) }, HttpStatusCode.OK);
         var fresh = regenerated["recoveryCodes"]!.AsArray().Select(c => (string)c!).ToList();
@@ -193,6 +193,117 @@ public sealed class TwoFactorTests(PostgresFixture postgres) : IAsyncLifetime
         await ProblemResponse.AssertProblemAsync(response, HttpStatusCode.Conflict, ErrorCodes.Conflict);
     }
 
+    [Fact]
+    public async Task Enabling_needs_the_current_password_so_a_stolen_session_cannot_lock_the_owner_out()
+    {
+        var email = ApiTestHost.UniqueEmail();
+        var userId = await _host.CreateUserAsync(email);
+        using var client = await _host.SignedInClientAsync(email);
+        var secret = (string)(await PostJsonAsync(client, "/api/v1/me/two-factor/setup", null, HttpStatusCode.OK))["sharedKey"]!;
+
+        using (var withoutPassword = await client.PostAsJsonAsync("/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret) }, Ct))
+        {
+            var problem = await ProblemResponse.AssertProblemAsync(withoutPassword, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed);
+            Assert.NotNull(problem["errors"]!["password"]);
+        }
+
+        using (var wrongPassword = await client.PostAsJsonAsync("/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret), password = "wrong password 123" }, Ct))
+        {
+            await ProblemResponse.AssertProblemAsync(wrongPassword, HttpStatusCode.Forbidden, ErrorCodes.ReauthenticationFailed);
+        }
+
+        Assert.False((bool)(await GetJsonAsync(client, "/api/v1/me/two-factor"))["enabled"]!);
+        Assert.Equal(1, (await _host.FindUserAsync(email)).AccessFailedCount);
+        Assert.DoesNotContain("user.two_factor_enabled", (await _host.AuditEventsAsync(userId)).Select(e => e.Action));
+    }
+
+    [Fact]
+    public async Task Unverified_accounts_cannot_set_up_or_enable_2fa()
+    {
+        var email = ApiTestHost.UniqueEmail();
+        await _host.CreateUserAsync(email, emailConfirmed: false);
+        using var client = await _host.SignedInClientAsync(email);
+
+        using var setup = await client.PostAsync(new Uri("/api/v1/me/two-factor/setup", UriKind.Relative), null, Ct);
+        using var enable = await client.PostAsJsonAsync("/api/v1/me/two-factor/enable", new { code = "123456", password = ApiTestHost.Password }, Ct);
+
+        await ProblemResponse.AssertProblemAsync(setup, HttpStatusCode.Forbidden, ErrorCodes.EmailNotVerified);
+        await ProblemResponse.AssertProblemAsync(enable, HttpStatusCode.Forbidden, ErrorCodes.EmailNotVerified);
+        Assert.Null(await AuthenticatorKeyAsync(email));
+    }
+
+    [Fact]
+    public async Task Wrong_confirmations_count_towards_the_lockout_like_failed_logins()
+    {
+        var (email, userId, codes) = await CreateTwoFactorUserAsync();
+        using var client = await SignedInTwoFactorClientAsync(email, codes[0]);
+
+        for (var i = 0; i < 3; i++)
+        {
+            using var wrong = await client.PostAsJsonAsync("/api/v1/me/two-factor/disable", new { password = "wrong password 123" }, Ct);
+            await ProblemResponse.AssertProblemAsync(wrong, HttpStatusCode.Forbidden, ErrorCodes.ReauthenticationFailed);
+        }
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var wrong = await client.PostAsJsonAsync("/api/v1/me/two-factor/recovery-codes", new { code = "000000" }, Ct);
+            await ProblemResponse.AssertProblemAsync(wrong, HttpStatusCode.Forbidden, ErrorCodes.ReauthenticationFailed);
+        }
+
+        // Locked: the right password no longer helps, neither here nor at the login.
+        using (var locked = await client.PostAsJsonAsync("/api/v1/me/two-factor/disable", new { password = ApiTestHost.Password }, Ct))
+        {
+            await ProblemResponse.AssertProblemAsync(locked, HttpStatusCode.Forbidden, ErrorCodes.ReauthenticationFailed);
+        }
+
+        using (var login = await ApiTestHost.LoginAsync(_host.CreateClient(), email))
+        {
+            await ProblemResponse.AssertProblemAsync(login, HttpStatusCode.Unauthorized, ErrorCodes.InvalidCredentials);
+        }
+
+        Assert.True((bool)(await GetJsonAsync(client, "/api/v1/me/two-factor"))["enabled"]!);
+        Assert.Contains("user.locked_out", (await _host.AuditEventsAsync(userId)).Select(e => e.Action));
+    }
+
+    [Fact]
+    public async Task A_correct_confirmation_resets_the_failure_count()
+    {
+        var (email, _, codes) = await CreateTwoFactorUserAsync();
+        using var client = await SignedInTwoFactorClientAsync(email, codes[0]);
+        using (var wrong = await client.PostAsJsonAsync("/api/v1/me/two-factor/recovery-codes", new { password = "wrong password 123" }, Ct))
+        {
+            await ProblemResponse.AssertProblemAsync(wrong, HttpStatusCode.Forbidden, ErrorCodes.ReauthenticationFailed);
+        }
+
+        Assert.Equal(1, (await _host.FindUserAsync(email)).AccessFailedCount);
+        await PostJsonAsync(client, "/api/v1/me/two-factor/recovery-codes", new { password = ApiTestHost.Password }, HttpStatusCode.OK);
+
+        Assert.Equal(0, (await _host.FindUserAsync(email)).AccessFailedCount);
+    }
+
+    [Fact]
+    public async Task A_recovery_code_redeemed_concurrently_signs_in_at_most_once()
+    {
+        var (email, _, codes) = await CreateTwoFactorUserAsync();
+        var clients = new List<HttpClient>();
+        for (var i = 0; i < 4; i++)
+        {
+            var client = _host.CreateClient();
+            clients.Add(client);
+            using var password = await ApiTestHost.LoginAsync(client, email);
+            Assert.Equal(HttpStatusCode.OK, password.StatusCode);
+        }
+
+        var responses = await Task.WhenAll(clients.Select(c => c.PostAsJsonAsync("/api/v1/auth/login/2fa", new { recoveryCode = codes[1] }, Ct)));
+
+        Assert.Single(responses, r => r.StatusCode == HttpStatusCode.OK);
+        Assert.Equal(9, await RecoveryCodesLeftAsync(email));
+        foreach (var disposable in responses.Cast<IDisposable>().Concat(clients))
+        {
+            disposable.Dispose();
+        }
+    }
+
     /// <summary>A user with 2FA enabled through the API; returns its recovery codes.</summary>
     private async Task<(string Email, Guid UserId, IReadOnlyList<string> Codes)> CreateTwoFactorUserAsync()
     {
@@ -200,7 +311,7 @@ public sealed class TwoFactorTests(PostgresFixture postgres) : IAsyncLifetime
         var userId = await _host.CreateUserAsync(email);
         using var client = await _host.SignedInClientAsync(email);
         var secret = (string)(await PostJsonAsync(client, "/api/v1/me/two-factor/setup", null, HttpStatusCode.OK))["sharedKey"]!;
-        var enabled = await PostJsonAsync(client, "/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret) }, HttpStatusCode.OK);
+        var enabled = await PostJsonAsync(client, "/api/v1/me/two-factor/enable", new { code = Totp.Compute(secret), password = ApiTestHost.Password }, HttpStatusCode.OK);
         return (email, userId, enabled["recoveryCodes"]!.AsArray().Select(c => (string)c!).ToList());
     }
 
@@ -221,11 +332,18 @@ public sealed class TwoFactorTests(PostgresFixture postgres) : IAsyncLifetime
         return client;
     }
 
-    private async Task<string> AuthenticatorKeyAsync(string email)
+    private async Task<string?> AuthenticatorKeyAsync(string email)
     {
         await using var scope = _host.Api.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-        return (await users.GetAuthenticatorKeyAsync((await users.FindByEmailAsync(email))!))!;
+        return await users.GetAuthenticatorKeyAsync((await users.FindByEmailAsync(email))!);
+    }
+
+    private async Task<int> RecoveryCodesLeftAsync(string email)
+    {
+        await using var scope = _host.Api.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        return await users.CountRecoveryCodesAsync((await users.FindByEmailAsync(email))!);
     }
 
     private static async Task<JsonNode> GetJsonAsync(HttpClient client, string path) =>

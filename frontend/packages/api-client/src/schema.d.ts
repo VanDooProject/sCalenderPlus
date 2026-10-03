@@ -253,7 +253,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Turn on 2FA with a current authenticator code; returns the recovery codes once */
+    /** Turn on 2FA with a current authenticator code and the password; returns the recovery codes once */
     post: operations['EnableTwoFactor']
     delete?: never
     options?: never
@@ -499,6 +499,7 @@ export interface components {
     }
     EnableTwoFactorRequest: {
       code: string
+      password: string
     }
     /**
      * @description Stable machine-readable error code (part of the contract; never renamed).

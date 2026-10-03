@@ -14,9 +14,12 @@ namespace SCalenderPlus.Api.Auth;
 
 /// <summary>
 /// TOTP two-factor authentication (RFC 6238 authenticator apps) of the signed-in user, <c>/api/v1/me/two-factor</c>:
-/// set up (new secret + <c>otpauth://</c> URI), enable (confirm with a code → ten recovery codes, shown once,
-/// stored hashed, single-use), disable and regenerate recovery codes (both confirmed with the password or a
-/// code). Changes rotate the security stamp: other sessions end, the current one is re-issued.
+/// set up (new secret + <c>otpauth://</c> URI), enable (confirm with a code and the password → ten recovery codes,
+/// shown once, stored hashed, single-use), disable and regenerate recovery codes (both confirmed with the password
+/// or a code). Setting up and enabling need a verified email address: otherwise someone who registered a
+/// stranger's address could lock its owner out behind their own authenticator. Wrong passwords and codes count
+/// towards the account lockout like failed logins. Changes rotate the security stamp: other sessions end, the
+/// current one is re-issued.
 /// </summary>
 internal static class TwoFactorEndpoints
 {
@@ -29,10 +32,10 @@ internal static class TwoFactorEndpoints
 
         twoFactor.MapGet(string.Empty, GetStatusAsync).WithName("GetTwoFactorStatus")
             .WithSummary("Two-factor authentication status");
-        twoFactor.MapPost("/setup", SetupAsync).WithName("SetUpTwoFactor")
+        twoFactor.MapPost("/setup", SetupAsync).WithName("SetUpTwoFactor").RequireVerifiedEmail()
             .WithSummary("Create a new authenticator secret (QR code URI); 409 while 2FA is enabled");
-        twoFactor.MapPost("/enable", EnableAsync).WithName("EnableTwoFactor")
-            .WithSummary("Turn on 2FA with a current authenticator code; returns the recovery codes once");
+        twoFactor.MapPost("/enable", EnableAsync).WithName("EnableTwoFactor").RequireVerifiedEmail().RequireRateLimiting(RateLimitingSetup.Auth)
+            .WithSummary("Turn on 2FA with a current authenticator code and the password; returns the recovery codes once");
         twoFactor.MapPost("/disable", DisableAsync).WithName("DisableTwoFactor").RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Turn off 2FA (confirm with password or code; no-op when off)");
         twoFactor.MapPost("/recovery-codes", RegenerateRecoveryCodesAsync).WithName("RegenerateRecoveryCodes").RequireRateLimiting(RateLimitingSetup.Auth)
@@ -103,6 +106,11 @@ internal static class TwoFactorEndpoints
             return ApiProblems.Create(ErrorCodes.Conflict, "Set up the authenticator first (POST /api/v1/me/two-factor/setup).");
         }
 
+        if (await ConfirmIdentityAsync(users, audit, db, user, request.Password, code: null, cancellationToken).ConfigureAwait(false) is { } failure)
+        {
+            return failure;
+        }
+
         if (!await VerifyAuthenticatorCodeAsync(users, user, request.Code).ConfigureAwait(false))
         {
             return TypedResults.ValidationProblem(new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -139,7 +147,7 @@ internal static class TwoFactorEndpoints
             return TypedResults.Unauthorized();
         }
 
-        if (await ReauthenticateAsync(users, user, request).ConfigureAwait(false) is { } failure)
+        if (await ReauthenticateAsync(users, audit, db, user, request, cancellationToken).ConfigureAwait(false) is { } failure)
         {
             return failure;
         }
@@ -177,7 +185,7 @@ internal static class TwoFactorEndpoints
             return TypedResults.Unauthorized();
         }
 
-        if (await ReauthenticateAsync(users, user, request).ConfigureAwait(false) is { } failure)
+        if (await ReauthenticateAsync(users, audit, db, user, request, cancellationToken).ConfigureAwait(false) is { } failure)
         {
             return failure;
         }
@@ -207,20 +215,62 @@ internal static class TwoFactorEndpoints
     }
 
     /// <summary>Null when the password or the authenticator code is correct; otherwise the problem to return.</summary>
-    private static async Task<ProblemHttpResult?> ReauthenticateAsync(UserManager<AppUser> users, AppUser user, ReauthenticationRequest request)
+    private static Task<ProblemHttpResult?> ReauthenticateAsync(
+        UserManager<AppUser> users,
+        IAuditLog audit,
+        IAppDbContext db,
+        AppUser user,
+        ReauthenticationRequest request,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Password) == string.IsNullOrEmpty(request.Code))
         {
-            return ApiProblems.Create(
+            return Task.FromResult<ProblemHttpResult?>(ApiProblems.Create(
                 ErrorCodes.ValidationFailed,
                 "Send either the current password or a current authenticator code.",
-                ProfileValidation.Errors("password", "Send either the current password or a current authenticator code."));
+                ProfileValidation.Errors("password", "Send either the current password or a current authenticator code.")));
         }
 
-        var valid = request.Password is { Length: > 0 } password
+        return ConfirmIdentityAsync(users, audit, db, user, request.Password, request.Code, cancellationToken);
+    }
+
+    /// <summary>
+    /// Checks the password (when given) or else the authenticator code like a login does: a locked-out account is
+    /// refused, a wrong value counts towards the lockout (so a stolen session cannot guess the password or codes
+    /// beyond the rate limit), a correct one resets the failure count.
+    /// </summary>
+    private static async Task<ProblemHttpResult?> ConfirmIdentityAsync(
+        UserManager<AppUser> users,
+        IAuditLog audit,
+        IAppDbContext db,
+        AppUser user,
+        string? password,
+        string? code,
+        CancellationToken cancellationToken)
+    {
+        var failed = ApiProblems.Create(ErrorCodes.ReauthenticationFailed, "The password or code is not correct.");
+        if (await users.IsLockedOutAsync(user).ConfigureAwait(false))
+        {
+            return failed;
+        }
+
+        var valid = !string.IsNullOrEmpty(password)
             ? await users.CheckPasswordAsync(user, password).ConfigureAwait(false)
-            : user.TwoFactorEnabled && await VerifyAuthenticatorCodeAsync(users, user, request.Code).ConfigureAwait(false);
-        return valid ? null : ApiProblems.Create(ErrorCodes.ReauthenticationFailed, "The password or code is not correct.");
+            : user.TwoFactorEnabled && await VerifyAuthenticatorCodeAsync(users, user, code).ConfigureAwait(false);
+        if (valid)
+        {
+            await users.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
+            return null;
+        }
+
+        await users.AccessFailedAsync(user).ConfigureAwait(false);
+        if (await users.IsLockedOutAsync(user).ConfigureAwait(false))
+        {
+            audit.Record(AccountAuditActions.LockedOut, AccountAuditActions.ResourceType, user.Id.ToString(), null, new { user.LockoutEnd, Reason = "reauthentication" }, user.Id);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return failed;
     }
 }
 

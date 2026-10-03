@@ -561,7 +561,7 @@
         "tags": [
           "Me"
         ],
-        "summary": "Turn on 2FA with a current authenticator code; returns the recovery codes once",
+        "summary": "Turn on 2FA with a current authenticator code and the password; returns the recovery codes once",
         "operationId": "EnableTwoFactor",
         "requestBody": {
           "content": {
@@ -1562,12 +1562,18 @@
       },
       "EnableTwoFactorRequest": {
         "required": [
-          "code"
+          "code",
+          "password"
         ],
         "type": "object",
         "properties": {
           "code": {
             "maxLength": 16,
+            "minLength": 0,
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
             "minLength": 0,
             "type": "string"
           }

@@ -31,6 +31,14 @@ public sealed class EnableTwoFactorRequest
     [Required]
     [StringLength(16)]
     public string Code { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The current password: turning on 2FA decides who can sign in from now on, so a stolen session alone must
+    /// not be able to do it (wrong → <c>403 reauthentication_failed</c>, counts towards the lockout).
+    /// </summary>
+    [Required]
+    [StringLength(Infrastructure.Identity.IdentitySetup.MaxPasswordLength)]
+    public string Password { get; init; } = string.Empty;
 }
 
 /// <param name="RecoveryCodes">Ten single-use codes. Shown only now: the server stores hashes.</param>
