@@ -515,6 +515,54 @@ export interface paths {
     patch: operations['UpdateCalendar']
     trace?: never
   }
+  '/api/v1/calendars/{id}/grants': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The calendar's grants (manage; cursor-paginated)
+     * @description Ordered by creation. Below manage: 403; no level: 404.
+     */
+    get: operations['ListCalendarGrants']
+    put?: never
+    /**
+     * Share the calendar with a user or a group (manage)
+     * @description Levels free_busy … manage, never owner or above the caller's level (400 validation_failed). Principals: users who share a group with the caller or already see the calendar; the caller's groups or groups that already have a grant (else 400). One grant per principal (409 conflict). Frozen calendars: 409 calendar_frozen.
+     */
+    post: operations['CreateCalendarGrant']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/calendars/{id}/grants/{grantId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Remove a grant (manage; requires If-Match)
+     * @description A removal that would take away the caller's own manage level is 409 permission_self_lockout.
+     */
+    delete: operations['DeleteCalendarGrant']
+    options?: never
+    head?: never
+    /**
+     * Change a grant's level (manage; requires If-Match)
+     * @description Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. If-Match: the grant's etag (or *).
+     */
+    patch: operations['UpdateCalendarGrant']
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -567,6 +615,10 @@ export interface components {
       groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
       creatorsManageOwnEvents?: null | boolean
       creatorsMayShareExternally?: null | boolean
+    }
+    CreateGrantRequest: {
+      principal: components['schemas']['GrantPrincipalRequest']
+      level: string
     }
     CreateGroupRequest: {
       name: string
@@ -632,6 +684,38 @@ export interface components {
       | 'validation_failed'
     ForgotPasswordRequest: {
       email: string
+    }
+    GrantListResponse: {
+      items: components['schemas']['GrantResponse'][]
+      nextCursor: null | string
+    }
+    GrantPrincipalRequest: {
+      type: string
+      /** Format: uuid */
+      id: string
+      minRole?: null | string
+    }
+    GrantPrincipalResponse: {
+      type: string
+      /** Format: uuid */
+      id: string
+      minRole: null | string
+    }
+    GrantResponse: {
+      /** Format: uuid */
+      id: string
+      /** Format: uuid */
+      calendarId: string
+      principal: components['schemas']['GrantPrincipalResponse']
+      principalName: string
+      level: string
+      /** Format: uuid */
+      createdBy: string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
+      etag: string
     }
     GroupListResponse: {
       items: components['schemas']['GroupResponse'][]
@@ -803,6 +887,9 @@ export interface components {
       creatorsManageOwnEvents?: null | boolean
       creatorsMayShareExternally?: null | boolean
       groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
+    }
+    UpdateGrantRequest: {
+      level?: null | string
     }
     UpdateGroupRequest: {
       name?: null | string
@@ -1982,6 +2069,146 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['CalendarResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListCalendarGrants: {
+    parameters: {
+      query?: {
+        limit?: number
+        cursor?: string
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GrantListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateCalendarGrant: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateGrantRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GrantResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  DeleteCalendarGrant: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        grantId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateCalendarGrant: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        grantId: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateGrantRequest']
+        'application/json': components['schemas']['UpdateGrantRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['GrantResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

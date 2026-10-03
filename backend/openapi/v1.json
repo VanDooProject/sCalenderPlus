@@ -1685,6 +1685,259 @@
           }
         ]
       }
+    },
+    "/api/v1/calendars/{id}/grants": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "The calendar's grants (manage; cursor-paginated)",
+        "description": "Ordered by creation. Below manage: 403; no level: 404.",
+        "operationId": "ListCalendarGrants",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Share the calendar with a user or a group (manage)",
+        "description": "Levels free_busy … manage, never owner or above the caller's level (400 validation_failed). Principals: users who share a group with the caller or already see the calendar; the caller's groups or groups that already have a grant (else 400). One grant per principal (409 conflict). Frozen calendars: 409 calendar_frozen.",
+        "operationId": "CreateCalendarGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/calendars/{id}/grants/{grantId}": {
+      "patch": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Change a grant's level (manage; requires If-Match)",
+        "description": "Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. If-Match: the grant's etag (or *).",
+        "operationId": "UpdateCalendarGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrantRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Remove a grant (manage; requires If-Match)",
+        "description": "A removal that would take away the caller's own manage level is 409 permission_self_lockout.",
+        "operationId": "DeleteCalendarGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1902,6 +2155,21 @@
           }
         }
       },
+      "CreateGrantRequest": {
+        "required": [
+          "principal",
+          "level"
+        ],
+        "type": "object",
+        "properties": {
+          "principal": {
+            "$ref": "#/components/schemas/GrantPrincipalRequest"
+          },
+          "level": {
+            "type": "string"
+          }
+        }
+      },
       "CreateGroupRequest": {
         "required": [
           "name"
@@ -2047,6 +2315,120 @@
         "properties": {
           "email": {
             "maxLength": 256,
+            "type": "string"
+          }
+        }
+      },
+      "GrantListResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GrantResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GrantPrincipalRequest": {
+        "required": [
+          "type",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minRole": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GrantPrincipalResponse": {
+        "required": [
+          "type",
+          "id",
+          "minRole"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minRole": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GrantResponse": {
+        "required": [
+          "id",
+          "calendarId",
+          "principal",
+          "principalName",
+          "level",
+          "createdBy",
+          "createdAt",
+          "updatedAt",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/GrantPrincipalResponse"
+          },
+          "principalName": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "etag": {
             "type": "string"
           }
         }
@@ -2719,6 +3101,17 @@
               {
                 "$ref": "#/components/schemas/RoleDefaultsRequest"
               }
+            ]
+          }
+        }
+      },
+      "UpdateGrantRequest": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }

@@ -38,6 +38,7 @@ internal static class CalendarEndpoints
             .WithDescription("Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).");
         calendars.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteCalendar")
             .WithSummary("Delete the calendar with its grants (owners only, requires If-Match)");
+        calendars.MapGrantEndpoints();
 
         return calendars;
     }

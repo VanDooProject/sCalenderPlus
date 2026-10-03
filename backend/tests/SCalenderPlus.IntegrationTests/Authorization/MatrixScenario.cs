@@ -110,7 +110,15 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         // free/busy actors; "lions-doomed" (deleted by a case); "other" (another tenant's calendar).
         await SeedUserAsync(Actors.CalendarEditor.Name, emailConfirmed: true);
         await SeedUserAsync(Actors.CalendarFreeBusy.Name, emailConfirmed: true);
-        await SeedCalendarAsync("lions", "lions", (Actors.CalendarEditor.Name, CalendarLevel.Edit), (Actors.CalendarFreeBusy.Name, CalendarLevel.FreeBusy));
+        await SeedUserAsync("grant-removed-by-admin", emailConfirmed: true, signIn: false);
+        await SeedUserAsync("grant-removed-by-owner", emailConfirmed: true, signIn: false);
+        await SeedCalendarAsync(
+            "lions",
+            "lions",
+            (Actors.CalendarEditor.Name, CalendarLevel.Edit),
+            (Actors.CalendarFreeBusy.Name, CalendarLevel.FreeBusy),
+            ("grant-removed-by-admin", CalendarLevel.FreeBusy),
+            ("grant-removed-by-owner", CalendarLevel.FreeBusy));
         await SeedCalendarAsync("lions-doomed", "lions");
         await SeedCalendarAsync("other", "other");
     }
@@ -164,6 +172,8 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         ("lions-removed-by-owner", GroupRole.Member),
         ("lions-removed-by-admin", GroupRole.Viewer),
         ("lions-kept", GroupRole.Member),
+        ("grant-target-admin", GroupRole.Viewer), // shares "lions" with the managers: selectable for grants
+        ("grant-target-owner", GroupRole.Viewer),
     ];
 
     /// <summary>A group whose first member is its billing owner; resource <c>group:{name}</c>.</summary>

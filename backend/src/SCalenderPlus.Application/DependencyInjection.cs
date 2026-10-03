@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<CalendarAccessLoader>();
         services.AddScoped<AclVersions>();
         services.AddScoped<CalendarService>();
+        services.AddScoped<CalendarGrantService>();
 
         return services;
     }

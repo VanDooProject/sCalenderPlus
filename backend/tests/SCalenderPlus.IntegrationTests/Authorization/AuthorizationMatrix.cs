@@ -286,6 +286,58 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupAdmin, HttpStatusCode.Forbidden) // manage is not owner
             .WithRoute(s => Route(s, "calendar:lions-doomed"))
             .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
+
+        // Calendar grants (#42): managers share the calendar.
+        .. For("GET", "/api/v1/calendars/{id}/grants")
+            .WithRoute(LionsCalendar)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/calendars/{id}/grants")
+            .WithRoute(LionsCalendar)
+            .WithBody(s => GrantTo(s, "grant-target-admin"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .WithBody(s => GrantTo(s, "grant-target-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+        .. For("PATCH", "/api/v1/calendars/{id}/grants/{grantId}")
+            .WithRoute(s => Grant(s, Actors.CalendarEditor.Name))
+            .WithBody(_ => JsonContent.Create(new { level = "edit" })) // unchanged: no effect on other cases
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/calendars/{id}/grants/{grantId}")
+            .WithRoute(s => Grant(s, "grant-removed-by-admin"))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
+            .WithRoute(s => Grant(s, "grant-removed-by-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
@@ -294,6 +346,12 @@ public static class AuthorizationMatrix
     private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
 
     private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
+
+    private static Dictionary<string, string> Grant(MatrixScenario s, string holder) =>
+        new(StringComparer.Ordinal) { ["id"] = s.Get("calendar:lions"), ["grantId"] = s.Get($"grant:lions:{holder}") };
+
+    private static JsonContent GrantTo(MatrixScenario s, string user) =>
+        JsonContent.Create(new { principal = new { type = "user", id = s.Get("user:" + user) }, level = "read" });
 
     private static Dictionary<string, string> Member(MatrixScenario s, string user) =>
         new(StringComparer.Ordinal) { ["id"] = s.Get("group:lions"), ["userId"] = s.Get("user:" + user) };

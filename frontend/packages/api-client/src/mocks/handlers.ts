@@ -119,6 +119,21 @@ export const mockPersonalCalendar: Calendar = {
 
 const mockCalendars = [mockCalendar, mockPersonalCalendar]
 
+type Grant = components['schemas']['GrantResponse']
+
+/** A grant on {@link mockCalendar}: a user outside the group may edit it. */
+export const mockGrant: Grant = {
+  id: '0192f2c4-0000-7000-8000-000000000401',
+  calendarId: mockCalendar.id,
+  principal: { type: 'user', id: '0192f2c4-0000-7000-8000-000000000005', minRole: null },
+  principalName: 'Eve',
+  level: 'edit',
+  createdBy: mockUser.id,
+  createdAt: '2026-10-01T08:00:00Z',
+  updatedAt: '2026-10-01T08:00:00Z',
+  etag: '"grant-0401"',
+}
+
 export const handlers = [
   http.get('/health/live', ({ response }) => response(200).json({ status: 'Healthy', checks: {} })),
   http.get('/health/ready', ({ response }) =>
@@ -268,6 +283,35 @@ export const handlers = [
     })
   }),
   http.delete('/api/v1/calendars/{id}', ({ response }) => response(204).empty()),
+  http.get('/api/v1/calendars/{id}/grants', ({ params, response }) =>
+    response(200).json({
+      items: params.id === mockCalendar.id ? [mockGrant] : [],
+      nextCursor: null,
+    }),
+  ),
+  http.post('/api/v1/calendars/{id}/grants', async ({ params, request, response }) => {
+    const body = await request.json()
+    const minRole = body.principal.type === 'group' ? (body.principal.minRole ?? 'viewer') : null
+    return response(201).json({
+      ...mockGrant,
+      id: crypto.randomUUID(),
+      calendarId: params.id,
+      principal: { type: body.principal.type, id: body.principal.id, minRole },
+      principalName: body.principal.type === 'group' ? mockGroup.name : 'Max',
+      level: body.level,
+    })
+  }),
+  http.patch('/api/v1/calendars/{id}/grants/{grantId}', async ({ params, request, response }) => {
+    if (params.grantId !== mockGrant.id) {
+      return response('default').json(
+        notFound(`/api/v1/calendars/${params.id}/grants/${params.grantId}`),
+        { status: 404 },
+      )
+    }
+    const { level } = await request.json()
+    return response(200).json({ ...mockGrant, level: level ?? mockGrant.level })
+  }),
+  http.delete('/api/v1/calendars/{id}/grants/{grantId}', ({ response }) => response(204).empty()),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {
