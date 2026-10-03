@@ -46,6 +46,11 @@ services:
 
   api:
     image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${IMAGE_TAG:-local}
+    # Same image as `migrate` (built once); without it `up --build` first tries to pull `api:local` and
+    # prints a registry error.
+    build:
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
     environment:
       <<: *backend-env
       Database__AutoMigrate: 'false'
