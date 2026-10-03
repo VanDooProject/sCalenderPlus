@@ -94,7 +94,9 @@ if [ -n "$deployment_uuid" ]; then
     esac
     sleep 10
   done
-  [ "$status" != queued ] && [ "$status" != in_progress ] || fail "Coolify deployment $deployment_uuid still '$status' after ${DEPLOY_TIMEOUT}s."
+  if [ "$status" = queued ] || [ "$status" = in_progress ]; then
+    fail "Coolify deployment $deployment_uuid still '$status' after ${DEPLOY_TIMEOUT}s."
+  fi
   echo "Coolify deployment $deployment_uuid: $status"
 else
   warn "Coolify returned no deployment_uuid (deployment already queued?)."
