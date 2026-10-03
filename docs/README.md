@@ -33,6 +33,7 @@ sCalenderPlus is a shared calendar SaaS whose core idea is **different permissio
 | [reviews/2026-10-spec-review.md](reviews/2026-10-spec-review.md) | Spec review findings and resolutions |
 | [reviews/2026-10-m0-review.md](reviews/2026-10-m0-review.md) | M0 code review (scaffolding, CI, Docker, release, e2e) findings and resolutions |
 | [reviews/2026-10-m1-review.md](reviews/2026-10-m1-review.md) | M1 security review (auth, users, groups) findings and resolutions |
+| [reviews/2026-10-permission-engine-review.md](reviews/2026-10-permission-engine-review.md) | Permission engine review: real-world scenarios, escalation findings, spec decisions, hot-path performance |
 
 ## Key decisions at a glance
 
