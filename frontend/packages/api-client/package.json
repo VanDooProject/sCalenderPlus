@@ -3,15 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Typed API client: openapi-typescript types generated from backend/openapi/v1.json and an openapi-fetch client.",
+  "description": "Typed API client: openapi-typescript types generated from backend/openapi/v1.json, an openapi-fetch client and shared MSW mock handlers.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./mocks": "./src/mocks/handlers.ts"
   },
   "scripts": {
     "generate": "openapi-typescript ../../../backend/openapi/v1.json -o src/schema.d.ts && prettier --write --log-level warn src/schema.d.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "msw": "^3.0.2",
+    "openapi-msw": "^2.1.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3"

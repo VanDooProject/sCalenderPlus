@@ -86,12 +86,12 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
             ├── frontend ─ install (pnpm cache) ─ lint (eslint, prettier) ─ typecheck (vue-tsc) ─ unit (vitest) ─ build app + landing
             │                                     └─ api-client regenerate + diff check
             │
-            ├── e2e-mocked ── (needs frontend) Playwright vs built app with MSW (chromium on PR; webkit + mobile viewport nightly)
+            ├── e2e-mocked ── (parallel to frontend) Playwright vs Vite dev server in mock mode with MSW (chromium on PR; webkit + mobile viewport nightly)
             │
             ├── docker ── build api/worker/web images (landing from M7; linux/amd64, loaded, no push), trivy scan (fixable CRITICAL fail, HIGH/CRITICAL in job summary)
             │
-            └── e2e-fullstack ── (needs docker; images handed over as artifact) docker compose up (postgres, api, worker, web, mailpit, fake LLM from M6)
-                                  ─ run migrations ─ Playwright fullstack suite (chromium)
+            └── e2e-fullstack ── (needs docker; images handed over as artifact and `docker load`ed) docker compose up --wait
+                                  (postgres, migrate, api, worker, web; mailpit, fake LLM from M6) ─ Playwright fullstack suite (chromium)
  ci-ok ── needs all ── single required status check
 ```
 
@@ -115,8 +115,8 @@ Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm s
 | **Unit (backend)** | xUnit v3, FsCheck, Verify | Permission engine (table-driven from permissions.md examples + property tests), recurrence, TZ conversion, dedupe keys, entitlement rules, iCal projection (golden `.ics` files) | every PR, < 30 s |
 | **Integration (backend)** | xUnit + `WebApplicationFactory` + Testcontainers Postgres (CI: same image), Respawn between tests | Endpoints end-to-end through EF/Postgres: authz on every endpoint (matrix test: each endpoint × each level), migrations apply from scratch, feed ETags, job queue SKIP LOCKED | every PR |
 | **Unit (frontend)** | Vitest + Vue Test Utils + MSW | Composables, components (access badges, override editor), i18n key completeness | every PR |
-| **E2E mocked** ("without backend") | Playwright against `vite preview` with `VITE_API_MOCK=1` (MSW in browser) | UI flows, error/edge states that are hard to produce for real (402 paywall, 412 conflict, 500), a11y (`@axe-core/playwright`); visual regression snapshots only once the UI stabilises (post-beta) | every PR chromium, nightly 3 browsers |
-| **E2E full-stack** ("with backend") | Playwright against docker compose stack (Postgres, api, worker, web, Mailpit, fake LLM server) | Critical journeys: sign-up + email verify (Mailpit API), create group + invite, calendar + per-event override seen differently by two users, iCal feed download & assertions, import dry-run with fake LLM, paywall on limit | every PR (chromium), nightly (all browsers) |
+| **E2E mocked** ("without backend") | Playwright project `mocked` against the Vite dev server in mock mode (`pnpm --filter app dev:mock` = `vite --mode mock`, MSW in the browser with the shared handlers from `@scalenderplus/api-client/mocks`) | UI flows, error/edge states that are hard to produce for real (402 paywall, 412 conflict, 500), a11y (`@axe-core/playwright`); visual regression snapshots only once the UI stabilises (post-beta) | every PR chromium, nightly 3 browsers |
+| **E2E full-stack** ("with backend") | Playwright project `fullstack` against the docker compose stack (`deploy/docker-compose.yml --profile with-db`: Postgres, api, worker, web; Mailpit and fake LLM server when needed) at `E2E_FULLSTACK_BASE_URL` | Critical journeys: sign-up + email verify (Mailpit API), create group + invite, calendar + per-event override seen differently by two users, iCal feed download & assertions, import dry-run with fake LLM, paywall on limit | every PR (chromium), nightly (all browsers) |
 | **Contract** | OpenAPI diff + oasdiff, typed MSW handlers | API compatibility | every PR |
 | **Load** (later) | k6 | feed polling and event window queries | pre-release |
 
@@ -137,6 +137,21 @@ dotnet run --project backend/src/SCalenderPlus.Worker
 pnpm -C frontend install && pnpm -C frontend --filter app dev   # Vite proxies /api → :5080
 pnpm -C frontend --filter app dev:mock                   # UI only, MSW mocks, no backend
 ```
+
+End-to-end tests live in `e2e/`, a standalone pnpm package with its own lockfile (Playwright is not a dependency of the frontend workspace, and the fullstack CI job needs no frontend install):
+
+```
+pnpm -C e2e install
+pnpm -C e2e exec playwright install chromium             # once per Playwright version
+pnpm -C e2e test:mocked                                  # starts `dev:mock` itself (port 5173, or E2E_MOCKED_PORT)
+docker compose -f deploy/docker-compose.yml --profile with-db up -d --build --wait
+pnpm -C e2e test:fullstack                               # against E2E_FULLSTACK_BASE_URL (default http://localhost:8080)
+docker compose -f deploy/docker-compose.yml --profile with-db down -v
+```
+
+With a preinstalled Chromium of a different revision (e.g. a sandbox), set `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome` instead of installing browsers. Failed CI runs upload the Playwright report (and compose logs) as artifacts.
+
+Unit tests reuse the same mock handlers: `useMockApi()` in `frontend/app/src/__tests__/msw.ts` starts an MSW node server; `server.use(http.get(...))` with the typed `http` from `@scalenderplus/api-client/mocks` overrides a response per test.
 
 Database migrations (EF Core, in `SCalenderPlus.Infrastructure/Persistence/Migrations`):
 

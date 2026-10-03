@@ -1,11 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { createMemoryHistory } from 'vue-router'
+import { http } from '@scalenderplus/api-client/mocks'
 import App from '@/App.vue'
 import { configKey, type AppConfig } from '@/config'
 import { createAppI18n } from '@/i18n'
 import { createAppRouter } from '@/router'
+import { useMockApi } from './msw'
+
+const server = useMockApi()
 
 async function mountApp(config: AppConfig = { environment: 'staging' }) {
   const router = createAppRouter(createMemoryHistory())
@@ -26,26 +30,21 @@ describe('App shell', () => {
     localStorage.clear()
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('renders the home page with a reachable API', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ status: 'Healthy', checks: {} }))
-    vi.stubGlobal('fetch', fetchMock)
-
     const wrapper = await mountApp()
 
     expect(wrapper.get('[data-testid="app-title"]').text()).toBe('sCalenderPlus')
     expect(wrapper.text()).toContain('Welcome')
     expect(wrapper.get('[data-testid="environment-badge"]').text()).toBe('Environment: staging')
     expect(wrapper.get('[data-testid="api-status"]').text()).toBe('reachable')
-    const request = fetchMock.mock.calls[0]?.[0] as Request
-    expect(new URL(request.url).pathname).toBe('/health/live')
   })
 
   it('shows the API as unreachable when the health check fails', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 503 })))
+    server.use(
+      http.get('/health/live', ({ response }) =>
+        response(503).json({ status: 'Unhealthy', checks: {} }),
+      ),
+    )
 
     const wrapper = await mountApp()
 
@@ -53,15 +52,12 @@ describe('App shell', () => {
   })
 
   it('hides the environment badge in production', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 200 })))
-
     const wrapper = await mountApp({ environment: 'production' })
 
     expect(wrapper.find('[data-testid="environment-badge"]').exists()).toBe(false)
   })
 
   it('switches the language to German and remembers the choice', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 200 })))
     const wrapper = await mountApp()
 
     await wrapper.get('[data-testid="locale-switcher"]').setValue('de')

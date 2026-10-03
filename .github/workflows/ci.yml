@@ -35,6 +35,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       openapi: ${{ steps.filter.outputs.openapi }}
       docker: ${{ steps.filter.outputs.docker }}
+      e2e-mocked: ${{ steps.filter.outputs.e2e-mocked }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -54,6 +55,10 @@ jobs:
               - '.github/workflows/ci.yml'
             openapi:
               - 'backend/openapi/**'
+              - '.github/workflows/ci.yml'
+            e2e-mocked:
+              - 'frontend/**'
+              - 'e2e/**'
               - '.github/workflows/ci.yml'
             docker:
               - 'backend/src/**'
@@ -234,10 +239,94 @@ jobs:
           retention-days: 1
           compression-level: 0
 
+  e2e-mocked:
+    name: e2e (mocked)
+    needs: changes
+    if: needs.changes.outputs.e2e-mocked == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+      - run: pnpm -C frontend install --frozen-lockfile
+      - run: pnpm -C e2e install --frozen-lockfile
+      - name: Install Playwright Chromium
+        uses: ./.github/actions/playwright-browsers
+      - run: pnpm -C e2e typecheck
+      # Starts the app with `pnpm --filter app dev:mock` (Vite + MSW) via Playwright's webServer.
+      - run: pnpm -C e2e test:mocked
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-mocked
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
+  e2e-fullstack:
+    name: e2e (fullstack)
+    needs: [changes, docker]
+    if: needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_FILE: deploy/docker-compose.yml
+      COMPOSE_PROFILES: with-db
+      APP_VERSION: ci # tag of the images built by the docker job
+      APP_ENVIRONMENT: ci
+      E2E_FULLSTACK_BASE_URL: http://localhost:8080
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-*
+          merge-multiple: true
+      - name: Load images
+        run: for f in image-*.tar.gz; do gunzip -c "$f" | docker load; done
+      - name: Start stack (migrate, api, worker, web, postgres)
+        run: docker compose up --detach --no-build --wait --wait-timeout 180
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: e2e/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+      - run: pnpm -C e2e install --frozen-lockfile
+      - name: Install Playwright Chromium
+        uses: ./.github/actions/playwright-browsers
+      - run: pnpm -C e2e test:fullstack
+      - name: Compose logs
+        if: failure()
+        run: docker compose logs --no-color --timestamps > compose-logs.txt
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-fullstack
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            compose-logs.txt
+          retention-days: 7
+      - name: Stop stack
+        if: always()
+        run: docker compose down --volumes
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, backend, frontend, openapi-breaking, docker]
+    needs: [changes, backend, frontend, openapi-breaking, docker, e2e-mocked, e2e-fullstack]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

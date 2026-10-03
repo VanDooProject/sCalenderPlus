@@ -1,0 +1,22 @@
+name: Playwright browsers
+description: Install Playwright's Chromium (and OS dependencies) for e2e/, cached per Playwright version.
+runs:
+  using: composite
+  steps:
+    - name: Playwright version
+      id: version
+      shell: bash
+      run: echo "version=$(pnpm -C e2e exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v6
+      id: cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.version.outputs.version }}-chromium
+    - name: Install Chromium with OS dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm -C e2e exec playwright install --with-deps chromium
+    - name: Install OS dependencies only (browser from cache)
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: pnpm -C e2e exec playwright install-deps chromium

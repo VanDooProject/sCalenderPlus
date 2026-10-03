@@ -139,7 +139,7 @@ backend/openapi/v1.json
 
 - Usage: `const { data, error } = await api.GET('/api/v1/events', { params: { query: { from, to } } })` — paths, params and responses fully typed; renames break the TS build.
 - Vue integration: thin composables per resource (`useEvents(range)`, `useUpdateEvent()`) wrapping TanStack Query with query keys and invalidation rules; optimistic updates for drag & drop with rollback on `412`.
-- **MSW mock handlers** live next to the client (`src/mocks/`) and are typed against the same `paths`, so mocks break when the contract changes. Used by: dev mock mode (`VITE_API_MOCK=1`), Vitest component tests, Playwright mocked e2e.
+- **MSW mock handlers** live next to the client (`src/mocks/handlers.ts`, export `@scalenderplus/api-client/mocks`) and are typed against the same `paths` via `openapi-msw`, so mocks break when the contract changes. Used by: dev mock mode (`pnpm --filter app dev:mock`, i.e. `vite --mode mock` with the `msw/vite` plugin serving the worker script), Vitest component tests, Playwright mocked e2e.
 - The generated schema is regenerated in CI and diff-checked (like `v1.json`).
 - Future native apps generate their clients from the same document (Swift OpenAPI Generator / Kotlin openapi-generator).
 

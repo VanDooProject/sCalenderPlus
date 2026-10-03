@@ -1,0 +1,22 @@
+{
+  "name": "scalenderplus-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Playwright end-to-end tests: `mocked` (app with MSW, no backend) and `fullstack` (compose stack).",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:mocked": "playwright test --project=mocked",
+    "test:fullstack": "playwright test --project=fullstack",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5",
+    "typescript": "~6.0.3"
+  }
+}
