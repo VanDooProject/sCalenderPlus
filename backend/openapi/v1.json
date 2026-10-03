@@ -71,6 +71,38 @@
   },
   "components": {
     "schemas": {
+      "ErrorCode": {
+        "enum": [
+          "bad_request",
+          "calendar_frozen",
+          "conflict",
+          "email_not_verified",
+          "external_sharing_not_allowed",
+          "feature_not_in_plan",
+          "insufficient_permission",
+          "internal_error",
+          "method_not_allowed",
+          "not_found",
+          "override_invalid_in_target",
+          "payload_too_large",
+          "permission_self_lockout",
+          "plan_limit_reached",
+          "precondition_failed",
+          "precondition_required",
+          "rate_limited",
+          "recurrence_invalid",
+          "service_unavailable",
+          "time_zone_invalid",
+          "token_expired",
+          "two_factor_required",
+          "uid_conflict",
+          "unauthenticated",
+          "unsupported_media_type",
+          "validation_failed"
+        ],
+        "type": "string",
+        "description": "Stable machine-readable error code (part of the contract; never renamed)."
+      },
       "HealthResponse": {
         "required": [
           "status",
@@ -88,6 +120,51 @@
             }
           }
         }
+      },
+      "ProblemDetails": {
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Validation errors by field (code `validation_failed`)."
+          }
+        },
+        "description": "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`)."
       }
     }
   },

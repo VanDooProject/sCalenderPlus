@@ -30,6 +30,7 @@ internal static class OpenApiSetup
                 document.Servers = [];
                 return Task.CompletedTask;
             });
+            options.AddDocumentTransformer((document, _, _) => ProblemSchemas.TransformAsync(document));
         });
 
     public static IEndpointRouteBuilder MapApiDocument(this IEndpointRouteBuilder endpoints)

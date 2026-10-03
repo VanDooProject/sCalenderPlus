@@ -10,5 +10,11 @@ export type { components, operations, paths } from './schema'
 
 export type HealthResponse = components['schemas']['HealthResponse']
 
+/** Stable error `code` of a problem response (api.md §2); map to i18n messages, never to `title`. */
+export type ErrorCode = components['schemas']['ErrorCode']
+
+/** RFC 9457 problem details body of every error response (`application/problem+json`). */
+export type ProblemDetails = components['schemas']['ProblemDetails']
+
 /** Versioned REST base path; same-origin (proxied by `web`). */
 export const API_BASE_PATH = '/api/v1'

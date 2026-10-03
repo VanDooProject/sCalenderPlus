@@ -36,19 +36,30 @@ All errors are `application/problem+json`:
 }
 ```
 
-| Status | `code` examples |
+| Status | `code` |
 |---|---|
-| 400 | `validation_failed` (+ `errors: { "field": ["msg"] }`) |
+| 400 | `validation_failed` (+ `errors: { "field": ["msg"] }`), `bad_request` (malformed request: invalid JSON, wrong parameter type) |
 | 401 | `unauthenticated`, `token_expired` |
 | 403 | `insufficient_permission` (+ `required`, `actual` levels), `two_factor_required`, `external_sharing_not_allowed`, `email_not_verified` |
-| 404 | `not_found` (also for `none`-level resources — no existence leaks) |
+| 404 | `not_found` (also for `none`-level resources — no existence leaks; also unknown routes) |
+| 405 | `method_not_allowed` |
 | 409 | `conflict`, `permission_self_lockout` (defensive), `calendar_frozen`, `override_invalid_in_target`, `uid_conflict` |
 | 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
+| 413 / 415 | `payload_too_large`, `unsupported_media_type` |
 | 422 | `recurrence_invalid`, `time_zone_invalid` |
 | 429 | `rate_limited` |
+| 500 / 503 | `internal_error` (no details; correlate via `traceId`), `service_unavailable` |
 
-`code` values are stable and part of the contract; the frontend maps them to i18n messages and upgrade prompts. Implemented with ASP.NET Core `AddProblemDetails` + a domain-exception → problem mapper.
+`code` values are stable and part of the contract; the frontend maps them to i18n messages and upgrade prompts.
+
+Implementation:
+
+- **Catalogue**: `SCalenderPlus.Application.Errors.ErrorCodes` holds every code (constants); `SCalenderPlus.Api.Problems.ProblemCatalogue` gives each exactly one status and title (a test enforces the 1:1 mapping). A new code is added to both, never renamed or reused.
+- **Producing errors**: use cases throw `AppException(code, detail, extensions)`; handlers may return `ApiProblems.Create(code, detail, extensions)`. Both yield the status/title from the catalogue and keep extra members (`limit`, `required`, …).
+- **Everything else** goes through `AddProblemDetails` + `UseExceptionHandler` + `UseStatusCodePages` (`Api/Problems/ProblemDetailsSetup.cs`): framework status codes (unknown route, wrong method, binding failures, bare `StatusCode` results) get the default code of their status; validation problems (`HttpValidationProblemDetails`, built-in minimal API validation via `AddValidation`) get `validation_failed`; unhandled exceptions become `internal_error` without exception details. Every problem gets `type` = `https://scalenderplus.app/problems/<code-with-dashes>`, `instance` = request path and `traceId`.
+- Exceptions: the system endpoints `/health/*` keep their own JSON body (also for 503), so probes stay simple.
+- **OpenAPI**: the document has the `ErrorCode` enum and the `ProblemDetails` schema, and every `/api/v1` operation gets a `default` `application/problem+json` response; the typed client exports `ErrorCode` and `ProblemDetails`.
 
 ## 3. Authentication
 

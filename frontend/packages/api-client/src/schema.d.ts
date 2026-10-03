@@ -42,10 +42,57 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /**
+     * @description Stable machine-readable error code (part of the contract; never renamed).
+     * @enum {string}
+     */
+    ErrorCode:
+      | 'bad_request'
+      | 'calendar_frozen'
+      | 'conflict'
+      | 'email_not_verified'
+      | 'external_sharing_not_allowed'
+      | 'feature_not_in_plan'
+      | 'insufficient_permission'
+      | 'internal_error'
+      | 'method_not_allowed'
+      | 'not_found'
+      | 'override_invalid_in_target'
+      | 'payload_too_large'
+      | 'permission_self_lockout'
+      | 'plan_limit_reached'
+      | 'precondition_failed'
+      | 'precondition_required'
+      | 'rate_limited'
+      | 'recurrence_invalid'
+      | 'service_unavailable'
+      | 'time_zone_invalid'
+      | 'token_expired'
+      | 'two_factor_required'
+      | 'uid_conflict'
+      | 'unauthenticated'
+      | 'unsupported_media_type'
+      | 'validation_failed'
     HealthResponse: {
       status: string
       checks: {
         [key: string]: string
+      }
+    }
+    /** @description RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`). */
+    ProblemDetails: {
+      /** Format: uri */
+      type: string
+      title: string
+      /** Format: int32 */
+      status: number
+      detail?: string
+      instance?: string
+      code: components['schemas']['ErrorCode']
+      traceId?: string
+      /** @description Validation errors by field (code `validation_failed`). */
+      errors?: {
+        [key: string]: string[]
       }
     }
   }
