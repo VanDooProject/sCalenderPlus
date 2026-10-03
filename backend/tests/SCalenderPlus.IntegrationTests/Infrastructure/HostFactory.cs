@@ -39,5 +39,11 @@ internal static class TestSettings
         ["App:PublicBaseUrl"] = "https://app.example.test",
         ["ConnectionStrings:Default"] = connectionString,
         ["Database:AutoMigrate"] = autoMigrate ? "true" : "false",
+
+        // Worker only (validated on start); nothing listens on port 1, tests that send mail point it at Mailpit.
+        ["Smtp:Host"] = "127.0.0.1",
+        ["Smtp:Port"] = "1",
+        ["Smtp:Security"] = "None",
+        ["Smtp:From"] = "noreply@scalenderplus.test",
     };
 }

@@ -213,7 +213,8 @@ Tokens are 32 random bytes (base64url) and stored only as SHA-256 hashes; lookup
 ## 8. Audit and jobs
 
 - `audit_events`: `id, at, actor_user_id null, actor_kind, subject_id (billing subject, for retention), resource_type, resource_id, action, before jsonb, after jsonb, ip inet, user_agent` — index `(resource_type, resource_id, at)`, `(subject_id, at)`. Monthly partitions from v1 (cheap retention trimming via `DROP PARTITION`).
-- `jobs`: `id, type, payload jsonb, run_at, attempts, max_attempts, locked_by, locked_until, last_error, dedupe_key unique null, created_at` — index `(run_at) WHERE locked_until IS NULL`. Dequeue: `SELECT … FOR UPDATE SKIP LOCKED LIMIT n`.
+- `data_protection_keys`: `id, friendly_name, xml` — ASP.NET Core Data Protection key ring (`PersistKeysToDbContext`), shared by api and worker replicas; keys are stored unencrypted (database access implies key access).
+- `jobs`: `id, type, payload jsonb, run_at, attempts, max_attempts, locked_by, locked_until, last_error, dedupe_key null, created_at, dead_at null` — index `(run_at) WHERE dead_at IS NULL`; `dedupe_key` unique `WHERE dedupe_key IS NOT NULL AND dead_at IS NULL` (dead jobs don't block re-enqueueing). Claim: one `UPDATE … FROM (SELECT id … WHERE dead_at IS NULL AND run_at <= now AND (locked_until IS NULL OR locked_until <= now) ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED)` that sets the lease (`locked_by`, `locked_until`) and increments `attempts`. Succeeded jobs are deleted; failed ones get `run_at` = now + exponential backoff (base · 2^(attempt−1), ±20 % jitter, capped); after `max_attempts` (or on a permanent failure) `dead_at` is set and the row stays as dead letter. Every update after the claim is conditional on `locked_by` + `attempts`, so a worker whose lease expired cannot overwrite the new owner's state. See `Infrastructure/Jobs/`.
 
 ## 9. Recurrence
 

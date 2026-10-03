@@ -16,6 +16,8 @@
 #                    Host=<database-uuid>;Port=5432;Database=scal;Username=scal;Password=…;Maximum Pool Size=50
 #   APP_URL          public URL of web, e.g. https://staging.example.com
 #   APP_ENVIRONMENT  staging | production (shown in the SPA via /config.json)
+#   SMTP_HOST, SMTP_FROM          required by the worker (emails); SMTP_PORT (587), SMTP_SECURITY (Auto),
+#   SMTP_USER, SMTP_PASSWORD      optional
 #   API_UPSTREAM     api-<resource-uuid>:8080 – the api container name, unique on the shared `coolify`
 #                    network (the bare service name `api` may resolve to another stack's api there)
 
@@ -67,7 +69,14 @@ services:
 
   worker:
     image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-worker:${IMAGE_TAG:-main}
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      Smtp__Host: ${SMTP_HOST:?}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__Security: ${SMTP_SECURITY:-Auto}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__From: ${SMTP_FROM:?}
     depends_on:
       migrate:
         condition: service_completed_successfully

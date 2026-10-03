@@ -28,6 +28,7 @@ docker compose -f deploy/docker-compose.dev.yml up -d
 dotnet build backend             # restore + build (warnings are errors)
 dotnet test --solution backend   # unit + integration tests (Microsoft.Testing.Platform; integration tests need Docker)
 dotnet run --project backend/src/SCalenderPlus.Api   # http://localhost:5080, migrates the dev database on start
+dotnet run --project backend/src/SCalenderPlus.Worker   # job queue + email; sent mail in Mailpit: http://localhost:8025
 
 # Frontend (pnpm workspace in frontend/)
 pnpm -C frontend install

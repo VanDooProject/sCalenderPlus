@@ -95,7 +95,7 @@
 | Jobs / scheduling | **Own Postgres job queue** (`jobs` table, `SKIP LOCKED`) + **Cronos** for cron parsing, run by a `BackgroundService` | Transparent, zero extra infra, transactional enqueue with business data (outbox for free). Alternatives: Hangfire (good dashboard, but extra schema and pro features licensed), Quartz.NET (heavyweight clustering config). |
 | HTML processing | **AngleSharp** | Sanitize/strip HTML, extract JSON-LD, readable text. |
 | LLM | Provider abstraction `ILlmExtractor`; default **Anthropic** via official Anthropic .NET SDK; `OpenAiCompatibleExtractor` for self-host/local models | See [llm-import.md](llm-import.md). |
-| Email | **MailKit** via SMTP; templates with **Fluid** (Liquid) | Provider-agnostic; Mailpit in dev. |
+| Email | **MailKit** via SMTP (`IEmailSender`, worker only); use cases queue mails with `IEmailOutbox` as `email.send` jobs (sent after commit, retried). Templates: a minimal code-based layout (`EmailTemplate`: subject, paragraphs, call-to-action → text + HTML, all values encoded); **Fluid** (Liquid) once copy needs to be editable outside code | Provider-agnostic; Mailpit in dev and tests. |
 | Billing | **Stripe.net** behind `IBillingProvider` | See [plans.md](../product/plans.md). |
 | Resilience | `Microsoft.Extensions.Http.Resilience` (Polly v8) | Retries/timeouts for LLM, fetch, webhooks. |
 | Rate limiting | Built-in `Microsoft.AspNetCore.RateLimiting` | Per IP / per token / per feed token. |
@@ -134,12 +134,14 @@
 
 ## 6. Job types (worker)
 
+Queue mechanics (`Application/Jobs`, `Infrastructure/Jobs`, data-model.md §8): use cases stage jobs with `IJobScheduler.Enqueue` in the same unit of work as their data (`IAppDbContext.SaveChangesAsync` commits both — transactional outbox); `EnqueueUniqueAsync` deduplicates by key for schedules. The worker runs `Jobs__Concurrency` slots that claim one due job each (`FOR UPDATE SKIP LOCKED` + lease), run its `IJobHandler` in a fresh DI scope while renewing the lease, then delete it, retry it with exponential backoff, or dead-letter it (`PermanentJobFailureException` or attempts exhausted). Delivery is at-least-once (a crashed worker's job runs again when its lease expires), so handlers must be idempotent. Each claim attempt and lease renewal beats the `job-loop` readiness heartbeat; an idle worker polls every `Jobs__PollInterval`.
+
 | Job | Trigger | Notes |
 |---|---|---|
 | `import.run` | cron per import source | See llm-import.md. |
 | `ics.sync` | cron per ICS subscription | Conditional GET. |
 | `reminder.dispatch` | every minute: due reminders | Email + web push. |
-| `email.send` | enqueued | Retries with backoff. |
+| `email.send` | enqueued (`IEmailOutbox`) | Retries with backoff (8 attempts); invalid/rejected recipient → dead letter. |
 | `webhook.deliver` | enqueued on change | HMAC-signed, exponential backoff up to 24 h, auto-disable after 50 consecutive failures. |
 | `digest.build` | daily 06:00 per user TZ bucket | |
 | `retention.trim` | daily | Audit/history per plan retention; expired tokens/invites. |

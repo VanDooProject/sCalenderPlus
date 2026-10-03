@@ -2,6 +2,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using SCalenderPlus.Application.Email;
+using SCalenderPlus.Application.Jobs;
+using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Infrastructure.Email;
+using SCalenderPlus.Infrastructure.Jobs;
 using SCalenderPlus.Infrastructure.Persistence;
 using SCalenderPlus.Infrastructure.Security;
 
@@ -15,6 +20,37 @@ public static class DependencyInjection
         services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddPersistence(configuration);
         services.AddPersistentDataProtection();
+        services.AddScoped<IJobScheduler, PostgresJobScheduler>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Worker only: job processing (<see cref="JobRunner"/>, <c>Jobs__*</c>) and the senders job handlers
+    /// need (SMTP, <c>Smtp__*</c> — validated on start, so the api does not need SMTP settings).
+    /// </summary>
+    public static IServiceCollection AddJobProcessing(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddOptions<JobQueueOptions>()
+            .Bind(configuration.GetSection(JobQueueOptions.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(o => o.LeaseRenewalInterval < o.LeaseDuration, "Jobs:LeaseRenewalInterval must be shorter than Jobs:LeaseDuration.")
+            .ValidateOnStart();
+        services.AddSingleton<JobStore>();
+        services.AddSingleton(sp => new JobRunner(
+            sp.GetRequiredService<JobStore>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<IOptions<JobQueueOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<JobRunner>>()));
+
+        services.AddOptions<SmtpOptions>()
+            .Bind(configuration.GetSection(SmtpOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
         return services;
     }
@@ -32,6 +68,7 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>((sp, options) =>
             options.UseAppDatabase(sp.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString));
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<DatabaseMigrator>();
 
         return services;

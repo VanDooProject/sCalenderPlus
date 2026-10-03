@@ -17,4 +17,20 @@ public sealed class RequiredConfigurationTests
         Assert.Contains("PublicBaseUrl", result.Output, StringComparison.Ordinal);
         Assert.Contains("ConnectionStrings:Default is required", result.Output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Worker_requires_smtp_settings()
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["App__PublicBaseUrl"] = "https://app.example.test",
+            ["ConnectionStrings__Default"] = TestSettings.UnreachableDatabase,
+        };
+
+        var result = await BackendProcess.RunAsync(BackendProcess.Worker, [], environment, TimeSpan.FromSeconds(60));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Smtp:Host is required", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Smtp:From is required", result.Output, StringComparison.Ordinal);
+    }
 }

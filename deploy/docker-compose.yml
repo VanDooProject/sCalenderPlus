@@ -8,7 +8,7 @@
 #   # external/Coolify-managed PostgreSQL: set DATABASE_URL, no profile.
 #
 # Variables (see deploy/.env.example): APP_URL, DATABASE_URL, POSTGRES_PASSWORD, IMAGE_TAG,
-# IMAGE_PREFIX, APP_ENVIRONMENT, WEB_PORT. `build:` lets the stack run from a checkout; with IMAGE_TAG
+# IMAGE_PREFIX, APP_ENVIRONMENT, WEB_PORT, SMTP_*, TRUSTED_PROXY_NETWORKS, MAILPIT_PORT. `build:` lets the stack run from a checkout; with IMAGE_TAG
 # set to a published tag the images are pulled from GHCR instead (`--pull always`, no `--build`).
 name: scalenderplus
 
@@ -73,7 +73,15 @@ services:
     build:
       context: ..
       dockerfile: deploy/docker/worker.Dockerfile
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      # Default: the bundled Mailpit (`--profile with-mailpit`, UI on 127.0.0.1:8025). Set SMTP_* for real mail.
+      Smtp__Host: ${SMTP_HOST:-mailpit}
+      Smtp__Port: ${SMTP_PORT:-1025}
+      Smtp__Security: ${SMTP_SECURITY:-Auto}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__From: ${SMTP_FROM:-noreply@scalenderplus.localhost}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -116,6 +124,14 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+  # SMTP sink for local runs and e2e tests (no mail leaves the machine): web UI and API on 127.0.0.1:8025.
+  mailpit:
+    profiles: ['with-mailpit']
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - '127.0.0.1:${MAILPIT_PORT:-8025}:8025'
+    restart: unless-stopped
 
   # Bundled database for self-hosting/local/CI. Coolify uses a Coolify-managed PostgreSQL instead.
   postgres:
