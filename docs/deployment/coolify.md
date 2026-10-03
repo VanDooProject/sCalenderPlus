@@ -7,14 +7,14 @@ Target: a self-managed [Coolify](https://coolify.io) v4 instance (Docker + Traef
 | Coolify resource | Image | Domain | Notes |
 |---|---|---|---|
 | **PostgreSQL 17** | Coolify-managed database (`postgres:17-alpine`) | internal only | Coolify scheduled backups to S3. |
-| **sCalenderPlus stack** (Docker Compose resource) | `deploy/docker-compose.yml` | | Services below. |
+| **sCalenderPlus stack** (Docker Compose resource) | [`deploy/coolify/docker-compose.yml`](../../deploy/coolify/docker-compose.yml) | | Services below; published images only (§11). |
 | └ `migrate` | `scalenderplus-api` with `migrate` command | – | One-shot, must succeed before api/worker start. |
 | └ `api` | `scalenderplus-api` | internal (proxied by `web`) | Port 8080. |
 | └ `worker` | `scalenderplus-worker` | – | No public port; health on 8081 internal. |
 | └ `web` | `scalenderplus-web` (Caddy + SPA) | `app.example.com` | Port 8080 (non-root). Proxies `/api`, `/ical`, `/dav`, `/.well-known`, `/health`, `/openapi` to `api:8080`. |
 | **Landing** (separate resource) | `scalenderplus-landing` (Caddy, static) | `www.example.com`, apex redirect | Deployed independently (marketing changes don't redeploy the app). |
 
-Environments: **staging** (auto-deploy on `main`, image tag `main-<sha>`) and **production** (deploy on release tag `vX.Y.Z`), each a separate Coolify project with its own database.
+Environments: **staging** (deployed by GitHub Actions after every green push to `main`, image tag `main-<sha>`, see §11) and **production** (deploy on release tag `vX.Y.Z`, set up in M4), each a separate Coolify environment with its own database.
 
 Same-origin via `web` keeps cookies simple and hides the api container from Traefik. Alternative (Traefik path routing `app.example.com/api` → api directly) is possible, but Caddy in `web` makes the setup portable outside Coolify.
 
@@ -43,7 +43,7 @@ Chiseled images have no shell/curl, so container health checks for api/worker us
 | `web` | web image | `depends_on: api: service_healthy`; healthcheck `wget http://127.0.0.1:8080/healthz`; published on `127.0.0.1:${WEB_PORT:-8080}` only (Traefik reaches the container port directly). |
 | `postgres` | `postgres:17-alpine`, volume `postgres-data` | Only with `--profile with-db` (self-hosting, local, CI). Coolify uses a Coolify-managed database instead. |
 
-Images are `${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-{api,worker,web}:${APP_VERSION:-local}`. The services also have `build:` sections: `up` pulls the tag and builds from the checkout only when it cannot be pulled (e.g. the default `local`). All app containers run `read_only` with a `tmpfs` `/tmp`, `cap_drop: [ALL]` and `no-new-privileges`. Environment shared by `migrate`, `api` and `worker`: `ConnectionStrings__Default` from `DATABASE_URL` (default: the bundled `postgres`), `App__PublicBaseUrl` from `APP_URL`, JSON console logs; `api` sets `Database__AutoMigrate=false`.
+Images are `${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-{api,worker,web}:${IMAGE_TAG:-local}`. The services also have `build:` sections: `up` pulls the tag and builds from the checkout only when it cannot be pulled (e.g. the default `local`). All app containers run `read_only` with a `tmpfs` `/tmp`, `cap_drop: [ALL]` and `no-new-privileges`. Environment shared by `migrate`, `api` and `worker`: `ConnectionStrings__Default` from `DATABASE_URL` (default: the bundled `postgres`), `App__PublicBaseUrl` from `APP_URL`, JSON console logs; `api` sets `Database__AutoMigrate=false`.
 
 ```sh
 # Self-hosting / local / CI: bundled PostgreSQL
@@ -52,7 +52,7 @@ curl http://localhost:8080/health/ready        # through web → api
 docker compose -f deploy/docker-compose.yml --profile with-db down -v
 ```
 
-Coolify specifics: assign the domain to `web` only, port 8080 (Coolify's `SERVICE_FQDN_WEB_8080` magic variable), set `APP_URL` to that domain and `DATABASE_URL` to the Coolify-managed Postgres, mark secrets as "secret" in the UI, enable "connect to predefined network" so the stack reaches the Coolify-managed Postgres, and mark the one-shot `migrate` service `exclude_from_hc: true` so its exited state doesn't mark the stack unhealthy. `exclude_from_hc` is a Coolify-only key that plain `docker compose` rejects, so it is not in the shared file; it is added in Coolify's compose editor by the Coolify staging item, which also confirms that Coolify pulls the published tag rather than building from the `build:` sections.
+Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../../deploy/coolify/docker-compose.yml): same services, healthchecks and hardening, but published images only (no `build:` sections, which Coolify would build on the server), no bundled `postgres` (a Coolify-managed database instead), no host port (the Coolify proxy itself binds host port 8080; Traefik routes the domain to the `web` container), `migrate` marked `exclude_from_hc: true` (a Coolify-only key that plain `docker compose` rejects), and required variables (`${DATABASE_URL:?}`, `${APP_URL:?}`) that Coolify shows as required in its UI. Step-by-step setup in §11.
 
 **Token-bearing URLs**: Traefik access logs (if enabled on the Coolify server) and Caddy logs in `web` must not record `/ical/` paths in clear — disable access logs for that path or mask the token segment. `web.Caddyfile` logs JSON access logs with `request>uri` (and `Referer`) rewritten to `/ical/[REDACTED]` for every `/ical/` path; Caddy omits `Cookie`/`Authorization` values by default. Verified by the M4 log redaction test.
 
@@ -84,7 +84,7 @@ Coolify specifics: assign the domain to `web` only, port 8080 (Coolify's `SERVIC
 | `WEB_PORT` | web | | listen port, `8080` (image default) |
 | `PUBLIC_*` (e.g. `PUBLIC_ENVIRONMENT`, later `PUBLIC_SENTRY_DSN`) | web | | rendered into `/config.json`; each key must be added to `deploy/caddy/config.json.tmpl` (whitelist). `PUBLIC_ENVIRONMENT` → `environment` (default `production`) |
 
-Compose-level variables (`deploy/docker-compose.yml`, see `deploy/.env.example`): `APP_URL` (→ `App__PublicBaseUrl`), `DATABASE_URL` (→ `ConnectionStrings__Default`), `POSTGRES_PASSWORD` (bundled database), `APP_VERSION` and `IMAGE_PREFIX` (image tags), `APP_ENVIRONMENT` (→ `PUBLIC_ENVIRONMENT`), `WEB_PORT` (host port).
+Compose-level variables (`deploy/docker-compose.yml`, see `deploy/.env.example`): `APP_URL` (→ `App__PublicBaseUrl`), `DATABASE_URL` (→ `ConnectionStrings__Default`), `POSTGRES_PASSWORD` (bundled database), `IMAGE_TAG` and `IMAGE_PREFIX` (image tags), `APP_ENVIRONMENT` (→ `PUBLIC_ENVIRONMENT`), `WEB_PORT` (host port). `deploy/coolify/docker-compose.yml` uses `IMAGE_TAG` (default `main`), `IMAGE_PREFIX`, `DATABASE_URL` and `APP_URL` (required), `APP_ENVIRONMENT` (default `staging`) and `API_UPSTREAM` (§11 step 6).
 
 All backend options are bound to typed options classes with `ValidateDataAnnotations().ValidateOnStart()` — a misconfigured container fails fast and Coolify keeps the old version running.
 
@@ -130,3 +130,34 @@ Health responses contain no secrets: only the overall status and each check's na
 ## 10. Self-hosting outside Coolify
 
 `deploy/docker-compose.yml` + a bundled `postgres` service profile (`--profile with-db`) and `deploy/.env.example` (copy to `deploy/.env`) let anyone run `docker compose -f deploy/docker-compose.yml --profile with-db up -d` behind any reverse proxy (forward to `127.0.0.1:8080`). Billing defaults to `none`, LLM to `none`.
+
+## 11. Staging on Coolify (step by step)
+
+Written against Coolify **v4.3.23** (single server with Traefik v3.6 and Docker Compose v5; resources from GitHub through a Coolify GitHub App). Pipeline: a push to `main` → `ci` green → [`images.yml`](../../.github/workflows/images.yml) publishes `ghcr.io/vandooproject/scalenderplus-{api,worker,web}:main-<sha>` and `:main` (multi-arch) → job `deploy-staging` runs [`.github/scripts/coolify-deploy.sh`](../../.github/scripts/coolify-deploy.sh): pin `IMAGE_TAG=main-<sha>` on the Coolify resource (API, needs a token with `write`), trigger the deploy webhook (`POST /api/v1/deploy?uuid=…`), follow the Coolify deployment until `finished` (needs `read`), then poll `https://<STAGING_URL>/health/ready` until it returns 200. Missing secrets/variables skip the corresponding part with a notice instead of failing.
+
+1. **Images reachable.** After the first `images.yml` run, make the GHCR packages `scalenderplus-api`, `scalenderplus-worker` and `scalenderplus-web` public (GitHub → Packages → package settings → *Change visibility*). Private alternative: on the Coolify server run `docker login ghcr.io` with a token that has `read:packages`.
+2. **Project and environment.** Coolify → *Projects* → *+ Add* `scalenderplus`; it gets the environment `production`; add an environment `staging` (production is configured the same way in M4).
+3. **Database.** In `staging`: *+ New* → *Databases* → **PostgreSQL** (image `postgres:17-alpine`, same major as CI and the bundled database). Set user `scal`, database `scal` and a generated password; leave *Make it publicly available* off; *Start*. The *Postgres URL (internal)* has the form `postgres://scal:<password>@<database-uuid>:5432/scal`. Npgsql does not accept URLs, so translate it into a connection string for step 6: `Host=<database-uuid>;Port=5432;Database=scal;Username=scal;Password=<password>;Maximum Pool Size=50`.
+4. **Backups.** Coolify → *S3 Storages* → add an S3-compatible bucket at a different provider/region (see §8), *Validate connection*. Database → *Backups* → *+ Add* scheduled backup: frequency `0 */6 * * *` for production (staging: daily, e.g. `0 3 * * *`), enable *Save to S3*, set retention (production: §8; staging: 7 days). Run *Backup now* once and test a restore (§8 restore drill).
+5. **Application.** In `staging`: *+ New* → *Private Repository (with GitHub App)* (the existing Coolify GitHub App with access to `VanDooProject/sCalenderPlus`; *Public Repository* also works for the public repo) → repository `VanDooProject/sCalenderPlus`, branch `main`, **Build Pack: Docker Compose**, *Base Directory* `/`, *Docker Compose Location* `/deploy/coolify/docker-compose.yml` → *Continue*. Coolify reads the compose file from git but only pulls images (there are no `build:` sections). Then in the resource:
+    - *Configuration → Advanced*: turn **Auto Deploy off** (GitHub Actions triggers the deployment once the images exist; a Coolify deploy on push would run before they are published) and turn **Connect To Predefined Network on** (the stack must reach the Coolify-managed database on the `coolify` network).
+    - *Domains for web*: `https://staging.example.com:8080` (the `:8080` is the container port Traefik routes to, not a public port). Leave the other services without a domain. Point the DNS record (or Cloudflare tunnel route) for the host at the server; Traefik obtains the Let's Encrypt certificate.
+6. **Environment variables** (*Environment Variables*; mark `DATABASE_URL` as locked/secret):
+
+    | Variable | Staging value |
+    |---|---|
+    | `IMAGE_TAG` | `main` (overwritten with `main-<sha>` by `deploy-staging` when the token has `write`) |
+    | `IMAGE_PREFIX` | `ghcr.io/vandooproject` |
+    | `DATABASE_URL` | connection string from step 3 |
+    | `APP_URL` | `https://staging.example.com` |
+    | `APP_ENVIRONMENT` | `staging` (the SPA shows a non-production badge) |
+    | `API_UPSTREAM` | `api-<resource-uuid>:8080` |
+
+    `API_UPSTREAM`: with *Connect To Predefined Network* every container also joins the shared `coolify` network, where the bare name `api` can resolve to another stack's `api` (e.g. production on the same server). Coolify names containers `<service>-<resource-uuid>`; the resource uuid is in the resource URL and in the deploy webhook (`uuid=…`).
+7. **`migrate` and health status.** `migrate` runs once per deployment (`restart: 'no'`) before `api` and `worker` (`depends_on: service_completed_successfully`); a failed migration fails the deployment and the old containers keep running. It is marked `exclude_from_hc: true` (Coolify also ignores `restart: 'no'` services for the resource status), so its `exited (0)` state doesn't turn the resource *degraded*. The other services report through their image healthchecks.
+8. **First deployment.** *Deploy* in Coolify, watch the deployment log (pull, `migrate` exits 0, `api`/`worker`/`web` healthy), then `curl https://staging.example.com/health/ready` → 200 `{"status":"Healthy",…}`.
+9. **Deploy webhook and API token.** Resource → *Webhooks* → copy the **Deploy Webhook** (`https://<coolify>/api/v1/deploy?uuid=<resource-uuid>&force=false`). Coolify → *Settings → Advanced*: enable **API Access** (and restrict *Allowed IPs* only if GitHub-hosted runners can still reach it). *Keys & Tokens → API tokens* → create a token for the root team with **`deploy`** and **`read`** (follow the deployment) and **`write`** (pin `IMAGE_TAG`; without it staging runs the moving `main` tag, which Coolify pulls on every deployment). The Coolify URL must be reachable from GitHub-hosted runners (not only through an internal network or an access proxy).
+10. **GitHub configuration** (repository *Settings → Secrets and variables → Actions*, or the `staging` environment that `deploy-staging` uses): secrets `COOLIFY_WEBHOOK_URL` (step 9) and `COOLIFY_TOKEN`; variable `STAGING_URL` = `staging.example.com` (host name; a scheme or path is stripped). Optionally add protection rules to the `staging` environment.
+11. **Verify the pipeline.** Merge something to `main`: `ci` → `images` (`publish main images`, `deploy staging`). The job summary shows the pushed tags, the Coolify deployment status and the health check result. Re-run with *Actions → images → Run workflow* on `main`.
+
+Rollback: set `IMAGE_TAG` to an earlier `main-<sha>` in Coolify and *Redeploy* (safe because migrations are expand/contract, §7); the next push to `main` pins the new tag again. Manual deployment without GitHub: `COOLIFY_WEBHOOK_URL=… COOLIFY_TOKEN=… IMAGE_TAG=main-<sha> HEALTH_URL=https://staging.example.com/health/ready .github/scripts/coolify-deploy.sh`.

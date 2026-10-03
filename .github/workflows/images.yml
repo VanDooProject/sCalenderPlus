@@ -1,6 +1,6 @@
-# Images for staging, see docs/development/workflow.md §4–5 and docs/deployment/coolify.md.
+# Images and staging deployment, see docs/development/workflow.md §4–5 and docs/deployment/coolify.md §11.
 # After `ci` succeeded for a push to main, publish ghcr.io/vandooproject/scalenderplus-{api,worker,web}
-# as `main-<sha>` (immutable, used to pin staging) and `main` (moving).
+# as `main-<sha>` (immutable, used to pin staging) and `main` (moving), then deploy them to staging.
 # Release images (X.Y.Z, X.Y, latest) are published by release-please.yml.
 name: images
 
@@ -54,3 +54,33 @@ jobs:
       tags: |
         type=raw,value=${{ needs.meta.outputs.tag }}
         type=raw,value=main
+
+  # Staging on Coolify (docs/deployment/coolify.md §11). Secrets COOLIFY_WEBHOOK_URL and COOLIFY_TOKEN
+  # (repository or `staging` environment), variable STAGING_URL (host name, e.g. staging.example.com).
+  # Each part is skipped with a notice when its secret/variable is not configured.
+  deploy-staging:
+    name: deploy staging
+    needs: [meta, publish-main]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.meta.outputs.sha }}
+          sparse-checkout: .github/scripts
+      - name: Deploy to Coolify and wait for /health/ready
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          IMAGE_TAG: ${{ needs.meta.outputs.tag }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          if [ -n "$STAGING_URL" ]; then
+            host="${STAGING_URL#http://}"; host="${host#https://}"; host="${host%%/*}"
+            export HEALTH_URL="https://$host/health/ready"
+          fi
+          .github/scripts/coolify-deploy.sh

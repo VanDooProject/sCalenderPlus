@@ -80,6 +80,7 @@ jobs:
       # Config and globs: .markdownlint-cli2.jsonc
       - uses: DavidAnson/markdownlint-cli2-action@v24
 
+  # Workflows (actionlint, incl. shellcheck of run: blocks) and .github/scripts (shellcheck).
   actionlint:
     name: actionlint
     runs-on: ubuntu-latest
@@ -93,6 +94,8 @@ jobs:
         run: bash <(curl -sSfL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION" "$RUNNER_TEMP"
       - name: Lint workflows
         run: '"$RUNNER_TEMP/actionlint" -color'
+      - name: Lint workflow scripts
+        run: shellcheck .github/scripts/*.sh
 
   backend:
     name: backend
@@ -305,7 +308,7 @@ jobs:
     env:
       COMPOSE_FILE: deploy/docker-compose.yml
       COMPOSE_PROFILES: with-db
-      APP_VERSION: ci # tag of the images built by the docker job
+      IMAGE_TAG: ci # tag of the images built by the docker job
       APP_ENVIRONMENT: ci
       E2E_FULLSTACK_BASE_URL: http://localhost:8080
     steps:

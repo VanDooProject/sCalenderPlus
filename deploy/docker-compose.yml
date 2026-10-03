@@ -1,4 +1,5 @@
-# Production-like sCalenderPlus stack (docs/deployment/coolify.md §3). Used by Coolify, self-hosters and CI.
+# Production-like sCalenderPlus stack (docs/deployment/coolify.md §3) for self-hosters, local runs and CI.
+# Coolify uses deploy/coolify/docker-compose.yml (published images only, Coolify-managed PostgreSQL).
 #
 #   # bundled PostgreSQL (self-hosting, local, CI):
 #   docker compose -f deploy/docker-compose.yml --profile with-db up -d --build
@@ -6,8 +7,8 @@
 #
 #   # external/Coolify-managed PostgreSQL: set DATABASE_URL, no profile.
 #
-# Variables (see deploy/.env.example): APP_URL, DATABASE_URL, POSTGRES_PASSWORD, APP_VERSION,
-# IMAGE_PREFIX, APP_ENVIRONMENT, WEB_PORT. `build:` lets the stack run from a checkout; with APP_VERSION
+# Variables (see deploy/.env.example): APP_URL, DATABASE_URL, POSTGRES_PASSWORD, IMAGE_TAG,
+# IMAGE_PREFIX, APP_ENVIRONMENT, WEB_PORT. `build:` lets the stack run from a checkout; with IMAGE_TAG
 # set to a published tag the images are pulled from GHCR instead (`--pull always`, no `--build`).
 name: scalenderplus
 
@@ -28,7 +29,7 @@ x-hardening: &hardening
 services:
   # One-shot: applies EF Core migrations (advisory lock), exits 0. api and worker start only after success.
   migrate:
-    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${APP_VERSION:-local}
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: deploy/docker/api.Dockerfile
@@ -44,7 +45,7 @@ services:
     <<: *hardening
 
   api:
-    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${APP_VERSION:-local}
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${IMAGE_TAG:-local}
     environment:
       <<: *backend-env
       Database__AutoMigrate: 'false'
@@ -61,7 +62,7 @@ services:
     <<: *hardening
 
   worker:
-    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-worker:${APP_VERSION:-local}
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-worker:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: deploy/docker/worker.Dockerfile
@@ -78,9 +79,9 @@ services:
       start_period: 30s
     <<: *hardening
 
-  # Public entry point: SPA + reverse proxy to api. In Coolify assign the domain to this service (port 8080).
+  # Public entry point: SPA + reverse proxy to api.
   web:
-    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-web:${APP_VERSION:-local}
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-web:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: deploy/docker/web.Dockerfile

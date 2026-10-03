@@ -72,7 +72,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 - Pre-1.0: `bump-minor-pre-major: true` and `bump-patch-for-minor-pre-major: true` (matches the table in §1). The manifest starts at `0.0.0`, which release-please treats as "never released", so the first release PR uses `initial-version` **0.1.0**; afterwards versions are bumped from the last tag. To force a version, put `Release-As: X.Y.Z` in a commit body.
 - Changelog sections: Features, Bug Fixes, Performance Improvements, Reverts, Code Refactoring, Documentation; `build`, `ci`, `test`, `style`, `chore` are hidden. The release PR title passes the `pr-title` check (`pull-request-title-pattern: chore: release ${version}`) and its branch is exempt from `branch-name`.
 - Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the `images` job runs inside `release-please.yml`, gated on the action's `release_created` output. It calls the reusable [`build-images.yml`](../../.github/workflows/build-images.yml), which builds `linux/amd64` + `linux/arm64` and pushes `ghcr.io/vandooproject/scalenderplus-{api,worker,web}` tagged `X.Y.Z`, `X.Y` and `latest` (plus `landing` from M7), with OCI labels and index annotations (title, description, source, version, revision, created), SBOM and provenance attestations. Deploying a release to production (Coolify webhook) is added with the production environment (M4).
-- Every push to `main` whose `ci` run succeeded publishes `:main-<sha>` (full commit SHA, immutable) and `:main` (moving) via [`images.yml`](../../.github/workflows/images.yml) (`workflow_run` after `ci`, also runnable manually on `main`); these tags feed **staging**.
+- Every push to `main` whose `ci` run succeeded publishes `:main-<sha>` (full commit SHA, immutable) and `:main` (moving) via [`images.yml`](../../.github/workflows/images.yml) (`workflow_run` after `ci`, also runnable manually on `main`); these tags feed **staging**: the job `deploy-staging` in the same workflow deploys `main-<sha>` to Coolify (secrets `COOLIFY_WEBHOOK_URL`, `COOLIFY_TOKEN`, variable `STAGING_URL`; each part is skipped with a notice while not configured), see [coolify.md §11](../deployment/coolify.md#11-staging-on-coolify-step-by-step).
 - **Release PR checks**: pull requests opened with the default `GITHUB_TOKEN` do not trigger `ci`/`pr-checks`, so the release PR would never get its required checks. Set the repository secret `RELEASE_PLEASE_TOKEN` (fine-grained PAT or GitHub App installation token with *Contents* and *Pull requests* read/write) and the workflow uses it instead. Without it, close and reopen the release PR (as a human) to trigger the checks.
 
 ### One-time setup by the repository owner
@@ -82,7 +82,8 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 3. Optional but recommended: secret `RELEASE_PLEASE_TOKEN` (see above).
 4. After the first image push: make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web` **public** (Package settings → Change visibility) or give the deploy servers a read token, and link them to the repository (done automatically by the `org.opencontainers.image.source` label).
 5. Branch protection / ruleset for `main` as in §3 (required checks in §5).
-6. Settings → Code security: keep CodeQL **default setup disabled** (`codeql.yml` is the advanced setup; uploads fail while default setup is on). Enable *Dependabot alerts* and *Dependabot security updates*; version updates come from `.github/dependabot.yml`.
+6. Staging: Coolify resources and the secrets `COOLIFY_WEBHOOK_URL`, `COOLIFY_TOKEN` and variable `STAGING_URL` per [coolify.md §11](../deployment/coolify.md#11-staging-on-coolify-step-by-step).
+7. Settings → Code security: keep CodeQL **default setup disabled** (`codeql.yml` is the advanced setup; uploads fail while default setup is on). Enable *Dependabot alerts* and *Dependabot security updates*; version updates come from `.github/dependabot.yml`.
 
 ## 5. CI pipeline (GitHub Actions)
 
@@ -113,7 +114,7 @@ Other workflows:
 |---|---|---|
 | `release-please.yml` | push main | release PR / tags |
 | `release-please.yml` → `images` job | `release_created` | build+push multi-arch images `X.Y.Z`, `X.Y`, `latest` (see §4); prod deploy from M4 |
-| `images.yml` | `ci` succeeded on a push to main, manual | push `:main-<sha>` and `:main` |
+| `images.yml` | `ci` succeeded on a push to main, manual | push `:main-<sha>` and `:main`, then job `deploy-staging`: pin `IMAGE_TAG`, Coolify deploy webhook, wait for `https://$STAGING_URL/health/ready` ([coolify.md §11](../deployment/coolify.md#11-staging-on-coolify-step-by-step)) |
 | `build-images.yml` | `workflow_call` only | reusable multi-arch build + push used by the two above |
 | `codeql.yml` | PR, push main, weekly, manual | CodeQL `security-extended` for C#, JS/TS and the workflows (`actions`), all with build-mode `none` (no compilation, independent of the .NET 10 SDK); results under Security → Code scanning |
 | `import-eval.yml` | manual / weekly | real-LLM evaluation of import corpus (secret `ANTHROPIC_API_KEY`) |

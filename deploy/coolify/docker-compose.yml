@@ -1,0 +1,105 @@
+# sCalenderPlus on Coolify (Docker Compose build pack), see docs/deployment/coolify.md §11.
+# Differences to deploy/docker-compose.yml (self-hosting/CI):
+# - published GHCR images only, no `build:` (Coolify would otherwise build from source on the server);
+#   Coolify runs `docker compose pull` on every deployment, so a moving tag like `main` is refreshed;
+# - no bundled PostgreSQL: DATABASE_URL points at a Coolify-managed PostgreSQL (enable "Connect To
+#   Predefined Network" on the resource);
+# - no host ports (the Coolify proxy already binds 8080 on the host): Traefik routes the domain assigned to `web` (https://<domain>:8080) to the container;
+# - `migrate` is a one-shot excluded from the resource health status (`exclude_from_hc`, a Coolify-only key
+#   that plain `docker compose` rejects).
+#
+# Variables (Coolify → resource → Environment Variables; `:?` = required):
+#   IMAGE_TAG        main (staging default, moving), main-<sha> (pinned by .github/workflows/images.yml),
+#                    X.Y.Z or X.Y (production)
+#   IMAGE_PREFIX     ghcr.io/vandooproject
+#   DATABASE_URL     Npgsql connection string of the Coolify-managed PostgreSQL (not a postgres:// URL):
+#                    Host=<database-uuid>;Port=5432;Database=postgres;Username=postgres;Password=…;Maximum Pool Size=50
+#   APP_URL          public URL of web, e.g. https://staging.example.com
+#   APP_ENVIRONMENT  staging | production (shown in the SPA via /config.json)
+#   API_UPSTREAM     api-<resource-uuid>:8080 – the api container name, unique on the shared `coolify`
+#                    network (the bare service name `api` may resolve to another stack's api there)
+
+x-backend-env: &backend-env
+  ConnectionStrings__Default: ${DATABASE_URL:?}
+  App__PublicBaseUrl: ${APP_URL:?}
+  Logging__Console__FormatterName: json
+
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # One-shot: applies EF Core migrations (advisory lock), exits 0. api and worker start only after success;
+  # a failed migration fails the deployment and the previous containers keep running.
+  migrate:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${IMAGE_TAG:-main}
+    command: ['migrate']
+    environment: *backend-env
+    restart: 'no'
+    exclude_from_hc: true
+    healthcheck:
+      disable: true
+    <<: *hardening
+
+  api:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${IMAGE_TAG:-main}
+    environment:
+      <<: *backend-env
+      Database__AutoMigrate: 'false'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'dotnet', 'SCalenderPlus.Api.dll', 'healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    <<: *hardening
+
+  worker:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-worker:${IMAGE_TAG:-main}
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'dotnet', 'SCalenderPlus.Worker.dll', 'healthcheck']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    <<: *hardening
+
+  # Public entry point (SPA + same-origin reverse proxy to api). Domain in Coolify: https://<domain>:8080
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-web:${IMAGE_TAG:-main}
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-api:8080}
+      PUBLIC_ENVIRONMENT: ${APP_ENVIRONMENT:-staging}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs: # Caddy's XDG data/config dirs; nothing persistent (TLS terminates at Traefik)
+      - /tmp
+      - /data:uid=10001,gid=10001
+      - /config:uid=10001,gid=10001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
