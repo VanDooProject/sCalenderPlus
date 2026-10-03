@@ -6,17 +6,27 @@
 #   API_UPSTREAM        api host:port (default api:8080)
 #   PUBLIC_ENVIRONMENT  rendered into /config.json (whitelisted keys only, see config.json.tmpl)
 
-# iCal feed URLs carry the secret token in the path (docs/architecture/ical-caldav.md §1): mask everything
-# from `/ical/` on (query string included) in the request URI and Referer. Unanchored and tolerant of
-# percent-encoding, because the path matcher below also proxies `//ical/…` and `/%69cal/…`. Used by the access log and by the default
-# logger, which receives the error logs (e.g. a 502 from reverse_proxy) with the full request.
-# Caddy already omits Cookie/Authorization header values.
+# Secrets in URLs are masked in the request URI and the Referer (the SPA's own API calls send the page URL
+# as Referer, same-origin):
+# - iCal feed URLs carry the token in the path (docs/architecture/ical-caldav.md §1): everything from `/ical/`
+#   on (query string included). Unanchored and tolerant of percent-encoding, because the path matcher below
+#   also proxies `//ical/…` and `/%69cal/…`.
+# - Email links carry tokens in the query string (docs/architecture/api.md §3–4: `/verify-email`,
+#   `/reset-password`, `/invite`): the value of every parameter whose name contains `token`.
+# Used by the access log and by the default logger, which receives the error logs (e.g. a 502 from
+# reverse_proxy) with the full request. Caddy already omits Cookie/Authorization header values.
 (redacted_json) {
 	format filter {
 		wrap json
 		fields {
-			request>uri regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
-			request>headers>Referer regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
+			request>uri multi_regexp {
+				regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
+				regexp "(?i)((?:[?&]|%3f|%26)[^=&#]*token[^=&#]*=)[^&#]*" "${1}[REDACTED]"
+			}
+			request>headers>Referer multi_regexp {
+				regexp "(?i)/(?:i|%69)(?:c|%63)(?:a|%61)(?:l|%6c)(?:/|%2f).*" "/ical/[REDACTED]"
+				regexp "(?i)((?:[?&]|%3f|%26)[^=&#]*token[^=&#]*=)[^&#]*" "${1}[REDACTED]"
+			}
 		}
 	}
 }
