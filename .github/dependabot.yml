@@ -38,6 +38,13 @@ updates:
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # @types/node follows the Node runtime (22 LTS); bump together with NODE_VERSION.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      # Pinned to TS 6 until typescript-eslint supports TS 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   # Workflows and the composite actions in .github/actions.
   - package-ecosystem: github-actions
