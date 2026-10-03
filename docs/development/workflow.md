@@ -88,7 +88,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
             │
             ├── e2e-mocked ── (needs frontend) Playwright vs built app with MSW (chromium on PR; webkit + mobile viewport nightly)
             │
-            ├── docker ── build api/worker/web/landing images (no push on PR), trivy scan (HIGH/CRITICAL fail)
+            ├── docker ── build api/worker/web images (landing from M7; linux/amd64, loaded, no push), trivy scan (fixable CRITICAL fail, HIGH/CRITICAL in job summary)
             │
             └── e2e-fullstack ── (needs docker; images handed over as artifact) docker compose up (postgres, api, worker, web, mailpit, fake LLM from M6)
                                   ─ run migrations ─ Playwright fullstack suite (chromium)

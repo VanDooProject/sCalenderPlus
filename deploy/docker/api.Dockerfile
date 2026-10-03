@@ -1,0 +1,43 @@
+# sCalenderPlus api image (docs/deployment/coolify.md §2). Build context: repository root.
+#   docker build -f deploy/docker/api.Dockerfile -t scalenderplus-api .
+# Framework-dependent, RID-neutral publish (no apphost): the build stage runs natively on the build
+# platform and the output runs on any target architecture of the runtime image (linux/amd64, linux/arm64).
+
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+ENV DOTNET_NOLOGO=true DOTNET_CLI_TELEMETRY_OPTOUT=true
+
+# Restore first (cached layer): only project files, lock files and MSBuild/SDK settings.
+COPY global.json .editorconfig ./
+COPY backend/Directory.Build.props backend/Directory.Packages.props backend/
+COPY backend/src/SCalenderPlus.Core/*.csproj backend/src/SCalenderPlus.Core/packages.lock.json backend/src/SCalenderPlus.Core/
+COPY backend/src/SCalenderPlus.Application/*.csproj backend/src/SCalenderPlus.Application/packages.lock.json backend/src/SCalenderPlus.Application/
+COPY backend/src/SCalenderPlus.Infrastructure/*.csproj backend/src/SCalenderPlus.Infrastructure/packages.lock.json backend/src/SCalenderPlus.Infrastructure/
+COPY backend/src/SCalenderPlus.Api/*.csproj backend/src/SCalenderPlus.Api/packages.lock.json backend/src/SCalenderPlus.Api/
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet restore backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --locked-mode
+
+COPY backend/src/ backend/src/
+# OpenApiGenerateDocuments=false: the committed backend/openapi/v1.json is not part of the image.
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet publish backend/src/SCalenderPlus.Api/SCalenderPlus.Api.csproj --no-restore --configuration Release --output /app \
+      -p:UseAppHost=false -p:OpenApiGenerateDocuments=false
+
+# Chiseled Ubuntu: no shell or package manager, runs as the non-root `app` user (UID 1654).
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS runtime
+ARG VERSION=0.0.0-dev
+ARG REVISION=unknown
+LABEL org.opencontainers.image.title="scalenderplus-api" \
+      org.opencontainers.image.description="sCalenderPlus REST API, iCal feeds and the one-shot migrate command" \
+      org.opencontainers.image.source="https://github.com/VanDooProject/sCalenderPlus" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}"
+WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080
+COPY --from=build --chown=root:root /app ./
+USER $APP_UID
+EXPOSE 8080
+# Built-in probe (no curl in chiseled images): GET /health/ready on localhost, exit 0/1.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+  CMD ["dotnet", "SCalenderPlus.Api.dll", "healthcheck"]
+ENTRYPOINT ["dotnet", "SCalenderPlus.Api.dll"]

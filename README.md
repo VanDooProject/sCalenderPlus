@@ -38,6 +38,14 @@ pnpm -C frontend build           # production build of the app
 pnpm -C frontend --filter app dev   # Vite dev server on :5173, proxies /api and /health to :5080
 ```
 
+Production-like stack (api, worker, web, one-shot `migrate`, bundled PostgreSQL) from this checkout:
+
+```sh
+docker compose -f deploy/docker-compose.yml --profile with-db up -d --build
+curl http://localhost:8080/health/ready          # served through web (Caddy) → api
+docker compose -f deploy/docker-compose.yml --profile with-db down -v
+```
+
 More in [docs/development/workflow.md §7](docs/development/workflow.md#7-local-development).
 
 ## Documentation

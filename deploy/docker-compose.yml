@@ -1,0 +1,130 @@
+# Production-like sCalenderPlus stack (docs/deployment/coolify.md §3). Used by Coolify, self-hosters and CI.
+#
+#   # bundled PostgreSQL (self-hosting, local, CI):
+#   docker compose -f deploy/docker-compose.yml --profile with-db up -d --build
+#   curl http://localhost:8080/health/ready
+#
+#   # external/Coolify-managed PostgreSQL: set DATABASE_URL, no profile.
+#
+# Variables (see deploy/.env.example): APP_URL, DATABASE_URL, POSTGRES_PASSWORD, APP_VERSION,
+# IMAGE_PREFIX, APP_ENVIRONMENT, WEB_PORT. `build:` lets the stack run from a checkout; with APP_VERSION
+# set to a published tag the images are pulled from GHCR instead (`--pull always`, no `--build`).
+name: scalenderplus
+
+x-backend-env: &backend-env
+  ConnectionStrings__Default: ${DATABASE_URL:-Host=postgres;Port=5432;Database=scal;Username=scal;Password=${POSTGRES_PASSWORD:-scal}}
+  App__PublicBaseUrl: ${APP_URL:-http://localhost:8080}
+  Logging__Console__FormatterName: json
+
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # One-shot: applies EF Core migrations (advisory lock), exits 0. api and worker start only after success.
+  migrate:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${APP_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
+    command: ['migrate']
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false # only with --profile with-db
+    restart: 'no'
+    healthcheck:
+      disable: true
+    <<: *hardening
+
+  api:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-api:${APP_VERSION:-local}
+    environment:
+      <<: *backend-env
+      Database__AutoMigrate: 'false'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'dotnet', 'SCalenderPlus.Api.dll', 'healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    <<: *hardening
+
+  worker:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-worker:${APP_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: deploy/docker/worker.Dockerfile
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'dotnet', 'SCalenderPlus.Worker.dll', 'healthcheck']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    <<: *hardening
+
+  # Public entry point: SPA + reverse proxy to api. In Coolify assign the domain to this service (port 8080).
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-web:${APP_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    environment:
+      API_UPSTREAM: api:8080
+      PUBLIC_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${WEB_PORT:-8080}:8080'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs: # Caddy's XDG data/config dirs; nothing persistent (TLS terminates at Traefik)
+      - /tmp
+      - /data:uid=10001,gid=10001
+      - /config:uid=10001,gid=10001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # Bundled database for self-hosting/local/CI. Coolify uses a Coolify-managed PostgreSQL instead.
+  postgres:
+    profiles: ['with-db']
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: scal
+      POSTGRES_USER: scal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scal}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U scal -d scal']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

@@ -34,6 +34,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       openapi: ${{ steps.filter.outputs.openapi }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -53,6 +54,16 @@ jobs:
               - '.github/workflows/ci.yml'
             openapi:
               - 'backend/openapi/**'
+              - '.github/workflows/ci.yml'
+            docker:
+              - 'backend/src/**'
+              - 'backend/Directory.*.props'
+              - 'frontend/**'
+              - 'deploy/**'
+              - 'e2e/**'
+              - '.dockerignore'
+              - 'global.json'
+              - '.editorconfig'
               - '.github/workflows/ci.yml'
 
   backend:
@@ -156,10 +167,77 @@ jobs:
                  fi
                  echo "::warning::Breaking API change (not enforced for this event or approved by label)."; }
 
+  docker:
+    name: docker (${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, worker, web]
+    env:
+      IMAGE: ghcr.io/vandooproject/scalenderplus-${{ matrix.image }}:ci
+      TRIVY_VERSION: v0.75.0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # linux/amd64 only on CI (load into the runner's daemon); multi-arch builds happen when publishing.
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/docker/${{ matrix.image }}.Dockerfile
+          tags: ${{ env.IMAGE }}
+          load: true
+          push: false
+          build-args: |
+            REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      # Third-party action pinned to a commit SHA (v0.36.0).
+      - name: Trivy (fail on fixable CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: ${{ env.IMAGE }}
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+      - name: Trivy report (HIGH/CRITICAL, informational)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          skip-setup-trivy: true
+          image-ref: ${{ env.IMAGE }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+          format: table
+          output: trivy-${{ matrix.image }}.txt
+      - name: Add Trivy report to job summary
+        if: always()
+        run: |
+          if [ -f "trivy-${{ matrix.image }}.txt" ]; then
+            { echo "### Trivy: ${{ matrix.image }} (HIGH/CRITICAL)"; echo '```'; cat "trivy-${{ matrix.image }}.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Save image for e2e-fullstack
+        run: docker save "$IMAGE" | gzip -1 > "image-${{ matrix.image }}.tar.gz"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-${{ matrix.image }}
+          path: image-${{ matrix.image }}.tar.gz
+          retention-days: 1
+          compression-level: 0
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, backend, frontend, openapi-breaking]
+    needs: [changes, backend, frontend, openapi-breaking, docker]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

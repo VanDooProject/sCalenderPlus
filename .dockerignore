@@ -1,0 +1,24 @@
+# Build context is the repository root; images only need backend/src, frontend and deploy/caddy.
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/TestResults
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+docs
+e2e
+backend/tests
+backend/openapi
+deploy/docker-compose*.yml
+playwright-report
+test-results
