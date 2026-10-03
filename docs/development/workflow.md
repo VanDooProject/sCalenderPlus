@@ -74,7 +74,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 
 ## 5. CI pipeline (GitHub Actions)
 
-`ci.yml` on `pull_request` and `push: main`. Jobs are path-filtered (`dorny/paths-filter`) but the required-check aggregator job (`ci-ok`) always runs.
+`ci.yml` on `pull_request` and `push` to any branch (until `main` exists the default branch is an automation branch, and pushes to feature branches get feedback before a PR is opened); a newer run for the same PR/ref cancels the older one. Jobs are path-filtered (`dorny/paths-filter`; changing `ci.yml` itself runs everything) but the required-check aggregator job (`ci-ok`) always runs: it fails if any job it needs failed or was cancelled, and treats skipped jobs as success. Make **only `ci-ok`** a required status check.
 
 ```
             ┌──────────── lint-meta (pr title, branch name, markdown lint, actionlint)
