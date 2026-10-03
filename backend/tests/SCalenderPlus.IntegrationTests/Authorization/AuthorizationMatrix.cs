@@ -60,6 +60,15 @@ public static class AuthorizationMatrix
             .Expect(Actors.OtherUser, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized), // password alone is no session
 
+        // Profile settings (#33)
+        .. For("PATCH", "/api/v1/me")
+            .WithBody(_ => JsonContent.Create(new { weekStart = "sunday" }))
+            .WithHeaders(new Dictionary<string, string>(StringComparer.Ordinal) { ["If-Match"] = "*" })
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+
         // Two-factor authentication (#31)
         .. For("POST", "/api/v1/auth/login/2fa")
             .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.TwoFactorPending.Name) }))
@@ -113,6 +122,7 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
     private readonly List<MatrixCase> _cases = [];
     private Func<MatrixScenario, IReadOnlyDictionary<string, string>>? _routeValues;
     private Func<MatrixScenario, HttpContent?>? _body;
+    private IReadOnlyDictionary<string, string>? _headers;
 
     /// <summary>Route values for every following case, e.g. <c>s => new() { ["id"] = s.Get("group:lions") }</c>.</summary>
     public OperationCases WithRoute(Func<MatrixScenario, IReadOnlyDictionary<string, string>> routeValues)
@@ -128,9 +138,16 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
         return this;
     }
 
+    /// <summary>Extra request headers for every following case, e.g. <c>If-Match: *</c> for conditional updates.</summary>
+    public OperationCases WithHeaders(IReadOnlyDictionary<string, string> headers)
+    {
+        _headers = headers;
+        return this;
+    }
+
     public OperationCases Expect(MatrixActor actor, HttpStatusCode expected)
     {
-        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body));
+        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body, _headers));
         return this;
     }
 

@@ -13,6 +13,9 @@ export type HealthResponse = components['schemas']['HealthResponse']
 /** The signed-in user (`GET /api/v1/me`). */
 export type MeResponse = components['schemas']['MeResponse']
 
+/** JSON Merge Patch body of `PATCH /api/v1/me` (requires `If-Match`). */
+export type UpdateProfileRequest = components['schemas']['UpdateProfileRequest']
+
 /** Result of `POST /api/v1/auth/login`: a session, or the request for a second factor. */
 export type LoginResponse = components['schemas']['LoginResponse']
 

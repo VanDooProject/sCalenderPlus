@@ -99,7 +99,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 
 | Resource | Endpoints |
 |---|---|
-| **Me** | `GET/PATCH /me`, `GET /me/entitlements` (plan, limits, usage), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
+| **Me** | `GET/PATCH /me`, `GET/POST /me/two-factor…` (§3.2), `GET /me/entitlements` (plan, limits, usage), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
 | **Groups** | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/{id}/members`, `PATCH/DELETE /groups/{id}/members/{userId}`, `POST /groups/{id}/invites`, `GET /groups/{id}/invites`, `DELETE /invites/{id}`, `POST /invites/{token}/accept`, `POST /groups/{id}/transfer` |
 | **Calendars** | `GET /calendars` (all visible, with `myLevel`), `POST /calendars`, `GET/PATCH/DELETE /calendars/{id}`, `POST /calendars/{id}/transfer`, `POST /calendars/{id}/archive` |
 | **Calendar grants** | `GET/POST /calendars/{id}/grants`, `PATCH/DELETE /calendars/{id}/grants/{grantId}` |
@@ -123,6 +123,10 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | **Audit** | `GET /audit?resourceType&resourceId&cursor` (managers; retention per plan) |
 | **Organizations** (v1, Team) | `GET/POST /orgs`, members, seats, groups |
 | **System** | `GET /health/live`, `GET /health/ready`, `GET /openapi/v1.json` (root, unversioned) |
+
+### Me (implemented, M1)
+
+`GET /api/v1/me` → `{ id, email, emailVerified, displayName, locale, timeZone, weekStart, twoFactorEnabled, createdAt }` with a strong `ETag` (hash of the representation). `PATCH /api/v1/me` takes a JSON Merge Patch (`application/merge-patch+json`; plain `application/json` is accepted too) of `displayName` (1–100 chars, trimmed), `locale` (`en`, `de`), `timeZone` (IANA id validated against the bundled tzdb with NodaTime; unknown → `422 time_zone_invalid` with `errors.timeZone`) and `weekStart` (`monday` … `sunday`); other invalid values are `400 validation_failed`. Absent **and `null`** members stay unchanged (all fields are required, so none can be removed). `If-Match` (the ETag, or `*`) is required: missing → `428`, stale → `412`. Changes are audited (`user.profile_updated` with before/after).
 
 ### Event representation (excerpt)
 

@@ -196,14 +196,18 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The signed-in user */
+    /** The signed-in user (with ETag) */
     get: operations['GetMe']
     put?: never
     post?: never
     delete?: never
     options?: never
     head?: never
-    patch?: never
+    /**
+     * Update profile settings (JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged. Unknown time zones are 422 time_zone_invalid, unsupported locales and week starts 400 validation_failed. If-Match: the ETag of GET /me (or *); missing → 428 precondition_required, stale → 412 precondition_failed.
+     */
+    patch: operations['UpdateMe']
     trace?: never
   }
   '/api/v1/me/two-factor': {
@@ -430,6 +434,12 @@ export interface components {
       enabled: boolean
       /** Format: int32 */
       recoveryCodesLeft: number | string
+    }
+    UpdateProfileRequest: {
+      displayName?: null | string
+      locale?: null | string
+      timeZone?: null | string
+      weekStart?: null | string
     }
   }
   responses: never
@@ -785,6 +795,51 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['MeResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateMe: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateProfileRequest']
+        'application/json': components['schemas']['UpdateProfileRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MeResponse']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['HttpValidationProblemDetails']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

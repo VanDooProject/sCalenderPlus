@@ -27,6 +27,14 @@ export const handlers = [
     response(200).json({ status: 'Healthy', checks: { database: 'Healthy' } }),
   ),
   http.get('/api/v1/me', ({ response }) => response(200).json(mockUser)),
+  http.patch('/api/v1/me', async ({ request, response }) => {
+    const patch = (await request.json()) as Partial<typeof mockUser>
+    const updated = { ...mockUser }
+    for (const key of ['displayName', 'locale', 'timeZone', 'weekStart'] as const) {
+      if (typeof patch[key] === 'string') updated[key] = patch[key]
+    }
+    return response(200).json(updated)
+  }),
   http.post('/api/v1/auth/login', ({ response }) =>
     response(200).json({ twoFactorRequired: false, user: mockUser }),
   ),

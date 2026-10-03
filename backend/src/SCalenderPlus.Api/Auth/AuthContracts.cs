@@ -92,3 +92,22 @@ public sealed record MeResponse(
     string WeekStart,
     bool TwoFactorEnabled,
     DateTimeOffset CreatedAt);
+
+/// <summary>
+/// JSON Merge Patch of the profile (<c>application/merge-patch+json</c>): members that are absent or
+/// <c>null</c> stay unchanged (every profile field is required, so none can be removed).
+/// </summary>
+public sealed class UpdateProfileRequest
+{
+    [StringLength(AppUser.DisplayNameMaxLength, MinimumLength = 1)]
+    public string? DisplayName { get; init; }
+
+    /// <summary><c>en</c> or <c>de</c>.</summary>
+    public string? Locale { get; init; }
+
+    /// <summary>IANA time zone id, e.g. <c>Europe/Berlin</c>; unknown ids are <c>422 time_zone_invalid</c>.</summary>
+    public string? TimeZone { get; init; }
+
+    /// <summary>First day of the week: <c>monday</c> … <c>sunday</c>.</summary>
+    public string? WeekStart { get; init; }
+}
