@@ -29,9 +29,9 @@ def main() -> int:
     command = ["dotnet", "test", "--project", str(PROJECT), "--configuration", args.configuration]
     if args.no_build:
         command.append("--no-build")
-    command += ["--", "--coverage", "--coverage-output-format", "cobertura", "--coverage-output", REPORT,
+    command += ["--results-directory", str(output_dir), "--coverage", "--coverage-output-format", "cobertura", "--coverage-output", REPORT,
                 "--coverage-settings", str(SETTINGS)]
-    result = subprocess.run(command, check=False)
+    result = subprocess.run(command, check=False, cwd=ROOT.parent)  # global.json there selects Microsoft.Testing.Platform
     if result.returncode != 0:
         return result.returncode
     if not report.exists():
