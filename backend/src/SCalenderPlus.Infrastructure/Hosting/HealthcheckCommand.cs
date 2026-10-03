@@ -5,8 +5,9 @@ namespace SCalenderPlus.Infrastructure.Hosting;
 /// <summary>
 /// <c>healthcheck [ready|live] [--url http://host:port]</c>: container health probe for chiseled images
 /// (no shell/curl). GETs <c>/health/ready</c> (default) or <c>/health/live</c> on localhost and exits 0 when
-/// healthy, 1 otherwise. The port comes from <c>--url</c>, else <c>ASPNETCORE_HTTP_PORTS</c>, else the
-/// host's default port.
+/// healthy, 1 otherwise. The target comes from <c>--url</c>, else the first <c>http://</c> entry of
+/// <c>ASPNETCORE_URLS</c> (which Kestrel prefers over the ports variables), else <c>ASPNETCORE_HTTP_PORTS</c>,
+/// else the host's default port.
 /// </summary>
 public static class HealthcheckCommand
 {
@@ -21,7 +22,11 @@ public static class HealthcheckCommand
         Uri target;
         try
         {
-            target = ResolveTarget(args, defaultPort, Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS"));
+            target = ResolveTarget(
+                args,
+                defaultPort,
+                Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS"),
+                Environment.GetEnvironmentVariable("ASPNETCORE_URLS"));
         }
         catch (ArgumentException ex)
         {
@@ -29,7 +34,9 @@ public static class HealthcheckCommand
             return HostRunner.Failure;
         }
 
-        using var http = new HttpClient { Timeout = _timeout };
+        // No proxy: an HTTP(S)_PROXY in the container environment must not intercept the local probe.
+        using var handler = new HttpClientHandler { UseProxy = false };
+        using var http = new HttpClient(handler) { Timeout = _timeout };
         try
         {
             using var response = await http.GetAsync(target).ConfigureAwait(false);
@@ -43,7 +50,7 @@ public static class HealthcheckCommand
         }
     }
 
-    internal static Uri ResolveTarget(IReadOnlyList<string> args, int defaultPort, string? httpPorts)
+    internal static Uri ResolveTarget(IReadOnlyList<string> args, int defaultPort, string? httpPorts, string? urls = null)
     {
         var path = HealthEndpoints.ReadyPath;
         string? baseUrl = null;
@@ -66,6 +73,7 @@ public static class HealthcheckCommand
             }
         }
 
+        baseUrl ??= FromUrls(urls);
         if (baseUrl is null)
         {
             var port = httpPorts?.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
@@ -78,5 +86,26 @@ public static class HealthcheckCommand
         }
 
         return new Uri(root, path);
+    }
+
+    /// <summary>First <c>http://</c> binding of <c>ASPNETCORE_URLS</c>, with wildcard hosts mapped to loopback.</summary>
+    private static string? FromUrls(string? urls)
+    {
+        var url = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault(u => u.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+        if (url is null)
+        {
+            return null;
+        }
+
+        var hostStart = "http://".Length;
+        var portStart = url.LastIndexOf(':');
+        var authorityEnd = url.IndexOf('/', hostStart);
+        var host = portStart > hostStart && (authorityEnd < 0 || portStart < authorityEnd)
+            ? url[hostStart..portStart]
+            : url[hostStart..(authorityEnd < 0 ? url.Length : authorityEnd)];
+        var rest = url[(hostStart + host.Length)..];
+        var loopback = host is "+" or "*" or "0.0.0.0" or "[::]" or "localhost" ? "127.0.0.1" : host;
+        return "http://" + loopback + rest;
     }
 }

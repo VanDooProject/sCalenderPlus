@@ -18,6 +18,17 @@ public sealed class HealthcheckCommandTests
     public void Resolves_the_probe_url(string[] args, string? httpPorts, int defaultPort, string expected) =>
         Assert.Equal(new Uri(expected), HealthcheckCommand.ResolveTarget(args, defaultPort, httpPorts));
 
+    [Theory]
+    [InlineData("http://+:9000", "http://127.0.0.1:9000/health/ready")]
+    [InlineData("http://*:9000;https://*:9443", "http://127.0.0.1:9000/health/ready")]
+    [InlineData("https://+:9443;http://0.0.0.0:9000", "http://127.0.0.1:9000/health/ready")]
+    [InlineData("http://[::]:9000", "http://127.0.0.1:9000/health/ready")]
+    [InlineData("http://localhost:9000", "http://127.0.0.1:9000/health/ready")]
+    [InlineData("http://10.1.2.3:9000", "http://10.1.2.3:9000/health/ready")]
+    [InlineData("https://+:9443", "http://127.0.0.1:8080/health/ready")]
+    public void Prefers_ASPNETCORE_URLS_over_the_ports_like_Kestrel(string urls, string expected) =>
+        Assert.Equal(new Uri(expected), HealthcheckCommand.ResolveTarget([], 8080, "8080", urls));
+
     [Fact]
     public void Rejects_unknown_arguments() =>
         Assert.Throws<ArgumentException>(() => HealthcheckCommand.ResolveTarget(["bogus"], 8080, null));
