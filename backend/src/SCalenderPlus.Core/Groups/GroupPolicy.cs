@@ -11,6 +11,9 @@ public enum GroupAction
 
     /// <summary>Delete the group with all memberships and invites.</summary>
     Delete,
+
+    /// <summary>Create a calendar owned by the group (permissions.md §6.1: admins and owners).</summary>
+    CreateCalendar,
 }
 
 /// <summary>
@@ -25,6 +28,7 @@ public static class GroupPolicy
         GroupAction.View => GroupRole.Viewer,
         GroupAction.Update => GroupRole.Admin,
         GroupAction.Delete => GroupRole.Owner,
+        GroupAction.CreateCalendar => GroupRole.Admin,
         _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown group action."),
     };
 

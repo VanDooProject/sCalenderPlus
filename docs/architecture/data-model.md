@@ -77,31 +77,33 @@ Groups are **hard-deleted** (owners only): `group_members` and `group_invites` c
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| owner_type | smallint | 0 user, 1 group |
-| owner_user_id / owner_group_id | uuid null | exactly one set (CHECK) |
-| name, description, color | text | |
-| default_time_zone | text | IANA |
+| owner_user_id / owner_group_id | uuid null | exactly one set (CHECK `ck_calendars_one_owner`); FKs → `users` / `groups` with `ON DELETE RESTRICT` (owned calendars are transferred or deleted before the account or group goes) |
+| name, description, color | text | name ≤ 100, description ≤ 1000 (null = none), color `#rrggbb` lowercase |
+| default_time_zone | text | IANA, validated against tzdb |
 | creators_manage_own_events | bool | default true (permissions rule 6) |
 | creators_may_share_externally | bool | default false (permissions rule 7) |
-| group_role_defaults | jsonb | `{"admin":"manage","member":"contribute","viewer":"read"}` |
+| group_role_defaults | jsonb | `{"admin":"manage","member":"contribute","viewer":"read"}` (stored for personal calendars too, ignored there) |
 | acl_version | bigint | bumped on grant/override/share-link/role-default/setting/ownership/freeze change |
 | frozen_at | timestamptz null | over plan limit |
 | archived_at | timestamptz null | |
+| created_at, updated_at, xmin | | `xmin` = concurrency token |
 
-Index: `(owner_user_id)`, `(owner_group_id)`.
+Index: `(owner_user_id)`, `(owner_group_id)`. Calendars are hard-deleted (owners only); grants cascade. There is no `owner_type` column: the owner kind follows from which owner column is set.
 
 ### `calendar_grants`
 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| calendar_id | uuid FK | |
-| principal_type | smallint | 0 user, 1 group |
-| principal_id | uuid | |
-| min_role | smallint null | for group principals |
-| level | smallint | `CalendarLevel` 1 free_busy … 5 manage (numbers differ from `EventLevel`) |
+| calendar_id | uuid FK → calendars (cascade) | |
+| principal_type | smallint | 0 user, 1 group (CHECK) |
+| principal_id | uuid | no FK (polymorphic); deleted with the group (and, later, the user) |
+| min_role | smallint null | group principals only, stored (default 0 viewer); null for users (CHECK) |
+| level | smallint | `CalendarLevel` 1 free_busy … 5 manage (CHECK; numbers differ from `EventLevel`) |
+| created_by | uuid | no FK, kept as tombstone |
+| created_at, updated_at, xmin | | `xmin` = concurrency token |
 
-Unique `(calendar_id, principal_type, principal_id, min_role)`; index `(principal_type, principal_id)` to find "calendars shared with me / my groups".
+Unique `(calendar_id, principal_type, principal_id, min_role)` `NULLS NOT DISTINCT` (one grant per user); index `(principal_type, principal_id)` to find "calendars shared with me / my groups".
 
 ### `share_links`
 

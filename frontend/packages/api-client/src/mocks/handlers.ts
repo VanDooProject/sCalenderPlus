@@ -87,6 +87,38 @@ export const mockInvite: Invite = {
   createdAt: '2026-10-01T08:00:00Z',
 }
 
+type Calendar = components['schemas']['CalendarResponse']
+
+/** A calendar of {@link mockGroup} (default role defaults); the mock user is its owner. */
+export const mockCalendar: Calendar = {
+  id: '0192f2c4-0000-7000-8000-000000000301',
+  name: 'FC Lions – Club',
+  description: 'Trainings and matches',
+  color: '#4f46e5',
+  defaultTimeZone: 'Europe/Berlin',
+  owner: { type: 'group', id: mockGroup.id },
+  myLevel: 'owner',
+  groupRoleDefaults: { admin: 'manage', member: 'contribute', viewer: 'read' },
+  creatorsManageOwnEvents: true,
+  creatorsMayShareExternally: false,
+  frozen: false,
+  createdAt: '2026-10-01T08:00:00Z',
+  updatedAt: '2026-10-01T08:00:00Z',
+}
+
+/** A personal calendar of the mock user. */
+export const mockPersonalCalendar: Calendar = {
+  ...mockCalendar,
+  id: '0192f2c4-0000-7000-8000-000000000302',
+  name: 'Mia',
+  description: null,
+  color: '#16a34a',
+  owner: { type: 'user', id: mockUser.id },
+  groupRoleDefaults: null,
+}
+
+const mockCalendars = [mockCalendar, mockPersonalCalendar]
+
 export const handlers = [
   http.get('/health/live', ({ response }) => response(200).json({ status: 'Healthy', checks: {} })),
   http.get('/health/ready', ({ response }) =>
@@ -180,6 +212,62 @@ export const handlers = [
   http.post('/api/v1/invites/accept', ({ response }) =>
     response(200).json({ ...mockGroup, myRole: 'member' }),
   ),
+
+  http.get('/api/v1/calendars', ({ response }) =>
+    response(200).json({ items: mockCalendars, nextCursor: null }),
+  ),
+  http.post('/api/v1/calendars', async ({ request, response }) => {
+    const body = await request.json()
+    const groupId = body.groupId ?? null
+    return response(201).json({
+      ...mockCalendar,
+      id: crypto.randomUUID(),
+      name: body.name,
+      description: body.description ?? null,
+      color: body.color?.toLowerCase() ?? '#4f46e5',
+      defaultTimeZone: body.defaultTimeZone,
+      owner: groupId ? { type: 'group', id: groupId } : { type: 'user', id: mockUser.id },
+      groupRoleDefaults: groupId
+        ? {
+            admin: body.groupRoleDefaults?.admin ?? 'manage',
+            member: body.groupRoleDefaults?.member ?? 'contribute',
+            viewer: body.groupRoleDefaults?.viewer ?? 'read',
+          }
+        : null,
+      creatorsManageOwnEvents: body.creatorsManageOwnEvents ?? true,
+      creatorsMayShareExternally: body.creatorsMayShareExternally ?? false,
+    })
+  }),
+  http.get('/api/v1/calendars/{id}', ({ params, response }) => {
+    const calendar = mockCalendars.find((c) => c.id === params.id)
+    return calendar
+      ? response(200).json(calendar)
+      : response('default').json(notFound(`/api/v1/calendars/${params.id}`), { status: 404 })
+  }),
+  http.patch('/api/v1/calendars/{id}', async ({ params, request, response }) => {
+    const calendar = mockCalendars.find((c) => c.id === params.id)
+    if (!calendar) {
+      return response('default').json(notFound(`/api/v1/calendars/${params.id}`), { status: 404 })
+    }
+    const patch = (await request.json()) as components['schemas']['UpdateCalendarRequest']
+    const defaults = calendar.groupRoleDefaults
+    return response(200).json({
+      ...calendar,
+      name: patch.name ?? calendar.name,
+      description: patch.description === '' ? null : (patch.description ?? calendar.description),
+      color: patch.color?.toLowerCase() ?? calendar.color,
+      defaultTimeZone: patch.defaultTimeZone ?? calendar.defaultTimeZone,
+      creatorsManageOwnEvents: patch.creatorsManageOwnEvents ?? calendar.creatorsManageOwnEvents,
+      creatorsMayShareExternally:
+        patch.creatorsMayShareExternally ?? calendar.creatorsMayShareExternally,
+      groupRoleDefaults: defaults && {
+        admin: patch.groupRoleDefaults?.admin ?? defaults.admin,
+        member: patch.groupRoleDefaults?.member ?? defaults.member,
+        viewer: patch.groupRoleDefaults?.viewer ?? defaults.viewer,
+      },
+    })
+  }),
+  http.delete('/api/v1/calendars/{id}', ({ response }) => response(204).empty()),
 ]
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {

@@ -466,12 +466,88 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/calendars': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Calendars I see, with my level (cursor-paginated)
+     * @description Owned by me or one of my groups, or shared with me or my groups; ordered by creation. limit: 1–200 (default 50); cursor: nextCursor of the previous page.
+     */
+    get: operations['ListCalendars']
+    put?: never
+    /**
+     * Create a personal calendar, or a group calendar (group admins and owners)
+     * @description Counts against owned_calendars of the owner's plan (group calendars: the group's billing owner) → 402 plan_limit_reached. Group members below admin: 403; non-members: 404.
+     */
+    post: operations['CreateCalendar']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/calendars/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * A calendar I see (with ETag)
+     * @description 404 for calendars the caller has no level on (no existence leaks).
+     */
+    get: operations['GetCalendar']
+    put?: never
+    post?: never
+    /** Delete the calendar with its grants (owners only, requires If-Match) */
+    delete: operations['DeleteCalendar']
+    options?: never
+    head?: never
+    /**
+     * Change name, color, time zone, permission settings or role defaults (manage; JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).
+     */
+    patch: operations['UpdateCalendar']
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
     AcceptInviteRequest: {
       token: string
+    }
+    CalendarListResponse: {
+      items: components['schemas']['CalendarResponse'][]
+      nextCursor: null | string
+    }
+    CalendarOwnerResponse: {
+      type: string
+      /** Format: uuid */
+      id: string
+    }
+    CalendarResponse: {
+      /** Format: uuid */
+      id: string
+      name: string
+      description: null | string
+      color: string
+      defaultTimeZone: string
+      owner: components['schemas']['CalendarOwnerResponse']
+      myLevel: string
+      groupRoleDefaults: null | components['schemas']['RoleDefaultsResponse']
+      creatorsManageOwnEvents: boolean
+      creatorsMayShareExternally: boolean
+      frozen: boolean
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
     }
     ChangeMemberRoleRequest: {
       role: string
@@ -480,6 +556,17 @@ export interface components {
       /** Format: uuid */
       userId: string
       token: string
+    }
+    CreateCalendarRequest: {
+      name: string
+      description?: null | string
+      color?: null | string
+      defaultTimeZone: string
+      /** Format: uuid */
+      groupId?: null | string
+      groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
+      creatorsManageOwnEvents?: null | boolean
+      creatorsMayShareExternally?: null | boolean
     }
     CreateGroupRequest: {
       name: string
@@ -517,6 +604,7 @@ export interface components {
       | 'external_sharing_not_allowed'
       | 'feature_not_in_plan'
       | 'group_frozen'
+      | 'group_has_calendars'
       | 'insufficient_permission'
       | 'internal_error'
       | 'invalid_credentials'
@@ -684,6 +772,16 @@ export interface components {
       token: string
       newPassword: string
     }
+    RoleDefaultsRequest: {
+      admin?: null | string
+      member?: null | string
+      viewer?: null | string
+    }
+    RoleDefaultsResponse: {
+      admin: string
+      member: string
+      viewer: string
+    }
     TransferBillingRequest: {
       /** Format: uuid */
       userId: string
@@ -696,6 +794,15 @@ export interface components {
       enabled: boolean
       /** Format: int32 */
       recoveryCodesLeft: number
+    }
+    UpdateCalendarRequest: {
+      name?: null | string
+      description?: null | string
+      color?: null | string
+      defaultTimeZone?: null | string
+      creatorsManageOwnEvents?: null | boolean
+      creatorsMayShareExternally?: null | boolean
+      groupRoleDefaults?: null | components['schemas']['RoleDefaultsRequest']
     }
     UpdateGroupRequest: {
       name?: null | string
@@ -1710,6 +1817,171 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListCalendars: {
+    parameters: {
+      query?: {
+        limit?: number
+        cursor?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateCalendar: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateCalendarRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetCalendar: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  DeleteCalendar: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateCalendar: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateCalendarRequest']
+        'application/json': components['schemas']['UpdateCalendarRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.IntegrationTests.Auth;
+using SCalenderPlus.IntegrationTests.Calendars;
 using SCalenderPlus.IntegrationTests.Groups;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 using SCalenderPlus.IntegrationTests.Problems;
@@ -81,6 +82,50 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         using var invite = await olga.SendJsonAsync(HttpMethod.Post, $"/api/v1/groups/{groupId}/invites", new { role = "member" });
 
         AssertLimit(await ProblemResponse.AssertProblemAsync(invite, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "members_per_group", max: 1, used: 1);
+    }
+
+    [Fact]
+    public async Task Free_users_own_three_calendars_counting_those_of_groups_they_bill()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:OwnedGroups"] = "2" });
+        var (_, olga) = await PersonAsync("olga");
+        var groupId = await olga.CreateGroupAsync("FC Lions");
+        var (adamEmail, adam) = await PersonAsync("adam");
+        await Host.AddMemberAsync(groupId, (await Host.FindUserAsync(adamEmail)).Id, GroupRole.Admin);
+        await olga.CreateCalendarAsync("Family");
+        await olga.CreateCalendarAsync("Work");
+        await adam.CreateCalendarAsync("Club", groupId); // Olga bills the group: counts for her
+
+        using var fourth = await olga.SendJsonAsync(HttpMethod.Post, "/api/v1/calendars", new { name = "Hobby", defaultTimeZone = "UTC" });
+        AssertLimit(await ProblemResponse.AssertProblemAsync(fourth, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "owned_calendars", max: 3, used: 3);
+        using var groupFourth = await adam.SendJsonAsync(HttpMethod.Post, "/api/v1/calendars", new { name = "Fixtures", defaultTimeZone = "UTC", groupId });
+        AssertLimit(await ProblemResponse.AssertProblemAsync(groupFourth, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "owned_calendars", max: 3, used: 3);
+
+        // Adam's own plan is untouched by the group's calendar.
+        await adam.CreateCalendarAsync("Adam's");
+    }
+
+    [Fact]
+    public async Task Concurrent_calendar_creations_cannot_exceed_the_limit()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:OwnedCalendars"] = "1" });
+        var (email, _) = await PersonAsync("olga");
+        var clients = new List<HttpClient>();
+        for (var i = 0; i < 5; i++)
+        {
+            var client = await Host.SignedInClientAsync(email);
+            _clients.Add(client);
+            clients.Add(client);
+        }
+
+        var responses = await Task.WhenAll(clients.Select((c, i) => c.SendJsonAsync(HttpMethod.Post, "/api/v1/calendars", new { name = $"Calendar {i}", defaultTimeZone = "UTC" })));
+
+        Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(4, responses.Count(r => r.StatusCode == HttpStatusCode.PaymentRequired));
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
     }
 
     [Fact]

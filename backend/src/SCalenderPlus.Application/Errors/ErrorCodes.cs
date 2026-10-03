@@ -75,6 +75,9 @@ public static class ErrorCodes
     /// <summary>The group is over its plan limit (frozen): no invites or role changes.</summary>
     public const string GroupFrozen = "group_frozen";
 
+    /// <summary>The group still owns calendars: transfer or delete them before deleting the group.</summary>
+    public const string GroupHasCalendars = "group_has_calendars";
+
     // 412 / 428
     public const string PreconditionFailed = "precondition_failed";
     public const string PreconditionRequired = "precondition_required";

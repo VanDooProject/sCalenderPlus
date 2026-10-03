@@ -1425,6 +1425,266 @@
           }
         ]
       }
+    },
+    "/api/v1/calendars": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Calendars I see, with my level (cursor-paginated)",
+        "description": "Owned by me or one of my groups, or shared with me or my groups; ordered by creation. limit: 1–200 (default 50); cursor: nextCursor of the previous page.",
+        "operationId": "ListCalendars",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Create a personal calendar, or a group calendar (group admins and owners)",
+        "description": "Counts against owned_calendars of the owner's plan (group calendars: the group's billing owner) → 402 plan_limit_reached. Group members below admin: 403; non-members: 404.",
+        "operationId": "CreateCalendar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/calendars/{id}": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "A calendar I see (with ETag)",
+        "description": "404 for calendars the caller has no level on (no existence leaks).",
+        "operationId": "GetCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Change name, color, time zone, permission settings or role defaults (manage; JSON Merge Patch, requires If-Match)",
+        "description": "Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).",
+        "operationId": "UpdateCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCalendarRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCalendarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Delete the calendar with its grants (owners only, requires If-Match)",
+        "operationId": "DeleteCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1438,6 +1698,115 @@
           "token": {
             "maxLength": 200,
             "type": "string"
+          }
+        }
+      },
+      "CalendarListResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CalendarOwnerResponse": {
+        "required": [
+          "type",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CalendarResponse": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "color",
+          "defaultTimeZone",
+          "owner",
+          "myLevel",
+          "groupRoleDefaults",
+          "creatorsManageOwnEvents",
+          "creatorsMayShareExternally",
+          "frozen",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "type": "string"
+          },
+          "defaultTimeZone": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/CalendarOwnerResponse"
+          },
+          "myLevel": {
+            "type": "string"
+          },
+          "groupRoleDefaults": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoleDefaultsResponse"
+              }
+            ]
+          },
+          "creatorsManageOwnEvents": {
+            "type": "boolean"
+          },
+          "creatorsMayShareExternally": {
+            "type": "boolean"
+          },
+          "frozen": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1466,6 +1835,70 @@
           "token": {
             "maxLength": 2048,
             "type": "string"
+          }
+        }
+      },
+      "CreateCalendarRequest": {
+        "required": [
+          "name",
+          "defaultTimeZone"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "maxLength": 7,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultTimeZone": {
+            "maxLength": 64,
+            "minLength": 0,
+            "type": "string"
+          },
+          "groupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "groupRoleDefaults": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoleDefaultsRequest"
+              }
+            ]
+          },
+          "creatorsManageOwnEvents": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "creatorsMayShareExternally": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -1576,6 +2009,7 @@
           "external_sharing_not_allowed",
           "feature_not_in_plan",
           "group_frozen",
+          "group_has_calendars",
           "insufficient_permission",
           "internal_error",
           "invalid_credentials",
@@ -2145,6 +2579,48 @@
           }
         }
       },
+      "RoleDefaultsRequest": {
+        "type": "object",
+        "properties": {
+          "admin": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "member": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "viewer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RoleDefaultsResponse": {
+        "required": [
+          "admin",
+          "member",
+          "viewer"
+        ],
+        "type": "object",
+        "properties": {
+          "admin": {
+            "type": "string"
+          },
+          "member": {
+            "type": "string"
+          },
+          "viewer": {
+            "type": "string"
+          }
+        }
+      },
       "TransferBillingRequest": {
         "required": [
           "userId"
@@ -2185,6 +2661,65 @@
           "recoveryCodesLeft": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "UpdateCalendarRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "maxLength": 7,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultTimeZone": {
+            "maxLength": 64,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "creatorsManageOwnEvents": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "creatorsMayShareExternally": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "groupRoleDefaults": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoleDefaultsRequest"
+              }
+            ]
           }
         }
       },
@@ -2268,6 +2803,9 @@
     },
     {
       "name": "Groups"
+    },
+    {
+      "name": "Calendars"
     }
   ]
 }

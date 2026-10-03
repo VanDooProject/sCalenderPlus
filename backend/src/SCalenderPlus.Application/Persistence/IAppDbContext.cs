@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Groups;
 
 namespace SCalenderPlus.Application.Persistence;
@@ -16,6 +17,10 @@ public interface IAppDbContext
 
     DbSet<GroupInvite> GroupInvites { get; }
 
+    DbSet<Calendar> Calendars { get; }
+
+    DbSet<CalendarGrantEntry> CalendarGrants { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -24,4 +29,11 @@ public interface IAppDbContext
     /// only when the operation completes; an exception rolls all of them back.
     /// </summary>
     Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Takes a transaction-scoped exclusive lock on <paramref name="key"/> (PostgreSQL advisory lock, released at
+    /// commit or rollback): serializes check-then-insert sequences such as plan-limit counts. Call it inside
+    /// <see cref="InTransactionAsync"/>.
+    /// </summary>
+    Task LockAsync(Guid key, CancellationToken cancellationToken = default);
 }

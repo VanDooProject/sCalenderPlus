@@ -48,10 +48,11 @@ public sealed class GroupPolicyTests
     [InlineData(GroupRole.Member, true, false, false)]
     [InlineData(GroupRole.Admin, true, true, false)]
     [InlineData(GroupRole.Owner, true, true, true)]
-    public void Members_view_admins_update_owners_delete(GroupRole role, bool view, bool update, bool delete)
+    public void Members_view_admins_update_and_create_calendars_owners_delete(GroupRole role, bool view, bool update, bool delete)
     {
         Assert.Equal(view, GroupPolicy.Allows(role, GroupAction.View));
         Assert.Equal(update, GroupPolicy.Allows(role, GroupAction.Update));
+        Assert.Equal(update, GroupPolicy.Allows(role, GroupAction.CreateCalendar));
         Assert.Equal(delete, GroupPolicy.Allows(role, GroupAction.Delete));
     }
 

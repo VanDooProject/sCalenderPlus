@@ -32,7 +32,10 @@ public sealed class MatrixActor
 }
 
 /// <summary>
-/// The actors known to the matrix. Each signed-in actor is a seeded user (email <c>{name}@matrix.example.test</c>) with its own session
+/// The actors known to the matrix. On the group calendar "lions" (default role defaults) the group roles are the
+/// calendar levels: <see cref="GroupOwner"/> owner, <see cref="GroupAdmin"/> manage, <see cref="GroupMember"/>
+/// contribute, <see cref="GroupViewer"/> read; <see cref="CalendarEditor"/> edit and <see cref="CalendarFreeBusy"/>
+/// free_busy through user grants; <see cref="NonMember"/> and <see cref="OtherTenant"/> none. Each signed-in actor is a seeded user (email <c>{name}@matrix.example.test</c>) with its own session
 /// (<see cref="MatrixScenario"/>); add new ones here as features land (M2: calendar and event levels).
 /// </summary>
 public static class Actors
@@ -68,6 +71,12 @@ public static class Actors
 
     /// <summary>Viewer of "lions".</summary>
     public static readonly MatrixActor GroupViewer = new("group-viewer", scenario => Task.FromResult(scenario.SessionClient("group-viewer")));
+
+    /// <summary>Holds a user grant <c>edit</c> on the calendar "lions" (in no group).</summary>
+    public static readonly MatrixActor CalendarEditor = new("calendar-editor", scenario => Task.FromResult(scenario.SessionClient("calendar-editor")));
+
+    /// <summary>Holds a user grant <c>free_busy</c> on the calendar "lions" (in no group): sees it, nothing more.</summary>
+    public static readonly MatrixActor CalendarFreeBusy = new("calendar-free-busy", scenario => Task.FromResult(scenario.SessionClient("calendar-free-busy")));
 
     /// <summary>A verified user in no group: group routes must answer 404 (not 403) — no existence leaks.</summary>
     public static readonly MatrixActor NonMember = new("non-member", scenario => Task.FromResult(scenario.SessionClient("non-member")));

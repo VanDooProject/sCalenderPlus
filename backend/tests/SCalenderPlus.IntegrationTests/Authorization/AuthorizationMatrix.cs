@@ -228,12 +228,72 @@ public static class AuthorizationMatrix
             .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
             .Expect(Actors.User, HttpStatusCode.OK) // joins "lions" as member; no other case depends on it
             .Expect(Actors.GroupMember, HttpStatusCode.OK), // already a member: keeps the role
+
+        // Calendars (#41): levels from the permission engine — none → 404, too low → 403.
+        .. For("GET", "/api/v1/calendars")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK)
+            .Expect(Actors.OtherTenant, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/calendars")
+            .WithBody(_ => JsonContent.Create(new { name = "Personal", defaultTimeZone = "Europe/Berlin" }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.Created)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Created)
+            .WithBody(s => JsonContent.Create(new { name = "Fixtures", defaultTimeZone = "Europe/Berlin", groupId = s.Get("group:lions") }))
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.NotFound) // a grant on a group calendar is no membership
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+        .. For("GET", "/api/v1/calendars/{id}")
+            .WithRoute(LionsCalendar)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.GroupMember, HttpStatusCode.OK)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("PATCH", "/api/v1/calendars/{id}")
+            .WithRoute(LionsCalendar)
+            .WithBody(_ => JsonContent.Create(new { name = "lions" }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/calendars/{id}")
+            .WithRoute(LionsCalendar)
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Forbidden) // manage is not owner
+            .WithRoute(s => Route(s, "calendar:lions-doomed"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
     private static IReadOnlyDictionary<string, string> IfMatchAny => new Dictionary<string, string>(StringComparer.Ordinal) { ["If-Match"] = "*" };
 
     private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
+
+    private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
 
     private static Dictionary<string, string> Member(MatrixScenario s, string user) =>
         new(StringComparer.Ordinal) { ["id"] = s.Get("group:lions"), ["userId"] = s.Get("user:" + user) };

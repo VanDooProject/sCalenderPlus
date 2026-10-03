@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Groups;
+using SCalenderPlus.Core.Permissions;
 using SCalenderPlus.Infrastructure.Identity;
 using SCalenderPlus.IntegrationTests.Infrastructure;
 using ApiProgram = SCalenderPlus.Api.Program;
@@ -103,6 +105,43 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         await SeedInviteAsync("lions", "revocable");
         await SeedInviteAsync("lions", "acceptable");
         await SeedGroupAsync("other", (Actors.OtherTenant.Name, GroupRole.Owner));
+
+        // Calendars (#41, #42): "lions" (group calendar, default role defaults) with user grants for the editor and
+        // free/busy actors; "lions-doomed" (deleted by a case); "other" (another tenant's calendar).
+        await SeedUserAsync(Actors.CalendarEditor.Name, emailConfirmed: true);
+        await SeedUserAsync(Actors.CalendarFreeBusy.Name, emailConfirmed: true);
+        await SeedCalendarAsync("lions", "lions", (Actors.CalendarEditor.Name, CalendarLevel.Edit), (Actors.CalendarFreeBusy.Name, CalendarLevel.FreeBusy));
+        await SeedCalendarAsync("lions-doomed", "lions");
+        await SeedCalendarAsync("other", "other");
+    }
+
+    /// <summary>A calendar owned by a seeded group with user grants; resource <c>calendar:{name}</c>.</summary>
+    private async Task SeedCalendarAsync(string name, string group, params (string Actor, CalendarLevel Level)[] grants)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var calendar = new Calendar
+        {
+            Id = Guid.CreateVersion7(),
+            OwnerGroupId = Guid.Parse(Get("group:" + group)),
+            Name = name,
+            DefaultTimeZone = "Europe/Berlin",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Calendars.Add(calendar);
+        foreach (var (actor, level) in grants)
+        {
+            var grant = CalendarGrantEntry.For(calendar.Id, Principal.User(Guid.Parse(Get("user:" + actor))), level);
+            grant.CreatedBy = Guid.Parse(Get("user:" + Actors.GroupOwner.Name));
+            grant.CreatedAt = grant.UpdatedAt = now;
+            db.CalendarGrants.Add(grant);
+            Set($"grant:{name}:{actor}", grant.Id.ToString());
+        }
+
+        await db.SaveChangesAsync();
+        Set("calendar:" + name, calendar.Id.ToString());
     }
 
     /// <summary>An invite link (role member) of the group, created by its owner: resources <c>invite:{name}</c> and <c>token:{name}</c>.</summary>

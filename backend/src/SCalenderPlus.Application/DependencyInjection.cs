@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using SCalenderPlus.Application.Accounts;
+using SCalenderPlus.Application.Calendars;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Entitlements;
@@ -44,6 +45,10 @@ public static class DependencyInjection
         services.AddScoped<GroupMembershipService>();
         services.AddScoped<GroupInviteService>();
         services.AddSingleton<GroupEmails>();
+
+        services.AddScoped<CalendarAccessLoader>();
+        services.AddScoped<AclVersions>();
+        services.AddScoped<CalendarService>();
 
         return services;
     }

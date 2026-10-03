@@ -40,6 +40,7 @@ public static class ProblemCatalogue
         [ErrorCodes.BillingOwnerTransferRequired] = new(StatusCodes.Status409Conflict, "Transfer billing first"),
         [ErrorCodes.BillingOwnerMustBeOwner] = new(StatusCodes.Status409Conflict, "Billing owner must be an owner"),
         [ErrorCodes.GroupFrozen] = new(StatusCodes.Status409Conflict, "Group is frozen"),
+        [ErrorCodes.GroupHasCalendars] = new(StatusCodes.Status409Conflict, "Group still owns calendars"),
         [ErrorCodes.PreconditionFailed] = new(StatusCodes.Status412PreconditionFailed, "Precondition failed"),
         [ErrorCodes.PreconditionRequired] = new(StatusCodes.Status428PreconditionRequired, "Precondition required"),
         [ErrorCodes.PayloadTooLarge] = new(StatusCodes.Status413PayloadTooLarge, "Payload too large"),

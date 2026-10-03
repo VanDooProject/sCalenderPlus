@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
 
@@ -24,6 +25,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
 
+    public DbSet<Calendar> Calendars => Set<Calendar>();
+
+    public DbSet<CalendarGrantEntry> CalendarGrants => Set<CalendarGrantEntry>();
+
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);
@@ -39,6 +44,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return result;
         }
+    }
+
+    public async Task LockAsync(Guid key, CancellationToken cancellationToken = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Advisory locks are transaction-scoped: call LockAsync inside InTransactionAsync.");
+        }
+
+        var name = key.ToString();
+        await Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({name}, 0))", cancellationToken).ConfigureAwait(false);
     }
 
     protected override void OnModelCreating(ModelBuilder builder)
