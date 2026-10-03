@@ -1,17 +1,25 @@
 namespace SCalenderPlus.Worker;
 
 /// <summary>
-/// Skeleton of the worker's job loop. Job processing (Postgres queue, schedules) arrives in M1.
+/// Skeleton of the worker's job loop: it only beats the heartbeat for now. Job processing (Postgres queue,
+/// schedules) arrives in M1.
 /// </summary>
-internal sealed partial class JobLoopService(ILogger<JobLoopService> logger) : BackgroundService
+internal sealed partial class JobLoopService(JobLoopHeartbeat heartbeat, ILogger<JobLoopService> logger) : BackgroundService
 {
+    private static readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         LogStarted(logger);
 
+        using var timer = new PeriodicTimer(_interval);
         try
         {
-            await Task.Delay(Timeout.Infinite, stoppingToken).ConfigureAwait(false);
+            do
+            {
+                heartbeat.Beat();
+            }
+            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
