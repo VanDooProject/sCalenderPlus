@@ -78,6 +78,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/auth/login/2fa': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Second login step: authenticator code or recovery code
+     * @description Needs the pending-login cookie from POST /auth/login (twoFactorRequired, valid 5 minutes); without it 401 unauthenticated. Wrong codes are 401 invalid_credentials and count towards the lockout; each recovery code works once.
+     */
+    post: operations['LoginTwoFactor']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/auth/logout': {
     parameters: {
       query?: never
@@ -186,6 +206,91 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/me/two-factor': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Two-factor authentication status */
+    get: operations['GetTwoFactorStatus']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/two-factor/setup': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create a new authenticator secret (QR code URI); 409 while 2FA is enabled */
+    post: operations['SetUpTwoFactor']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/two-factor/enable': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Turn on 2FA with a current authenticator code; returns the recovery codes once */
+    post: operations['EnableTwoFactor']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/two-factor/disable': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Turn off 2FA (confirm with password or code; no-op when off) */
+    post: operations['DisableTwoFactor']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/two-factor/recovery-codes': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Replace all recovery codes (confirm with password or code); returns the new codes once */
+    post: operations['RegenerateRecoveryCodes']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -194,6 +299,9 @@ export interface components {
       /** Format: uuid */
       userId: string
       token: string
+    }
+    EnableTwoFactorRequest: {
+      code: string
     }
     /**
      * @description Stable machine-readable error code (part of the contract; never renamed).
@@ -220,6 +328,7 @@ export interface components {
       | 'precondition_failed'
       | 'precondition_required'
       | 'rate_limited'
+      | 'reauthentication_failed'
       | 'recurrence_invalid'
       | 'service_unavailable'
       | 'time_zone_invalid'
@@ -259,6 +368,11 @@ export interface components {
       twoFactorRequired: boolean
       user: null | components['schemas']['MeResponse']
     }
+    LoginTwoFactorRequest: {
+      code?: null | string
+      recoveryCode?: null | string
+      rememberMe?: boolean
+    }
     MeResponse: {
       /** Format: uuid */
       id: string
@@ -288,6 +402,13 @@ export interface components {
         [key: string]: string[]
       }
     }
+    ReauthenticationRequest: {
+      password?: null | string
+      code?: null | string
+    }
+    RecoveryCodesResponse: {
+      recoveryCodes: string[]
+    }
     RegisterRequest: {
       email: string
       password: string
@@ -300,6 +421,15 @@ export interface components {
       userId: string
       token: string
       newPassword: string
+    }
+    TwoFactorSetupResponse: {
+      sharedKey: string
+      authenticatorUri: string
+    }
+    TwoFactorStatusResponse: {
+      enabled: boolean
+      /** Format: int32 */
+      recoveryCodesLeft: number | string
     }
   }
   responses: never
@@ -428,6 +558,48 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['LoginResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  LoginTwoFactor: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginTwoFactorRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LoginResponse']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['HttpValidationProblemDetails']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */
@@ -613,6 +785,170 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['MeResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetTwoFactorStatus: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TwoFactorStatusResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  SetUpTwoFactor: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TwoFactorSetupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  EnableTwoFactor: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EnableTwoFactorRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RecoveryCodesResponse']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['HttpValidationProblemDetails']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  DisableTwoFactor: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReauthenticationRequest']
+      }
+    }
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RegenerateRecoveryCodes: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReauthenticationRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RecoveryCodesResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

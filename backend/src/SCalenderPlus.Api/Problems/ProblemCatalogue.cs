@@ -27,6 +27,7 @@ public static class ProblemCatalogue
         [ErrorCodes.ExternalSharingNotAllowed] = new(StatusCodes.Status403Forbidden, "External sharing not allowed"),
         [ErrorCodes.EmailNotVerified] = new(StatusCodes.Status403Forbidden, "Email address not verified"),
         [ErrorCodes.CsrfHeaderMissing] = new(StatusCodes.Status403Forbidden, "CSRF header missing"),
+        [ErrorCodes.ReauthenticationFailed] = new(StatusCodes.Status403Forbidden, "Confirmation failed"),
         [ErrorCodes.NotFound] = new(StatusCodes.Status404NotFound, "Not found"),
         [ErrorCodes.MethodNotAllowed] = new(StatusCodes.Status405MethodNotAllowed, "Method not allowed"),
         [ErrorCodes.Conflict] = new(StatusCodes.Status409Conflict, "Conflict"),

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,17 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         return Api.CreateDefaultClient(BaseAddress, new CookieContainerHandler(cookies));
     }
 
+    /// <summary>A client of a 2FA user that passed the password step only (pending-login cookie, no session).</summary>
+    public async Task<HttpClient> PendingSecondFactorClientAsync(string actor)
+    {
+        var cookies = new CookieContainer();
+        await SignInAsync(cookies, Get("email:" + actor), completeSecondFactor: false);
+        return Api.CreateDefaultClient(BaseAddress, new CookieContainerHandler(cookies));
+    }
+
+    /// <summary>The current authenticator code of a seeded user with an authenticator secret.</summary>
+    public string CurrentTotp(string actor) => Totp.Compute(Get("totp:" + actor));
+
     public async ValueTask InitializeAsync()
     {
         _api = new HostFactory<ApiProgram>(TestSettings.For(await postgres.CreateDatabaseAsync(), autoMigrate: true));
@@ -56,13 +68,23 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
 
     private async Task SeedAsync()
     {
-        await SeedUserAsync(Actors.User.Name, emailConfirmed: true);
+        // "user" has an authenticator secret but 2FA off (the enable case turns it on).
+        await SeedUserAsync(Actors.User.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.SecretOnly);
         await SeedUserAsync(Actors.UnverifiedUser.Name, emailConfirmed: false);
         await SeedUserAsync(Actors.OtherUser.Name, emailConfirmed: true);
         await SeedUserAsync(Actors.FreshSession.Name, emailConfirmed: true, signIn: false);
+        await SeedUserAsync(Actors.TwoFactorUser.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled);
+        await SeedUserAsync(Actors.TwoFactorPending.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled, signIn: false);
     }
 
-    private async Task SeedUserAsync(string actor, bool emailConfirmed, bool signIn = true)
+    private enum TwoFactorSeed
+    {
+        None,
+        SecretOnly,
+        Enabled,
+    }
+
+    private async Task SeedUserAsync(string actor, bool emailConfirmed, bool signIn = true, TwoFactorSeed twoFactor = TwoFactorSeed.None)
     {
         var email = $"{actor}@matrix.example.test";
         await using (var scope = Api.Services.CreateAsyncScope())
@@ -79,6 +101,17 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
             var result = await users.CreateAsync(user, Password);
             Assert.True(result.Succeeded, string.Join(", ", result.Errors.Select(e => e.Description)));
             Set("user:" + actor, user.Id.ToString());
+
+            if (twoFactor != TwoFactorSeed.None)
+            {
+                await users.ResetAuthenticatorKeyAsync(user);
+                Set("totp:" + actor, (await users.GetAuthenticatorKeyAsync(user))!);
+                if (twoFactor == TwoFactorSeed.Enabled)
+                {
+                    await users.SetTwoFactorEnabledAsync(user, true);
+                    await users.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+                }
+            }
         }
 
         Set("email:" + actor, email);
@@ -90,16 +123,20 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         }
     }
 
-    private async Task SignInAsync(CookieContainer cookies, string email)
+    private async Task SignInAsync(CookieContainer cookies, string email, bool completeSecondFactor = true)
     {
         using var client = Api.CreateDefaultClient(BaseAddress, new CookieContainerHandler(cookies));
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/v1/auth/login", UriKind.Relative))
-        {
-            Content = JsonContent.Create(new { email, password = Password }),
-        };
-        request.Headers.Add("X-Requested-With", "scal");
-        using var response = await client.SendAsync(request);
+        client.DefaultRequestHeaders.Add("X-Requested-With", "scal");
+        using var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = Password });
         Assert.True(response.StatusCode == HttpStatusCode.OK, $"Seeding: login of {email} failed with {(int)response.StatusCode}.");
+
+        var body = await response.Content.ReadFromJsonAsync<JsonObject>();
+        if (completeSecondFactor && (bool)body!["twoFactorRequired"]!)
+        {
+            var actor = email[..email.IndexOf('@', StringComparison.Ordinal)];
+            using var second = await client.PostAsJsonAsync("/api/v1/auth/login/2fa", new { code = CurrentTotp(actor) });
+            Assert.True(second.StatusCode == HttpStatusCode.OK, $"Seeding: second factor of {email} failed with {(int)second.StatusCode}.");
+        }
     }
 
     public async ValueTask DisposeAsync()

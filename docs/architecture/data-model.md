@@ -40,7 +40,7 @@ subscriptions, plan_limits, audit_events, calendar_changes, jobs, webhooks, webh
 | deleted_at | timestamptz null | deletion grace period |
 | email_confirmed, password_hash, security_stamp, concurrency_stamp, lockout_end, lockout_enabled, access_failed_count, two_factor_enabled, phone_number, phone_number_confirmed | | ASP.NET Core Identity columns; `concurrency_stamp` changes on every update |
 
-Identity tables `user_claims`, `user_logins`, `user_tokens` (authenticator key, recovery codes) — `IdentityUserContext<AppUser, Guid>`, no Identity roles (roles are per group). `user_passkeys` follows with passkeys (v1).
+Identity tables `user_claims`, `user_logins`, `user_tokens` (TOTP authenticator key; recovery codes as SHA-256 hashes, never in clear text) — `IdentityUserContext<AppUser, Guid>`, no Identity roles (roles are per group). `user_passkeys` follows with passkeys (v1).
 
 ### `organizations` (v1, Team plan)
 

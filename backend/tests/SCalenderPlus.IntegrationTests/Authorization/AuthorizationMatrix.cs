@@ -57,7 +57,42 @@ public static class AuthorizationMatrix
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
             .Expect(Actors.User, HttpStatusCode.OK)
             .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
-            .Expect(Actors.OtherUser, HttpStatusCode.OK),
+            .Expect(Actors.OtherUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized), // password alone is no session
+
+        // Two-factor authentication (#31)
+        .. For("POST", "/api/v1/auth/login/2fa")
+            .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.TwoFactorPending.Name) }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.Unauthorized) // a session is not a pending login
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.OK),
+        .. For("GET", "/api/v1/me/two-factor")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("POST", "/api/v1/me/two-factor/setup")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorUser, HttpStatusCode.Conflict)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("POST", "/api/v1/me/two-factor/enable")
+            .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.User.Name) }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorUser, HttpStatusCode.Conflict)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("POST", "/api/v1/me/two-factor/disable")
+            .WithBody(_ => JsonContent.Create(new { password = MatrixScenario.Password }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.NoContent) // 2FA off: confirmed no-op
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("POST", "/api/v1/me/two-factor/recovery-codes")
+            .WithBody(_ => JsonContent.Create(new { password = MatrixScenario.Password }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorUser, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Conflict)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
     ];
 
     private static AnonymousOperation Anonymous(

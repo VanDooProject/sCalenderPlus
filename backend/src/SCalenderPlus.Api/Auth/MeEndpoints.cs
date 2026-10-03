@@ -15,6 +15,7 @@ internal static class MeEndpoints
         var me = v1.MapGroup("/me").WithTags(Tag);
 
         me.MapGet(string.Empty, GetMeAsync).WithName("GetMe").WithSummary("The signed-in user");
+        me.MapTwoFactorEndpoints();
 
         return me;
     }

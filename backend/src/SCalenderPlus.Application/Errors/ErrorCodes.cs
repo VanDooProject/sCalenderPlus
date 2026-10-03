@@ -43,6 +43,9 @@ public static class ErrorCodes
     /// <summary>An unsafe request (POST/PUT/PATCH/DELETE) to the api lacks <c>X-Requested-With: scal</c> (CSRF protection).</summary>
     public const string CsrfHeaderMissing = "csrf_header_missing";
 
+    /// <summary>A sensitive account change (disable 2FA, new recovery codes) needs the current password or an authenticator code, and the one given is wrong.</summary>
+    public const string ReauthenticationFailed = "reauthentication_failed";
+
     // 404
     /// <summary>Also returned for resources the caller has level <c>none</c> on (no existence leaks).</summary>
     public const string NotFound = "not_found";

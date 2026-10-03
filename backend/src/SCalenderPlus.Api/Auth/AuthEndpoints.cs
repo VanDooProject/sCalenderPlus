@@ -39,6 +39,9 @@ internal static partial class AuthEndpoints
         auth.MapPost("/login", LoginAsync).WithName("Login").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Sign in with email and password")
             .WithDescription("Sets the session cookie, or answers twoFactorRequired (second step: POST /auth/login/2fa). Failures are 401 invalid_credentials; after 5 failures in a row the account is locked for 15 minutes (still answered as invalid_credentials).");
+        auth.MapPost("/login/2fa", LoginTwoFactorAsync).WithName("LoginTwoFactor").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
+            .WithSummary("Second login step: authenticator code or recovery code")
+            .WithDescription("Needs the pending-login cookie from POST /auth/login (twoFactorRequired, valid 5 minutes); without it 401 unauthenticated. Wrong codes are 401 invalid_credentials and count towards the lockout; each recovery code works once.");
         auth.MapPost("/logout", LogoutAsync).WithName("Logout")
             .WithSummary("End the session (clears the session cookie)");
         auth.MapPost("/confirm-email", ConfirmEmailAsync).WithName("ConfirmEmail").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
@@ -175,6 +178,65 @@ internal static partial class AuthEndpoints
 
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
             return InvalidCredentials();
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<Results<Ok<LoginResponse>, ValidationProblem, ProblemHttpResult>> LoginTwoFactorAsync(
+        LoginTwoFactorRequest request,
+        UserManager<AppUser> users,
+        SignInManager<AppUser> signIn,
+        IAppDbContext db,
+        IAuditLog audit,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) == string.IsNullOrWhiteSpace(request.RecoveryCode))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["code"] = ["Send either an authenticator code or a recovery code."],
+            });
+        }
+
+        var user = await signIn.GetTwoFactorAuthenticationUserAsync().ConfigureAwait(false);
+        if (user is null)
+        {
+            return ApiProblems.Create(ErrorCodes.Unauthenticated, "No pending login: sign in with email and password first.");
+        }
+
+        return await db.InTransactionAsync<Results<Ok<LoginResponse>, ValidationProblem, ProblemHttpResult>>(async ct =>
+        {
+            var wasLockedOut = await users.IsLockedOutAsync(user).ConfigureAwait(false);
+            var byRecoveryCode = string.IsNullOrWhiteSpace(request.Code);
+            var result = byRecoveryCode
+                ? await signIn.TwoFactorRecoveryCodeSignInAsync(request.RecoveryCode!).ConfigureAwait(false)
+                : await signIn.TwoFactorAuthenticatorSignInAsync(
+                    request.Code!.Replace(" ", string.Empty, StringComparison.Ordinal), request.RememberMe, rememberClient: false).ConfigureAwait(false);
+            var userId = user.Id.ToString();
+
+            if (result.Succeeded)
+            {
+                if (byRecoveryCode)
+                {
+                    var left = await users.CountRecoveryCodesAsync(user).ConfigureAwait(false);
+                    audit.Record(AccountAuditActions.RecoveryCodeRedeemed, AccountAuditActions.ResourceType, userId, null, new { RecoveryCodesLeft = left }, user.Id);
+                }
+
+                audit.Record(AccountAuditActions.LoginSucceeded, AccountAuditActions.ResourceType, userId, null, new { Method = byRecoveryCode ? "recovery_code" : "totp" }, user.Id);
+                await db.SaveChangesAsync(ct).ConfigureAwait(false);
+                return TypedResults.Ok(new LoginResponse(TwoFactorRequired: false, user.ToMe()));
+            }
+
+            if (result.IsLockedOut && !wasLockedOut)
+            {
+                audit.Record(AccountAuditActions.LockedOut, AccountAuditActions.ResourceType, userId, null, new { LockoutEnd = user.LockoutEnd }, user.Id);
+            }
+            else
+            {
+                audit.Record(AccountAuditActions.LoginFailed, AccountAuditActions.ResourceType, userId, null, new { Reason = result.IsLockedOut ? "locked_out" : "invalid_second_factor" }, user.Id);
+            }
+
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            return ApiProblems.Create(ErrorCodes.InvalidCredentials, "The code is not correct.");
         }, cancellationToken).ConfigureAwait(false);
     }
 

@@ -32,7 +32,7 @@ public sealed class MatrixActor
 }
 
 /// <summary>
-/// The actors known to the matrix. Each signed-in actor is a seeded user with its own session
+/// The actors known to the matrix. Each signed-in actor is a seeded user (email <c>{name}@matrix.example.test</c>) with its own session
 /// (<see cref="MatrixScenario"/>); add new ones here as features land (M1-C: group owner/admin/member/non-member;
 /// M2: calendar and event levels).
 /// </summary>
@@ -51,4 +51,10 @@ public static class Actors
 
     /// <summary>A verified user signed in anew for every case: for operations that end or replace the session (logout).</summary>
     public static readonly MatrixActor FreshSession = new("fresh-session", scenario => scenario.NewSessionClientAsync("fresh-session"));
+
+    /// <summary>A verified user with two-factor authentication enabled, fully signed in.</summary>
+    public static readonly MatrixActor TwoFactorUser = new("two-factor-user", scenario => Task.FromResult(scenario.SessionClient("two-factor-user")));
+
+    /// <summary>A 2FA user who passed the password step only: holds the pending-login cookie, not a session.</summary>
+    public static readonly MatrixActor TwoFactorPending = new("two-factor-pending", scenario => scenario.PendingSecondFactorClientAsync("two-factor-pending"));
 }
