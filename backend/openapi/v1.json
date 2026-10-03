@@ -2328,6 +2328,62 @@
           }
         ]
       }
+    },
+    "/api/v1/events/{id}/access/explain": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Why a user has their level on the event (the permission engine's steps)",
+        "description": "Without userId: the caller's own level (anyone who sees the event). With another userId: calendar manage or owner on the event's calendar (else 403 insufficient_permission with calendar levels); the user must be in the calendar's audience, named by a user override of the event, or share a group with the caller — otherwise, and for unknown ids, 404. Steps only mention what matched that user.",
+        "operationId": "ExplainEventAccess",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessExplanationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2341,6 +2397,48 @@
           "token": {
             "maxLength": 200,
             "type": "string"
+          }
+        }
+      },
+      "AccessExplanationResponse": {
+        "required": [
+          "eventId",
+          "calendarId",
+          "user",
+          "calendarLevel",
+          "level",
+          "steps"
+        ],
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ExplainUserResponse"
+          },
+          "calendarLevel": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "hiddenAsTransparent": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExplainStepResponse"
+            }
           }
         }
       },
@@ -3139,6 +3237,95 @@
           },
           "truncated": {
             "type": "boolean"
+          }
+        }
+      },
+      "ExplainStepResponse": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "principal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrincipalResponse"
+              }
+            ]
+          },
+          "principalName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "calendarLevel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventLevel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tier": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "decisive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "applied": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "resourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "ExplainUserResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

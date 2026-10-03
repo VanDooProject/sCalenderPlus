@@ -434,6 +434,20 @@ public static class AuthorizationMatrix
             .WithRoute(s => Route(s, "event:lions-by-member"))
             .WithBody(s => JsonContent.Create(new { overrides = new[] { new { principal = new { type = "user", id = s.Get("user:" + Actors.CalendarFreeBusy.Name) }, level = "read" } } }))
             .Expect(Actors.GroupMember, HttpStatusCode.Forbidden, "external_sharing_not_allowed"), // creator floor, but the free_busy user is outside the audience
+
+        // Explain (#47): one's own level for everyone who sees the event; other users' only for calendar managers.
+        .. For("GET", "/api/v1/events/{id}/access/explain")
+            .WithRoute(LionsEvent)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK) // own level
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .WithQuery(s => "userId=" + s.Get("user:" + Actors.GroupViewer.Name))
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden) // contribute: not a calendar manager
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
@@ -476,7 +490,7 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
     private Func<MatrixScenario, IReadOnlyDictionary<string, string>>? _routeValues;
     private Func<MatrixScenario, HttpContent?>? _body;
     private IReadOnlyDictionary<string, string>? _headers;
-    private string? _query;
+    private Func<MatrixScenario, string>? _query;
 
     /// <summary>Route values for every following case, e.g. <c>s => new() { ["id"] = s.Get("group:lions") }</c>.</summary>
     public OperationCases WithRoute(Func<MatrixScenario, IReadOnlyDictionary<string, string>> routeValues)
@@ -500,7 +514,10 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
     }
 
     /// <summary>A query string (without <c>?</c>) for every following case, e.g. the required window of <c>GET /events</c>.</summary>
-    public OperationCases WithQuery(string query)
+    public OperationCases WithQuery(string query) => WithQuery(_ => query);
+
+    /// <summary>A query string built from the scenario (e.g. a seeded user id) for every following case.</summary>
+    public OperationCases WithQuery(Func<MatrixScenario, string> query)
     {
         _query = query;
         return this;

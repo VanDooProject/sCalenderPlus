@@ -11,7 +11,7 @@ namespace SCalenderPlus.Api.Events;
 /// <c>/api/v1/events/{id}/overrides</c> (issue #46, permissions.md §4.4): the event's own permissions, read and
 /// replaced as a whole set by those who may change them — event level <c>manage</c> (calendar managers and owners,
 /// the creator with the creator floor). Rules live in <see cref="EventOverrideService"/> and
-/// <c>Core.Permissions.OverridePolicy</c>.
+/// <c>Core.Permissions.OverridePolicy</c>. Also <c>/access/explain</c> (issue #47, <see cref="EventAccessExplainer"/>).
 /// </summary>
 internal static class OverrideEndpoints
 {
@@ -25,8 +25,19 @@ internal static class OverrideEndpoints
         events.MapPut("/{id:guid}/overrides", ReplaceAsync).WithName("ReplaceEventOverrides")
             .WithSummary("Replace the event's permission overrides (event level manage; requires If-Match)")
             .WithDescription("Atomic replace of the whole set (an empty list removes all). Levels none … edit; manage, the same principal twice, or a group/user you may not select: 422 override_invalid (violations). Sharing with people outside the calendar's audience needs calendar manage (or the calendar setting creatorsMayShareExternally): else 403 external_sharing_not_allowed (violations). Unchanged and lowered entries are not re-checked. Plan limits: 402 plan_limit_reached (removals always pass). Frozen calendars allow removals only (409 calendar_frozen). If-Match: the ETag of GET /events/{id}/overrides (or *).");
+        events.MapGet("/{id:guid}/access/explain", ExplainAsync).WithName("ExplainEventAccess")
+            .WithSummary("Why a user has their level on the event (the permission engine's steps)")
+            .WithDescription("Without userId: the caller's own level (anyone who sees the event). With another userId: calendar manage or owner on the event's calendar (else 403 insufficient_permission with calendar levels); the user must be in the calendar's audience, named by a user override of the event, or share a group with the caller — otherwise, and for unknown ids, 404. Steps only mention what matched that user.");
         return events;
     }
+
+    private static async Task<Ok<AccessExplanationResponse>> ExplainAsync(
+        Guid id,
+        [FromQuery] Guid? userId,
+        ClaimsPrincipal principal,
+        EventAccessExplainer explainer,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(AccessExplanationResponse.From(await explainer.ExplainAsync(principal.UserId(), id, userId, cancellationToken).ConfigureAwait(false)));
 
     private static async Task<Ok<EventOverridesResponse>> GetAsync(Guid id, ClaimsPrincipal principal, EventOverrideService overrides, HttpResponse response, CancellationToken cancellationToken)
     {

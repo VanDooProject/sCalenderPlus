@@ -24,7 +24,10 @@ public interface IEventOverrideSource
     Task<IReadOnlyList<Guid>> EventsNamingAsync(PrincipalContext principal, CancellationToken cancellationToken = default);
 }
 
-/// <summary>The overrides of <c>event_overrides</c>: one query per batch of events.</summary>
+/// <summary>
+/// The overrides of <c>event_overrides</c>: one query per batch of events, each event's entries in a stable order
+/// (users, groups, anonymous, everyone; then by id and role) so explainer traces are deterministic.
+/// </summary>
 public sealed class EventOverrideSource(IAppDbContext db) : IEventOverrideSource
 {
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventOverride>>> ForEventsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default)
@@ -38,6 +41,7 @@ public sealed class EventOverrideSource(IAppDbContext db) : IEventOverrideSource
         var ids = eventIds.ToList();
         var rows = await db.EventOverrides.AsNoTracking()
             .Where(o => ids.Contains(o.EventId))
+            .OrderBy(o => o.EventId).ThenBy(o => o.PrincipalType).ThenBy(o => o.PrincipalId).ThenBy(o => o.MinRole)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         return rows.GroupBy(o => o.EventId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<EventOverride>)[.. g.Select(o => o.ToOverride())]);

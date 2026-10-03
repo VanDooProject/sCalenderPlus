@@ -636,12 +636,43 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/events/{id}/access/explain': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Why a user has their level on the event (the permission engine's steps)
+     * @description Without userId: the caller's own level (anyone who sees the event). With another userId: calendar manage or owner on the event's calendar (else 403 insufficient_permission with calendar levels); the user must be in the calendar's audience, named by a user override of the event, or share a group with the caller — otherwise, and for unknown ids, 404. Steps only mention what matched that user.
+     */
+    get: operations['ExplainEventAccess']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
     AcceptInviteRequest: {
       token: string
+    }
+    AccessExplanationResponse: {
+      /** Format: uuid */
+      eventId: string
+      /** Format: uuid */
+      calendarId: string
+      user: components['schemas']['ExplainUserResponse']
+      calendarLevel: string
+      level: string
+      hiddenAsTransparent?: null | boolean
+      steps: components['schemas']['ExplainStepResponse'][]
     }
     CalendarListResponse: {
       items: components['schemas']['CalendarResponse'][]
@@ -843,6 +874,25 @@ export interface components {
     EventWindowResponse: {
       items: components['schemas']['EventResponse'][]
       truncated: boolean
+    }
+    ExplainStepResponse: {
+      kind: string
+      principal?: null | components['schemas']['PrincipalResponse']
+      principalName?: null | string
+      role?: null | string
+      calendarLevel?: null | string
+      eventLevel?: null | string
+      /** Format: int32 */
+      tier?: null | number
+      decisive?: null | boolean
+      applied?: null | boolean
+      /** Format: uuid */
+      resourceId?: null | string
+    }
+    ExplainUserResponse: {
+      /** Format: uuid */
+      id: string
+      displayName?: null | string
     }
     ForgotPasswordRequest: {
       email: string
@@ -2647,6 +2697,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['EventOverridesResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ExplainEventAccess: {
+    parameters: {
+      query?: {
+        userId?: string
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AccessExplanationResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

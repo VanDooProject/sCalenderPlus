@@ -454,6 +454,34 @@ export const handlers = [
           status: 404,
         }),
   ),
+  http.get('/api/v1/events/{id}/access/explain', ({ params, query, response }) => {
+    if (params.id !== mockEvent.id) {
+      return response('default').json(notFound(`/api/v1/events/${params.id}/access/explain`), {
+        status: 404,
+      })
+    }
+    const userId = query.get('userId') ?? mockUser.id
+    // The mock user is the event's creator in a group calendar where members contribute: creator floor.
+    return response(200).json({
+      eventId: mockEvent.id,
+      calendarId: mockEvent.calendarId,
+      user: { id: userId, displayName: userId === mockUser.id ? mockUser.displayName : undefined },
+      calendarLevel: 'contribute',
+      level: 'manage',
+      steps: [
+        {
+          kind: 'group_role_default',
+          principal: { type: 'group', id: mockGroup.id },
+          principalName: mockGroup.name,
+          role: 'member',
+          calendarLevel: 'contribute',
+        },
+        { kind: 'calendar_result', calendarLevel: 'contribute' },
+        { kind: 'creator_floor', eventLevel: 'manage' },
+        { kind: 'result', eventLevel: 'manage' },
+      ],
+    })
+  }),
   http.put('/api/v1/events/{id}/overrides', async ({ params, request, response }) => {
     if (params.id !== mockEvent.id) {
       return response('default').json(notFound(`/api/v1/events/${params.id}/overrides`), {
