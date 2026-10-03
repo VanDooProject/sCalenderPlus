@@ -122,7 +122,7 @@ Other workflows:
 
 Action pinning: third-party actions (everything outside `actions/*` and `github/*`) are pinned to a full commit SHA with a `# vX.Y.Z` comment, so a moved or compromised tag cannot change what runs with our tokens; Dependabot bumps SHA and comment together.
 
-Caching: NuGet (`~/.nuget/packages` keyed by `Directory.Packages.props`), pnpm store, Playwright browsers, Docker buildx GHA cache.
+Caching: NuGet (`~/.nuget/packages` keyed by the `packages.lock.json` files), pnpm store, Playwright browsers, Docker buildx GHA cache.
 
 ## 6. Testing strategy
 

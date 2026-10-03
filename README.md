@@ -35,7 +35,7 @@ pnpm -C frontend lint            # ESLint + Prettier check
 pnpm -C frontend typecheck       # vue-tsc / tsc
 pnpm -C frontend test            # Vitest
 pnpm -C frontend build           # production build of the app
-pnpm -C frontend --filter app dev   # Vite dev server on :5173, proxies /api and /health to :5080
+pnpm -C frontend --filter app dev   # Vite dev server on :5173, proxies /api, /health, /openapi … to :5080
 pnpm -C frontend --filter app dev:mock   # same UI without a backend: MSW mocks the API
 
 # End-to-end tests (Playwright, e2e/ is its own pnpm package)
