@@ -41,7 +41,7 @@ jobs:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
-          # Changing this workflow runs everything.
+          # Changing this workflow runs everything; changing a composite action runs the jobs using it.
           filters: |
             backend:
               - 'backend/**'
@@ -59,6 +59,7 @@ jobs:
             e2e-mocked:
               - 'frontend/**'
               - 'e2e/**'
+              - '.github/actions/**'
               - '.github/workflows/ci.yml'
             docker:
               - 'backend/src/**'
@@ -69,6 +70,7 @@ jobs:
               - '.dockerignore'
               - 'global.json'
               - '.editorconfig'
+              - '.github/actions/**'
               - '.github/workflows/ci.yml'
 
   markdownlint:
