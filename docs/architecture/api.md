@@ -32,6 +32,7 @@ All errors are `application/problem+json`:
   "instance": "/api/v1/events/0192f.../overrides",
   "code": "plan_limit_reached",
   "limit": { "key": "events_with_overrides", "max": 10, "used": 10 },
+  "plan": "free",
   "traceId": "00-4bf92f..."
 }
 ```
@@ -145,7 +146,8 @@ Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Gr
 - `GET /groups/{id}/invites?limit&cursor` (admins and owners): pending invites `{ id, groupId, kind (email|link), email, role, maxUses, uses, expiresAt, createdBy, createdAt }` — never the token. `DELETE /invites/{id}`: revoke (idempotent; admins only invites with role ≤ `member`; non-members `404`).
 - `POST /invites/accept { token }` → the group (`200`, `ETag`): needs a **verified** email (`403 email_not_verified`); email invites only for the invited address (`403 invite_email_mismatch`); unknown, expired, revoked and used-up tokens are all `400 token_invalid`; a member accepting again keeps their role; a frozen group takes no new members (`409 group_frozen`, also for invites created before the freeze; auto-join leaves such invites pending). Uses are counted atomically (`UPDATE … WHERE uses < max_uses`), and concurrent joins don't conflict with each other (the group row is touched without a version check). **Auto-join:** confirming an email address (`POST /auth/confirm-email`, or a password reset that confirms it) joins every pending email invite for that address in the same transaction; an unverified account never joins. Covered by backend integration tests (invite → sign-up → verify → joined); the fullstack e2e version follows with the groups UI (M3).
 - Audit (resource `group`, subject = billing owner): `group.created`, `group.updated`, `group.deleted`, `group.member.role_changed`, `group.member.removed`, `group.member.left`, `group.member.joined` (`after`: user, role, invite, `via` email|link, `automatic`), `group.billing_owner_transferred`, `group.invite.created`, `group.invite.revoked` (before/after; tokens never).
-- Extension points: `IGroupEntitlements` (plan limits for owned groups and members per group — unlimited until the M2 entitlement service replaces it) and `IGroupMembershipObserver` (called in the transaction of every membership change — joined, role changed, removed, left, group deleted — for M2's "membership removal revokes event shares").
+- Plan limits (`IEntitlementService`, the billing owner's plan): creating a group beyond *owned groups* and inviting to or joining a group at *members per group* → `402 plan_limit_reached` with `limit: { key: owned_groups | members_per_group, max, used }` and `plan`. An auto-join that hits the limit leaves the invite pending.
+- Extension point: `IGroupMembershipObserver` (called in the transaction of every membership change — joined, role changed, removed, left, group deleted — for M2's "membership removal revokes event shares").
 
 ### Event representation (excerpt)
 

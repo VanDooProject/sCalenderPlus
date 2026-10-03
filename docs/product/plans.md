@@ -55,7 +55,7 @@ A seat is a distinct user who can **create or change content** in any org-owned 
 | SSO (OIDC/SAML, later) | ✗ | ✗ | ✓ | |
 | Support | community | email, 2 business days | email, 1 business day | |
 
-All numbers live in a single configuration (`plans.json` / DB table `plan_limits`), not in code, so marketing can tune them without a release.
+All numbers live in a single configuration, so marketing can tune them without a release: `PlansOptions` (`Application/Entitlements`) carries the numbers of this table as defaults, and every limit can be overridden per plan with `Plans__{Plan}__{Limit}` (empty = unlimited). Enforced so far: owned calendars, owned groups, members per group, events with overrides, override entries per event (calendars and overrides are wired when they land in M2). A DB table `plan_limits` may replace the configuration with billing.
 
 ## Upgrade triggers (where the paywall appears)
 
@@ -97,7 +97,7 @@ Paywalls appear **in context, after the user tried to do something**, with a one
 
 ## Self-host stance
 
-- The full product is self-hostable with `Billing__Provider=none`; plan `selfhost` defaults to **unlimited** for all limits. Operators can override any limit via `Plans__SelfHost__*` env vars (e.g. cap LLM runs because *they* pay the LLM bill).
+- The full product is self-hostable with `Billing__Provider=none` (the default); plan `selfhost` defaults to **unlimited** for all limits. Operators can override any limit via `Plans__SelfHost__*` env vars (e.g. cap LLM runs because *they* pay the LLM bill).
 - No license-key checks or phone-home in the code. LLM import requires the operator's own API key (or an OpenAI-compatible local endpoint).
 - Proposed license: **AGPL-3.0** for the code (protects the SaaS from closed forks while allowing self-hosting); commercial license available on request. *This is an open owner decision* (see roadmap open questions).
 - The marketing site and brand assets are not part of the self-host distribution.

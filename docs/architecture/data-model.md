@@ -213,7 +213,7 @@ Tokens are 32 random bytes (base64url) and stored only as SHA-256 hashes; lookup
 ## 7. Billing and entitlements
 
 - `subscriptions`: `id, subject_type (user|org), subject_id, provider, provider_customer_id, provider_subscription_id, plan (free|pro|team), interval, seats, status, current_period_end, cancel_at`.
-- `plan_limits`: `plan, key, value` (seeded from `plans.json`; overridable by config).
+- `plan_limits` (with billing, optional): `plan, key, value`. Until then limits come from configuration (`Plans__{Plan}__{Limit}`, defaults in `PlansOptions`, see plans.md); keys are the API keys of `PlanLimit` (`owned_calendars`, `owned_groups`, `members_per_group`, `events_with_overrides`, `overrides_per_event`).
 - `usage_counters`: `subject_id, key, period (yyyy-mm or 'current'), value` — e.g. LLM runs this month. Countable resources (calendars, overrides) are counted live with indexed queries, not counters, to avoid drift.
 
 ## 8. Audit and jobs

@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
+using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Jobs;
 
@@ -23,6 +25,16 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(SignUpOptions.SectionName))
             .ValidateOnStart();
 
+        services.AddOptions<BillingOptions>()
+            .Bind(configuration.GetSection(BillingOptions.SectionName))
+            .ValidateOnStart();
+
+        services.AddOptions<PlansOptions>()
+            .Bind(configuration.GetSection(PlansOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<PlansOptions>, PlansOptionsValidator>();
+        services.TryAddScoped<IEntitlementService, EntitlementService>();
+
         services.AddSingleton<AccountEmails>();
         services.AddSingleton<EmailDomainPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
@@ -32,7 +44,6 @@ public static class DependencyInjection
         services.AddScoped<GroupMembershipService>();
         services.AddScoped<GroupInviteService>();
         services.AddSingleton<GroupEmails>();
-        services.TryAddScoped<IGroupEntitlements, UnlimitedGroupEntitlements>(); // M2: entitlement service
 
         return services;
     }

@@ -75,12 +75,12 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `Smtp__Host`, `Smtp__From` | worker | ✓ | `smtp.example.com`, `noreply@example.com`. The api only queues emails (`email.send` jobs) and needs no SMTP settings |
 | `Smtp__Port`, `Smtp__Security`, `Smtp__User`, `Smtp__Password`, `Smtp__FromName`, `Smtp__Timeout` | worker | | `587`, `Auto` (implicit TLS on 465, STARTTLS when offered; also `StartTls`, `SslOnConnect`, `None`), auth only when `User` is set, `sCalenderPlus`, `00:00:30` |
 | `Jobs__Concurrency`, `Jobs__PollInterval`, `Jobs__LeaseDuration`, `Jobs__LeaseRenewalInterval`, `Jobs__BaseRetryDelay`, `Jobs__MaxRetryDelay` | worker | | `4`, `00:00:01`, `00:05:00`, `00:00:30`, `00:00:30`, `01:00:00` (job queue tuning; defaults suit production) |
-| `Billing__Provider` | api, worker | | `stripe` (SaaS) / `none` (self-host, default) |
+| `Billing__Provider` | api, worker | | `stripe` (SaaS; until billing lands every account is on plan Free) / `none` (self-host, default: plan `selfhost`) |
 | `Billing__Stripe__SecretKey`, `__WebhookSecret`, `__Prices__ProMonthly` … | api, worker | if stripe | |
 | `Llm__Provider` | worker, api (dry run) | | `anthropic` / `openai_compatible` / `none` (default) |
 | `Llm__ApiKey`, `Llm__Model`, `Llm__BaseUrl` | worker, api | if provider | |
 | `Import__Enabled`, `Import__BlockedDomains` | worker | | `true`, `` |
-| `Plans__SelfHost__*` | api, worker | | limit overrides |
+| `Plans__{Free,Pro,Team,SelfHost}__{OwnedCalendars,OwnedGroups,MembersPerGroup,EventsWithOverrides,OverridesPerEvent}` | api, worker | | limit overrides (empty = unlimited, negative fails start); defaults are the numbers of plans.md, `SelfHost` unlimited |
 | `WebPush__VapidPublicKey`, `__VapidPrivateKey` | api, worker | v1 | |
 | `Database__AutoMigrate` | api | | `false`; `true` only in Development (see §7) |
 | `Otel__Endpoint` | all backend | | OTLP endpoint (optional), e.g. `http://otel-collector:4317`; nothing is exported when unset |

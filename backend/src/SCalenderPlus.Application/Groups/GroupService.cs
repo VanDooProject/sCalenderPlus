@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Common;
+using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Application.Users;
 using SCalenderPlus.Core.Groups;
@@ -25,7 +26,7 @@ public sealed class GroupService(
     IAppDbContext db,
     IAuditLog audit,
     IUserDirectory users,
-    IGroupEntitlements entitlements,
+    IEntitlementService entitlements,
     IEnumerable<IGroupMembershipObserver> observers,
     IClock clock)
 {

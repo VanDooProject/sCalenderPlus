@@ -6,6 +6,7 @@ using NodaTime;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Common;
 using SCalenderPlus.Application.Email;
+using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Application.Users;
@@ -33,7 +34,7 @@ public sealed class GroupInviteService(
     IUserDirectory users,
     IEmailOutbox outbox,
     GroupEmails emails,
-    IGroupEntitlements entitlements,
+    IEntitlementService entitlements,
     IEnumerable<IGroupMembershipObserver> observers,
     GroupService groups,
     IClock clock)
@@ -50,6 +51,9 @@ public sealed class GroupInviteService(
         {
             throw GroupErrors.From(decision, actor.Role);
         }
+
+        // A full group takes no new invites (plans.md: "no new invites"); joins are checked again.
+        await entitlements.EnsureCanAddGroupMemberAsync(group.Id, group.OwnerUserId, cancellationToken).ConfigureAwait(false);
 
         if (!isLink && request.MaxUses is not null and not 1)
         {
@@ -244,7 +248,7 @@ public sealed class GroupInviteService(
                 throw GroupErrors.Frozen();
             }
 
-            await entitlements.EnsureCanAddMemberAsync(group.Id, group.OwnerUserId, cancellationToken).ConfigureAwait(false);
+            await entitlements.EnsureCanAddGroupMemberAsync(group.Id, group.OwnerUserId, cancellationToken).ConfigureAwait(false);
         }
 
         // Atomic use: parallel accepts of the last use cannot both succeed.
