@@ -28,7 +28,6 @@ fi
 
 DEPLOY_TIMEOUT="${DEPLOY_TIMEOUT:-900}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-300}"
-AUTH_HEADER="Authorization: Bearer ${COOLIFY_TOKEN}"
 
 case "$COOLIFY_WEBHOOK_URL" in
   http://*/api/v1/deploy\?* | https://*/api/v1/deploy\?*) ;;
@@ -39,12 +38,16 @@ APP_UUID="$(sed -nE 's/.*[?&]uuid=([^&]+).*/\1/p' <<< "$COOLIFY_WEBHOOK_URL")"
 [ -n "$APP_UUID" ] || fail "COOLIFY_WEBHOOK_URL has no uuid=<application-uuid> parameter"
 
 # api METHOD URL [JSON]: response body in $RESPONSE, status code in $HTTP_STATUS (run in this shell, not in
-# a command substitution). Never prints the token.
+# a command substitution). Never prints the token; it is read from a private file, so it does not appear
+# in curl's command line either. Every request is bounded so an unresponsive Coolify cannot hang the job.
 BODY_FILE="$(mktemp)"
-trap 'rm -f "$BODY_FILE"' EXIT
+HEADER_FILE="$(mktemp)"
+trap 'rm -f "$BODY_FILE" "$HEADER_FILE"' EXIT
+chmod 600 "$HEADER_FILE"
+printf 'Authorization: Bearer %s\n' "$COOLIFY_TOKEN" > "$HEADER_FILE"
 api() {
   local method="$1" url="$2" data="${3:-}"
-  local args=(-sS -o "$BODY_FILE" -w '%{http_code}' -X "$method" -H "$AUTH_HEADER" -H 'Accept: application/json')
+  local args=(-sS --connect-timeout 10 --max-time 60 -o "$BODY_FILE" -w '%{http_code}' -X "$method" -H "@$HEADER_FILE" -H 'Accept: application/json')
   if [ -n "$data" ]; then
     args+=(-H 'Content-Type: application/json' --data "$data")
   fi

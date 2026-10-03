@@ -13,7 +13,7 @@
 #                    X.Y.Z or X.Y (production)
 #   IMAGE_PREFIX     ghcr.io/vandooproject
 #   DATABASE_URL     Npgsql connection string of the Coolify-managed PostgreSQL (not a postgres:// URL):
-#                    Host=<database-uuid>;Port=5432;Database=postgres;Username=postgres;Password=…;Maximum Pool Size=50
+#                    Host=<database-uuid>;Port=5432;Database=scal;Username=scal;Password=…;Maximum Pool Size=50
 #   APP_URL          public URL of web, e.g. https://staging.example.com
 #   APP_ENVIRONMENT  staging | production (shown in the SPA via /config.json)
 #   API_UPSTREAM     api-<resource-uuid>:8080 – the api container name, unique on the shared `coolify`
