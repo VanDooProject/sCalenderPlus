@@ -570,7 +570,11 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get?: never
+    /**
+     * Events in a time window, as I see them (not paged)
+     * @description Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. At most 5,000 events (truncated: true when more matched).
+     */
+    get: operations['ListEvents']
     put?: never
     /**
      * Create a single event in a calendar (contribute)
@@ -804,6 +808,10 @@ export interface components {
       resolved: string
       /** Format: date-time */
       utc: string
+    }
+    EventWindowResponse: {
+      items: components['schemas']['EventResponse'][]
+      truncated: boolean
     }
     ForgotPasswordRequest: {
       email: string
@@ -2345,6 +2353,40 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['GrantResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListEvents: {
+    parameters: {
+      query?: {
+        from?: string
+        to?: string
+        calendarIds?: string[]
+        timeZone?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventWindowResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

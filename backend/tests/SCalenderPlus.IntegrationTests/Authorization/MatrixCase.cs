@@ -5,7 +5,8 @@ namespace SCalenderPlus.IntegrationTests.Authorization;
 /// <summary>
 /// One cell of the matrix: <see cref="Actor"/> calls <see cref="Operation"/> and must get <see cref="Expected"/>.
 /// Route values (<c>{id}</c> → a seeded resource), the request body and extra headers (e.g. <c>If-Match</c>)
-/// come from the scenario. Error statuses must also carry the expected problem <c>code</c>
+/// come from the scenario; <see cref="Query"/> is a query string (without <c>?</c>) for operations with required
+/// query parameters. Error statuses must also carry the expected problem <c>code</c>
 /// (<see cref="ExpectedProblemCode"/>), so a 403 from a missing CSRF header or a 404 from a mistyped route can't
 /// pass for a permission decision.
 /// </summary>
@@ -16,7 +17,8 @@ public sealed record MatrixCase(
     Func<MatrixScenario, IReadOnlyDictionary<string, string>>? RouteValues = null,
     Func<MatrixScenario, HttpContent?>? Body = null,
     IReadOnlyDictionary<string, string>? Headers = null,
-    string? Code = null)
+    string? Code = null,
+    string? Query = null)
 {
     /// <summary>Stable, human-readable id; also the theory data row.</summary>
     public string Id => $"{Operation} as {Actor.Name} -> {(int)Expected}";

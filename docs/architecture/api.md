@@ -202,7 +202,17 @@ Use cases: `Application/Events/EventService`; reads only through the permission-
 
 For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, `allDay`, `transparency`, `myLevel` (and `sharedWithMe` when true), with `"title": null` — the client renders the localized "Busy". Fields are **omitted server-side**, never sent and hidden client-side; transparent events are not returned at all.
 
-Window query `GET /events?from=…&to=…&expand=occurrences` returns expanded occurrences (`occurrenceId = {eventId}:{recurrenceIdUtc}`) for calendar views; without `expand` it returns series masters (for sync clients). Max window: 13 months.
+### Event window (implemented, M2 — single events)
+
+`GET /events?from&to[&calendarIds=…][&timeZone=…]` → `{ items: [event], truncated }` — **not paged** (api.md §1), bounded instead:
+
+- `from`/`to`: RFC 3339 instants, the window is `[from, to)`, `to` after `from` and at most **13 months** later (else `400 validation_failed` with `errors.from`/`errors.to`).
+- Scope: every calendar the caller sees (`GET /calendars`), plus "Shared with me" — events whose overrides name the caller in calendars they cannot see (M2-D fills `IEventOverrideSource.EventsNamingAsync`; such items carry `sharedWithMe: true`, the UI groups them into the virtual "Shared with me" calendar). `calendarIds` (repeatable, ≤ 200) narrows it; unknown or invisible ids are ignored (empty result, no existence leak).
+- Each event is resolved by the engine (untraced `ResolveLevel`, ≈ 40 ns per event): `none` is left out, `free_busy` items are the busy projection (and transparent events are left out for them), the rest carry their details and `etag`. Every item has `myLevel`.
+- **All-day events** are dates: with `timeZone` (IANA, else `422 time_zone_invalid`) an all-day event is returned when its dates overlap the window *in that zone* (so a viewer in UTC−10 and one in UTC+13 both see a 2 November event on their 2 November, and not on their 1 or 3 November); without it, every all-day event whose dates overlap the window in *some* zone (UTC−12 … UTC+14) is returned and the client places it. The database pre-selects them through their padded `start_utc`/`end_utc` (data-model.md §4).
+- Order: by `start.utc` (all-day: the padded start), then id. At most **5,000** events: beyond, the first 5,000 are returned with `truncated: true` (query a smaller window).
+- Queries (permissions.md §8): the caller's memberships, candidate calendars, their grants, then **one SQL query** over the GiST index `(calendar_id, occurs_range)` — a `LATERAL` join per visible calendar so both index columns are used (`EventQueryService.WindowSql`) — plus overrides only for events with `has_overrides` and one lookup of creator names. With 100,000 events in 20 calendars (10 visible, ≈ 1,000 events a month), a month takes ≈ 2.5 ms in PostgreSQL and p95 ≈ 80 ms end to end on a developer machine (`EventWindowPerformanceTests`: EXPLAIN must show the GiST index; the 150 ms budget is asserted locally, CI only logs it and asserts a 1 s ceiling because shared runners are too noisy for a tight timing assertion).
+- With M2-E: `expand=occurrences` returns expanded occurrences (`occurrenceId = {eventId}:{recurrenceIdUtc}`) for calendar views; without `expand` series masters (for sync clients).
 
 ## 5. OpenAPI generation
 

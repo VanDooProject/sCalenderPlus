@@ -339,7 +339,16 @@ public static class AuthorizationMatrix
             .WithRoute(s => Grant(s, "grant-removed-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
 
-        // Events (#44): calendar level contribute creates; event levels from the engine — none → 404, too low → 403.
+        // Events (#44, #45): calendar level contribute creates; event levels from the engine — none → 404, too low → 403.
+        // The window lists what each caller sees (none-level events are left out, not refused).
+        .. For("GET", "/api/v1/events")
+            .WithQuery("from=2026-11-01T00:00:00Z&to=2026-12-01T00:00:00Z")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.OtherTenant, HttpStatusCode.OK)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
         .. For("POST", "/api/v1/events")
             .WithBody(s => JsonContent.Create(new
             {
@@ -438,6 +447,7 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
     private Func<MatrixScenario, IReadOnlyDictionary<string, string>>? _routeValues;
     private Func<MatrixScenario, HttpContent?>? _body;
     private IReadOnlyDictionary<string, string>? _headers;
+    private string? _query;
 
     /// <summary>Route values for every following case, e.g. <c>s => new() { ["id"] = s.Get("group:lions") }</c>.</summary>
     public OperationCases WithRoute(Func<MatrixScenario, IReadOnlyDictionary<string, string>> routeValues)
@@ -460,10 +470,17 @@ internal sealed class OperationCases(ApiOperation operation) : IEnumerable<Matri
         return this;
     }
 
+    /// <summary>A query string (without <c>?</c>) for every following case, e.g. the required window of <c>GET /events</c>.</summary>
+    public OperationCases WithQuery(string query)
+    {
+        _query = query;
+        return this;
+    }
+
     /// <param name="code">The problem code of an error status when it is not the default of <see cref="MatrixCase.ExpectedProblemCode"/>.</param>
     public OperationCases Expect(MatrixActor actor, HttpStatusCode expected, string? code = null)
     {
-        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body, _headers, code));
+        _cases.Add(new MatrixCase(operation, actor, expected, _routeValues, _body, _headers, code, _query));
         return this;
     }
 

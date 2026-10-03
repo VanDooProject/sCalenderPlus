@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Application.Events;
+using SCalenderPlus.Core.Events;
 
 namespace SCalenderPlus.Api.Events;
 
@@ -22,6 +23,9 @@ internal static class EventEndpoints
     {
         var events = v1.MapGroup("/events").WithTags(Tag);
 
+        events.MapGet(string.Empty, WindowAsync).WithName("ListEvents")
+            .WithSummary("Events in a time window, as I see them (not paged)")
+            .WithDescription("Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. At most 5,000 events (truncated: true when more matched).");
         events.MapPost(string.Empty, CreateAsync).WithName("CreateEvent")
             .WithSummary("Create a single event in a calendar (contribute)")
             .WithDescription("Timed ({ dateTime, timeZone }, zone default: the calendar's) or all-day ({ date }, end exclusive). A local time in a DST gap is shifted forward and reported in warnings (time_shifted_dst_gap); an ambiguous one takes the earlier offset (time_ambiguous_earlier_offset). Below contribute: 403; no level: 404. Frozen calendars: 409 calendar_frozen. Recurrence: 422 recurrence_not_supported. Duplicate uid: 409 uid_conflict.");
@@ -36,6 +40,21 @@ internal static class EventEndpoints
             .WithSummary("Delete an event (edit; soft delete, requires If-Match)");
 
         return events;
+    }
+
+    private static async Task<Ok<EventWindowResponse>> WindowAsync(
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] Guid[]? calendarIds,
+        [FromQuery] string? timeZone,
+        ClaimsPrincipal principal,
+        EventService events,
+        CancellationToken cancellationToken)
+    {
+        var window = await events.WindowAsync(principal.UserId(), EventWindows.Parse(from, to, calendarIds, timeZone), cancellationToken).ConfigureAwait(false);
+        return TypedResults.Ok(new EventWindowResponse(
+            [.. window.Items.Select(ListItem)],
+            window.Truncated));
     }
 
     private static async Task<Created<EventResponse>> CreateAsync(
@@ -91,6 +110,13 @@ internal static class EventEndpoints
             current => ETags.Require(ifMatch, EventResponse.From(current).HeaderETag(), ETagSource),
             cancellationToken).ConfigureAwait(false);
         return TypedResults.NoContent();
+    }
+
+    /// <summary>A window item: with its <c>etag</c> unless it is the busy projection (nothing to change there).</summary>
+    private static EventResponse ListItem(EventView view)
+    {
+        var item = EventResponse.From(view);
+        return EventVisibility.IsBusyOnly(view.Level) ? item : item.WithEtag();
     }
 
     /// <summary>The body (with warnings, if any) and the <c>ETag</c> header of a created or changed event.</summary>

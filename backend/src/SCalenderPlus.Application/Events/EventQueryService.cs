@@ -144,14 +144,15 @@ public sealed class EventQueryService(
     /// <summary>
     /// The candidate query of a window: live events of <paramref name="calendarIds"/> whose <c>occurs_range</c>
     /// overlaps <c>[from, to)</c>, by start, at most <paramref name="limit"/>. A lateral join per calendar keeps both
-    /// columns of the GiST index <c>(calendar_id, occurs_range)</c> usable (GiST cannot search <c>= ANY(array)</c>).
+    /// columns of the GiST index <c>(calendar_id, occurs_range)</c> usable (GiST cannot search <c>= ANY(array)</c>);
+    /// <c>xmin</c> (a system column, not in <c>*</c>) is the row version EF Core materializes.
     /// Public for the EXPLAIN test.
     /// </summary>
     public static FormattableString WindowSql(Guid[] calendarIds, Instant from, Instant to, int limit) =>
         $"""
         SELECT e.* FROM unnest({calendarIds}::uuid[]) AS c(id)
         CROSS JOIN LATERAL (
-            SELECT * FROM events
+            SELECT *, xmin FROM events
             WHERE calendar_id = c.id AND deleted_at IS NULL AND occurs_range && tstzrange({from}, {to}, '[)')
         ) AS e
         ORDER BY e.start_utc, e.id

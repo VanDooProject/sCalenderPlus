@@ -23,7 +23,7 @@ public sealed class AuthorizationMatrixTests(MatrixScenario scenario) : IClassFi
         var matrixCase = AuthorizationMatrix.Cases.Single(c => c.Id == id);
         using var client = await matrixCase.Actor.CreateClientAsync(scenario);
 
-        using var response = await SendAsync(client, matrixCase.Operation, matrixCase.RouteValues?.Invoke(scenario), matrixCase.Body?.Invoke(scenario), matrixCase.Headers);
+        using var response = await SendAsync(client, matrixCase.Operation, matrixCase.RouteValues?.Invoke(scenario), matrixCase.Body?.Invoke(scenario), matrixCase.Headers, matrixCase.Query);
 
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.True(response.StatusCode == matrixCase.Expected, $"{id}: got {(int)response.StatusCode}. Body: {body}");
@@ -58,7 +58,8 @@ public sealed class AuthorizationMatrixTests(MatrixScenario scenario) : IClassFi
         ApiOperation operation,
         IReadOnlyDictionary<string, string>? routeValues,
         HttpContent? body,
-        IReadOnlyDictionary<string, string>? headers = null)
+        IReadOnlyDictionary<string, string>? headers = null,
+        string? query = null)
     {
         var path = operation.Path;
         foreach (var (name, value) in routeValues ?? new Dictionary<string, string>())
@@ -67,7 +68,7 @@ public sealed class AuthorizationMatrixTests(MatrixScenario scenario) : IClassFi
         }
 
         Assert.DoesNotContain("{", path, StringComparison.Ordinal);
-        using var request = new HttpRequestMessage(new HttpMethod(operation.Method), new Uri(path, UriKind.Relative)) { Content = body };
+        using var request = new HttpRequestMessage(new HttpMethod(operation.Method), new Uri(query is null ? path : path + "?" + query, UriKind.Relative)) { Content = body };
 
         // Cookie clients must send the CSRF header on unsafe methods (api.md §3); a missing header is its own test.
         request.Headers.Add("X-Requested-With", "scal");

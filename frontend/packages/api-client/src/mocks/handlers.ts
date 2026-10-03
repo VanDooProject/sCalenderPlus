@@ -365,6 +365,19 @@ export const handlers = [
   }),
   http.delete('/api/v1/calendars/{id}/grants/{grantId}', ({ response }) => response(204).empty()),
 
+  http.get('/api/v1/events', ({ query, response }) => {
+    const from = query.get('from') ?? ''
+    const to = query.get('to') ?? ''
+    const calendarIds = query.getAll('calendarIds')
+    // Rough overlap on the UTC (timed) or date (all-day) bounds; the real api places all-day events per zone.
+    const items = mockEvents.filter(
+      (e) =>
+        (calendarIds.length === 0 || calendarIds.includes(e.calendarId)) &&
+        (e.start.utc ?? e.start.date ?? '') < to &&
+        (e.end.utc ?? e.end.date ?? '') > from,
+    )
+    return response(200).json({ items, truncated: false })
+  }),
   http.post('/api/v1/events', async ({ request, response }) => {
     const body = await request.json()
     const zone = body.start?.timeZone ?? mockCalendar.defaultTimeZone

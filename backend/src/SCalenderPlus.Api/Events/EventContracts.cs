@@ -271,3 +271,41 @@ public sealed class UpdateEventRequest : EventDetailsRequest
 
     public EventTimeRequest? End { get; init; }
 }
+
+/// <summary>Validation of the window query parameters (api.md §4).</summary>
+internal static class EventWindows
+{
+    /// <summary>Longest window (api.md §4): 13 months.</summary>
+    public const int MaxMonths = 13;
+
+    public const int MaxCalendarIds = 200;
+
+    public static EventWindowQuery Parse(DateTimeOffset? from, DateTimeOffset? to, Guid[]? calendarIds, string? timeZone)
+    {
+        var start = from is { } f ? NodaTime.Instant.FromDateTimeOffset(f) : throw Validation.Failed("from", "Give the window start as an RFC 3339 instant, e.g. 2026-11-01T00:00:00Z.");
+        var end = to is { } t ? NodaTime.Instant.FromDateTimeOffset(t) : throw Validation.Failed("to", "Give the window end as an RFC 3339 instant, e.g. 2026-12-01T00:00:00Z.");
+        if (end <= start)
+        {
+            throw Validation.Failed("to", "The window end must be after its start.");
+        }
+
+        if (end > start.InUtc().LocalDateTime.PlusMonths(MaxMonths).InUtc().ToInstant())
+        {
+            throw Validation.Failed("to", $"A window spans at most {MaxMonths} months.");
+        }
+
+        if (calendarIds is { Length: > MaxCalendarIds })
+        {
+            throw Validation.Failed("calendarIds", $"At most {MaxCalendarIds} calendars per query.");
+        }
+
+        NodaTime.DateTimeZone? zone = null;
+        if (timeZone is not null)
+        {
+            zone = (timeZone.Length <= Event.TimeZoneMaxLength ? NodaTime.DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) : null)
+                ?? throw EventErrors.TimeZoneInvalid("timeZone", timeZone);
+        }
+
+        return new EventWindowQuery(start, end, calendarIds is { Length: > 0 } ? [.. calendarIds.Distinct()] : null, zone);
+    }
+}
