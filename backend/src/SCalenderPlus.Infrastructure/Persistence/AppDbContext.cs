@@ -36,6 +36,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<EventOverrideEntry> EventOverrides => Set<EventOverrideEntry>();
 
+    public DbSet<EventExceptionEntry> EventExceptions => Set<EventExceptionEntry>();
+
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);

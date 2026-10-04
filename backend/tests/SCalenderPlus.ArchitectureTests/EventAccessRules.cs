@@ -4,9 +4,10 @@ using Mono.Cecil.Cil;
 namespace SCalenderPlus.ArchitectureTests;
 
 /// <summary>
-/// The single choke point of events (docs/architecture/permissions.md §8, issue #44): event rows are read only
-/// through the permission-aware <c>EventQueryService</c> and added only through its write-side counterpart
-/// <c>EventWriter</c>. Any other reference to <c>DbSet&lt;Event&gt;</c> — <c>IAppDbContext.Events</c>,
+/// The single choke point of events (docs/architecture/permissions.md §8, issues #44, #50): event rows — and the
+/// exceptions of series (<c>EventExceptionEntry</c>, event data too) — are read only through the permission-aware
+/// <c>EventQueryService</c> and added only through its write-side counterpart <c>EventWriter</c>. Any other
+/// reference to <c>DbSet&lt;Event&gt;</c> or <c>DbSet&lt;EventExceptionEntry&gt;</c> — <c>IAppDbContext.Events</c>,
 /// <c>Set&lt;Event&gt;()</c>, a field or property of that type, also inside lambdas and LINQ expression trees
 /// (they reference the getter via <c>ldtoken</c>) — is a violation. Scans IL with Mono.Cecil because the rule is
 /// about members, not type dependencies (both services depend on <c>IAppDbContext</c> like every use case).
@@ -14,6 +15,8 @@ namespace SCalenderPlus.ArchitectureTests;
 internal static class EventAccessRules
 {
     public const string EventType = "SCalenderPlus.Core.Events.Event";
+
+    public const string ExceptionType = "SCalenderPlus.Core.Events.EventExceptionEntry";
 
     /// <summary>Types allowed to touch <c>DbSet&lt;Event&gt;</c> (their nested, compiler-generated types included).</summary>
     public static readonly string[] Allowed =
@@ -90,5 +93,5 @@ internal static class EventAccessRules
     private static bool IsEventSet(TypeReference type) =>
         type is GenericInstanceType generic
         && generic.ElementType.FullName == "Microsoft.EntityFrameworkCore.DbSet`1"
-        && generic.GenericArguments[0].FullName == EventType;
+        && generic.GenericArguments[0].FullName is EventType or ExceptionType;
 }

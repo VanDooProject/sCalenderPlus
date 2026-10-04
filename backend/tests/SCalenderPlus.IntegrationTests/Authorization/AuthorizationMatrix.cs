@@ -465,6 +465,52 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
             .WithRoute(s => Route(s, "event:lions-moved-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
+        // Occurrence edits (#51): edit on the series (exceptions have no ACL of their own); member reads only.
+        .. For("PATCH", "/api/v1/events/{id}/occurrences/{recurrenceId}")
+            .WithRoute(s => Occurrence(s, "event:lions-series", "2026-11-09T17:00:00Z"))
+            .WithBody(_ => JsonContent.Create(new { title = "lions-series" })) // the series' title: no exception, no effect on other cases
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/events/{id}/occurrences/{recurrenceId}")
+            .WithRoute(s => Occurrence(s, "event:lions-series", "2026-11-09T17:00:00Z"))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .WithRoute(s => Occurrence(s, "event:lions-series", "2026-11-16T17:00:00Z"))
+            .Expect(Actors.CalendarEditor, HttpStatusCode.NoContent)
+            .WithRoute(s => Occurrence(s, "event:lions-series", "2026-11-23T17:00:00Z"))
+            .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
+            .WithRoute(s => Occurrence(s, "event:lions-series", "2026-11-30T17:00:00Z"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
+        .. For("POST", "/api/v1/events/{id}/split")
+            .WithRoute(s => Route(s, "event:lions-series"))
+            .WithBody(_ => JsonContent.Create(new { recurrenceId = "2026-12-07T17:00:00Z", title = "Later" }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .WithRoute(s => Route(s, "event:lions-split-by-editor"))
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Created) // edit suffices: the new series keeps the admin as creator
+            .WithRoute(s => Route(s, "event:lions-split-by-admin"))
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .WithRoute(s => Route(s, "event:lions-split-by-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
@@ -475,6 +521,9 @@ public static class AuthorizationMatrix
     private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
 
     private static IReadOnlyDictionary<string, string> LionsEvent(MatrixScenario s) => Route(s, "event:lions");
+
+    private static Dictionary<string, string> Occurrence(MatrixScenario s, string series, string recurrenceId) =>
+        new(StringComparer.Ordinal) { ["id"] = s.Get(series), ["recurrenceId"] = recurrenceId };
 
     private static Dictionary<string, string> Grant(MatrixScenario s, string holder) =>
         new(StringComparer.Ordinal) { ["id"] = s.Get("calendar:lions"), ["grantId"] = s.Get($"grant:lions:{holder}") };

@@ -162,6 +162,32 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
     }
 
     [Fact]
+    public async Task Series_count_while_they_have_occurrences_ahead_and_splits_copy_overrides_over_the_limit()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:EventsWithOverrides"] = "1" });
+        var (_, olga) = await PersonAsync("olga");
+        var calendar = await olga.CreateCalendarAsync("Olga");
+        var infinite = await olga.CreateEventIdAsync(Series(calendar, "2000-01-03T10:00:00", "FREQ=WEEKLY"));
+        var ended = await olga.CreateEventIdAsync(Series(calendar, "2000-01-04T10:00:00", "FREQ=WEEKLY;COUNT=3"));
+        var future = await olga.CreateEventIdAsync(EventApi.Timed(calendar, start: "2099-01-01T10:00:00", end: "2099-01-01T11:00:00"));
+
+        // An infinite series is active however old its start; an ended one (COUNT) is not.
+        await olga.SetOverridesAsync(infinite, EventApi.Everyone("none"));
+        await olga.SetOverridesAsync(ended, EventApi.Everyone("none"));
+        using (var refused = await olga.PutOverridesAsync(future, [EventApi.Everyone("none")]))
+        {
+            AssertLimit(await ProblemResponse.AssertProblemAsync(refused, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "events_with_overrides", max: 1, used: 1);
+        }
+
+        // Splitting copies the overrides although the plan is at its limit (no new privacy decision).
+        using var split = await olga.SendJsonAsync(HttpMethod.Post, $"/api/v1/events/{infinite}/split", new { recurrenceId = "2000-01-10T09:00:00Z" }, "*");
+        Assert.Equal(HttpStatusCode.Created, split.StatusCode);
+        var created = (Guid)(await split.JsonAsync())["id"]!;
+        Assert.Single(await Host.StoredOverridesAsync(created));
+        Assert.True((bool)(await olga.GetEventAsync(created)).Body["hasOverrides"]!);
+    }
+
+    [Fact]
     public async Task Moved_overrides_count_against_the_target_owners_plan()
     {
         await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:Free:EventsWithOverrides"] = "1" });
@@ -201,6 +227,16 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         var problem = await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
         Assert.Equal("selfhost", (string?)problem["plan"]);
     }
+
+    private static object Series(Guid calendarId, string start, string rrule) =>
+        new
+        {
+            calendarId,
+            title = "Series",
+            start = new { dateTime = start, timeZone = "Europe/Berlin" },
+            end = new { dateTime = start[..11] + "11:00:00" },
+            recurrence = new { rrule },
+        };
 
     private static void AssertLimit(JsonObject problem, string key, int max, int used)
     {

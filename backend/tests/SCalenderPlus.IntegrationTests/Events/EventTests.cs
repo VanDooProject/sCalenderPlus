@@ -183,7 +183,8 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
         { """{"title":"x","status":"maybe","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "status" },
         { """{"title":"x","url":"javascript:alert(1)","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
         { """{"title":"x","uid":"has space","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "uid" },
-        { """{"title":"x","recurrence":{"rrule":"FREQ=WEEKLY"},"start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.RecurrenceNotSupported, "recurrence" },
+        { """{"title":"x","recurrence":{"rrule":"FREQ=HOURLY"},"start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.RecurrenceNotSupported, "recurrence.rrule" },
+        { """{"title":"x","recurrence":{"rrule":"FREQ=WEEKLY;BYDAY=XX"},"start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.RecurrenceInvalid, "recurrence.rrule" },
     };
 
     [Theory]
@@ -290,7 +291,7 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
         using var unchanged = await _mia.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{id}", new { title = "Practice" }, "*");
         Assert.Equal(HttpStatusCode.OK, unchanged.StatusCode);
 
-        using var recurrence = await _mia.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{id}", new { recurrence = new { rrule = "FREQ=DAILY" } }, "*");
+        using var recurrence = await _mia.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{id}", new { recurrence = new { rrule = "FREQ=MINUTELY" } }, "*");
         await ProblemResponse.AssertProblemAsync(recurrence, HttpStatusCode.UnprocessableEntity, ErrorCodes.RecurrenceNotSupported);
 
         Assert.Equal(["event.created", "event.updated", "event.updated", "event.updated"], (await _host.AuditEventsAsync("event", id)).Select(a => a.Action));

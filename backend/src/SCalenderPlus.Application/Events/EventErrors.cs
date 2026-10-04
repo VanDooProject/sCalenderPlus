@@ -1,6 +1,7 @@
 using SCalenderPlus.Application.Common;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Permissions;
+using SCalenderPlus.Core.Recurrence;
 
 namespace SCalenderPlus.Application.Events;
 
@@ -24,15 +25,21 @@ public static class EventErrors
     public static AppException Changed() =>
         new(ErrorCodes.PreconditionFailed, "The event was changed meanwhile. Reload it and try again.");
 
-    /// <summary><c>422 recurrence_not_supported</c> with <c>errors.recurrence</c>: recurring events come with M2-E.</summary>
-    public static AppException RecurrenceNotSupported() =>
-        new(ErrorCodes.RecurrenceNotSupported, "Recurring events are not supported yet; create single events.", new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            [Validation.ErrorsMember] = new Dictionary<string, string[]>(StringComparer.Ordinal)
+    /// <summary><c>422 recurrence_invalid</c> (malformed) or <c>recurrence_not_supported</c> (valid RFC 5545 outside the supported subset) with the field in <c>errors</c>.</summary>
+    public static AppException Recurrence(RecurrenceProblem problem)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+        return new(
+            problem.NotSupported ? ErrorCodes.RecurrenceNotSupported : ErrorCodes.RecurrenceInvalid,
+            problem.Message,
+            new Dictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["recurrence"] = ["Leave out recurrence (or send null)."],
-            },
-        });
+                [Validation.ErrorsMember] = new Dictionary<string, string[]>(StringComparer.Ordinal) { [problem.Field] = [problem.Message] },
+            });
+    }
+
+    /// <summary><c>404</c>: the event is no series, or has no (live) occurrence with this recurrence id.</summary>
+    public static AppException OccurrenceNotFound() => new(ErrorCodes.NotFound, "Occurrence not found.");
 
     /// <summary><c>422 time_zone_invalid</c> with the offending field in <c>errors</c>.</summary>
     public static AppException TimeZoneInvalid(string field, string? timeZone) =>
@@ -173,4 +180,16 @@ public static class EventAuditActions
 
     /// <summary>The group an entry named was deleted.</summary>
     public const string OverridesRemovedWithGroup = "event.overrides.removed_with_group";
+
+    /// <summary>One occurrence of a series was changed ("this occurrence"; before/after: the exception).</summary>
+    public const string OccurrenceUpdated = "event.occurrence.updated";
+
+    /// <summary>One occurrence of a series was cancelled.</summary>
+    public const string OccurrenceCancelled = "event.occurrence.cancelled";
+
+    /// <summary>
+    /// The series was split at an occurrence ("this and following"): recorded on the original (before/after its
+    /// recurrence, <c>newEventId</c>); the new series gets <see cref="Created"/> with <c>splitFrom</c>.
+    /// </summary>
+    public const string Split = "event.split";
 }

@@ -28,6 +28,12 @@ public interface IAppDbContext
     /// </summary>
     DbSet<Event> Events { get; }
 
+    /// <summary>
+    /// Modified and cancelled occurrences of series (<c>event_exceptions</c>): event data like <see cref="Events"/>,
+    /// so the same rule applies — only <c>Events.EventQueryService</c> and <c>Events.EventWriter</c> use it.
+    /// </summary>
+    DbSet<EventExceptionEntry> EventExceptions { get; }
+
     /// <summary>The sync log (<c>calendar_changes</c>), appended by <c>Events.EventWriter</c>.</summary>
     DbSet<CalendarChange> CalendarChanges { get; }
 

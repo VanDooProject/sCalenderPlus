@@ -87,10 +87,15 @@ public static class ErrorCodes
     public const string UnsupportedMediaType = "unsupported_media_type";
 
     // 422
+
+    /// <summary>A malformed recurrence (RRULE syntax, UNTIL before the start, bad RDATE/EXDATE); carries <c>errors</c> with the field.</summary>
     public const string RecurrenceInvalid = "recurrence_invalid";
     public const string TimeZoneInvalid = "time_zone_invalid";
 
-    /// <summary>The request asks for recurrence (RRULE etc.), which is not supported (yet: M2-E); carries <c>errors.recurrence</c>.</summary>
+    /// <summary>
+    /// Valid RFC 5545 recurrence outside the supported subset (sub-daily FREQ, BYHOUR/BYMINUTE/BYSECOND, BYYEARDAY,
+    /// BYWEEKNO, RSCALE/SKIP, extension parts); carries <c>errors["recurrence.rrule"]</c> naming the part.
+    /// </summary>
     public const string RecurrenceNotSupported = "recurrence_not_supported";
 
     /// <summary>

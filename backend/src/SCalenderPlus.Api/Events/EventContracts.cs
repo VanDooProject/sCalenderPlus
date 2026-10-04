@@ -18,13 +18,13 @@ public sealed record EventTimeResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Utc,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Date)
 {
-    public static (EventTimeResponse Start, EventTimeResponse End) From(Event ev)
+    public static (EventTimeResponse Start, EventTimeResponse End) From(EventTimes times)
     {
-        ArgumentNullException.ThrowIfNull(ev);
-        return ev.AllDay
-            ? (AllDay(ev.StartDate!.Value), AllDay(ev.EndDate!.Value))
-            : (new(LocalDateTimePattern.ExtendedIso.Format(ev.StartLocal!.Value), ev.TimeZone, ev.StartUtc.ToDateTimeOffset(), null),
-               new(LocalDateTimePattern.ExtendedIso.Format(ev.EndLocal!.Value), ev.TimeZone, ev.EndUtc.ToDateTimeOffset(), null));
+        ArgumentNullException.ThrowIfNull(times);
+        return times.AllDay
+            ? (AllDay(times.StartDate!.Value), AllDay(times.EndDate!.Value))
+            : (new(LocalDateTimePattern.ExtendedIso.Format(times.StartLocal!.Value), times.TimeZone, times.StartUtc.ToDateTimeOffset(), null),
+               new(LocalDateTimePattern.ExtendedIso.Format(times.EndLocal!.Value), times.TimeZone, times.EndUtc.ToDateTimeOffset(), null));
     }
 
     private static EventTimeResponse AllDay(NodaTime.LocalDate date) => new(null, null, null, LocalDatePattern.Iso.Format(date));
@@ -32,6 +32,62 @@ public sealed record EventTimeResponse(
 
 /// <param name="DisplayName">Null when the account no longer exists.</param>
 public sealed record EventCreatorResponse(Guid Id, string? DisplayName);
+
+/// <summary>The recurrence of a series (RFC 5545 values, data-model.md §9).</summary>
+/// <param name="Rrule">Canonical RRULE: UNTIL is a UTC date-time for timed series and a date for all-day series.</param>
+/// <param name="Rdates">Extra occurrences: wall clock in the series' zone (timed) or dates (all-day).</param>
+/// <param name="Exdates">Excluded occurrences (their nominal start), like rdates.</param>
+public sealed record EventRecurrenceResponse(
+    string Rrule,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? Rdates,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? Exdates)
+{
+    public static EventRecurrenceResponse? From(Event ev)
+    {
+        ArgumentNullException.ThrowIfNull(ev);
+        return ev.Rrule is null
+            ? null
+            : new(ev.Rrule, ev.RDates.Count > 0 ? RecurrenceValues.Format(ev.RDates, ev.AllDay) : null, ev.ExDates.Count > 0 ? RecurrenceValues.Format(ev.ExDates, ev.AllDay) : null);
+    }
+}
+
+/// <summary>
+/// A modified or cancelled occurrence of a series ("exception", keyed by RECURRENCE-ID). Members that are absent
+/// inherit the series' values; the busy projection keeps only recurrenceId, cancelled, start, end and transparency.
+/// </summary>
+/// <param name="RecurrenceId">The occurrence's original start: a UTC instant (timed) or a date (all-day).</param>
+/// <param name="Start">Where the occurrence moved to (absent: not moved).</param>
+public sealed record EventExceptionResponse(
+    string RecurrenceId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Cancelled,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Description,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Location,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Status,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Transparency,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EventTimeResponse? Start,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EventTimeResponse? End)
+{
+    /// <summary>The exceptions of a series in order (busy projection with <paramref name="busy"/>).</summary>
+    public static IReadOnlyList<EventExceptionResponse>? From(Event series, bool busy)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+        if (series.Recurrence() is not { } set || series.Exceptions.Count == 0)
+        {
+            return null;
+        }
+
+        return [.. series.Exceptions.OrderBy(x => x.RecurrenceId).Select(x =>
+        {
+            var moved = x.MovedTimes(series.TimeZone) is { } times ? EventTimeResponse.From(times) : ((EventTimeResponse, EventTimeResponse)?)null;
+            var transparency = x.Transparency is { } t ? EventResponse.Format(t) : null;
+            var id = EventRecurrences.Format(set.At(x.RecurrenceId));
+            return busy
+                ? new EventExceptionResponse(id, x.Cancelled ? true : null, null, null, null, null, transparency, moved?.Item1, moved?.Item2)
+                : new EventExceptionResponse(id, x.Cancelled ? true : null, x.Title, x.Description, x.Location, x.Status is { } s ? EventResponse.Format(s) : null, transparency, moved?.Item1, moved?.Item2);
+        })];
+    }
+}
 
 /// <summary>A requested time was resolved differently (data-model.md §10): show it to the user.</summary>
 /// <param name="Code"><c>time_shifted_dst_gap</c> (the local time does not exist: shifted forward) or <c>time_ambiguous_earlier_offset</c> (exists twice: the earlier offset was used).</param>
@@ -72,6 +128,11 @@ public sealed record EventWarningResponse(string Code, string Field, string Mess
 /// <param name="SharedWithMe">True when the event reaches the caller only through its own permissions, from a calendar they cannot see ("Shared with me").</param>
 /// <param name="Etag">The ETag of <c>GET /events/{id}</c> (list items; for If-Match without a GET).</param>
 /// <param name="Warnings">Create/update only: requested times that were adjusted (DST).</param>
+/// <remarks>
+/// Series masters carry <see cref="Recurrence"/> and <see cref="Exceptions"/>; occurrences (window with
+/// <c>expand=occurrences</c>, occurrence edits) carry <see cref="OccurrenceId"/>, <see cref="RecurrenceId"/> and
+/// the series' <see cref="Recurrence"/>, with the occurrence's own times and fields (exceptions applied).
+/// </remarks>
 public sealed record EventResponse(
     Guid Id,
     Guid CalendarId,
@@ -97,36 +158,83 @@ public sealed record EventResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Etag,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<EventWarningResponse>? Warnings)
 {
-    /// <summary>The representation of <paramref name="view"/> (busy projection below <c>read</c>), without <c>etag</c> and <c>warnings</c>.</summary>
+    /// <summary>The recurrence of a series (masters and occurrences); absent for single events.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public EventRecurrenceResponse? Recurrence { get; init; }
+
+    /// <summary>Series masters: the modified and cancelled occurrences.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<EventExceptionResponse>? Exceptions { get; init; }
+
+    /// <summary>iCalendar RELATED-TO: the UID of the series this one was split from ("this and following").</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RelatedTo { get; init; }
+
+    /// <summary>Occurrences: <c>{id}:{recurrenceId}</c>, stable across edits of the occurrence.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OccurrenceId { get; init; }
+
+    /// <summary>Occurrences: the original start (RECURRENCE-ID) — a UTC instant (timed) or a date (all-day); the key of occurrence edits.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RecurrenceId { get; init; }
+
+    /// <summary>Occurrences: true when the occurrence differs from the series (moved or changed fields).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Modified { get; init; }
+
+    /// <summary>Update/split of a series only: recurrence ids of exceptions that no longer matched an occurrence and were dropped.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? DroppedExceptions { get; init; }
+
+    /// <summary>
+    /// The representation of <paramref name="view"/> (busy projection below <c>read</c>), without <c>etag</c>,
+    /// <c>warnings</c> and <c>droppedExceptions</c>: the event, the series master, or one occurrence of it.
+    /// </summary>
     public static EventResponse From(EventView view)
     {
         ArgumentNullException.ThrowIfNull(view);
         var ev = view.Event;
-        var (start, end) = EventTimeResponse.From(ev);
-        var transparency = Format(ev.Transparency);
+        var occurrence = view.Occurrence;
+        var times = occurrence?.Times ?? ev.Times;
+        var (start, end) = EventTimeResponse.From(times);
+        var transparency = Format(occurrence?.Transparency ?? ev.Transparency);
         var level = PermissionLevels.Format(view.Level);
         var shared = view.SharedWithMe ? true : (bool?)null;
-        if (EventVisibility.IsBusyOnly(view.Level))
+        var busy = EventVisibility.IsBusyOnly(view.Level);
+        var recurrenceId = occurrence is null ? null : EventRecurrences.Format(occurrence.Original);
+        var series = new
+        {
+            Recurrence = EventRecurrenceResponse.From(ev),
+            Exceptions = occurrence is null ? EventExceptionResponse.From(ev, busy) : null,
+            OccurrenceId = recurrenceId is null ? null : $"{ev.Id}:{recurrenceId}",
+        };
+        if (busy)
         {
             return new EventResponse(
-                ev.Id, ev.CalendarId, null, null, null, null, null, null, null, null, start, end, ev.AllDay, transparency,
-                null, null, null, null, null, level, shared, null, null);
+                ev.Id, ev.CalendarId, null, null, null, null, null, null, null, null, start, end, times.AllDay, transparency,
+                null, null, null, null, null, level, shared, null, null)
+            {
+                Recurrence = series.Recurrence,
+                Exceptions = series.Exceptions,
+                OccurrenceId = series.OccurrenceId,
+                RecurrenceId = recurrenceId,
+            };
         }
 
         return new EventResponse(
             ev.Id,
             ev.CalendarId,
             ev.Uid,
-            ev.Title,
-            ev.Description,
-            ev.Location,
+            occurrence?.Title ?? ev.Title,
+            occurrence is null ? ev.Description : occurrence.Description,
+            occurrence is null ? ev.Location : occurrence.Location,
             ev.Url,
-            Format(ev.Status),
+            Format(occurrence?.Status ?? ev.Status),
             ev.Color,
             [.. ev.Categories],
             start,
             end,
-            ev.AllDay,
+            times.AllDay,
             transparency,
             ev.HasOverrides,
             ev.Sequence,
@@ -136,14 +244,32 @@ public sealed record EventResponse(
             level,
             shared,
             null,
-            null);
+            null)
+        {
+            Recurrence = series.Recurrence,
+            Exceptions = series.Exceptions,
+            RelatedTo = ev.RelatedTo,
+            OccurrenceId = series.OccurrenceId,
+            RecurrenceId = recurrenceId,
+            Modified = occurrence?.IsModified == true ? true : null,
+        };
     }
 
     /// <summary>The representation with its <c>etag</c> member set (list items).</summary>
-    public EventResponse WithEtag() => this with { Etag = Hosting.ETags.Of(this with { Etag = null, Warnings = null }) };
+    public EventResponse WithEtag() => this with { Etag = HeaderETag() };
 
-    /// <summary>The <c>ETag</c> header value: hash of the representation (without <c>etag</c>/<c>warnings</c>).</summary>
-    public string HeaderETag() => Hosting.ETags.Of(this with { Etag = null, Warnings = null });
+    /// <summary>The <c>ETag</c> header value: hash of the representation (without <c>etag</c>/<c>warnings</c>/<c>droppedExceptions</c>).</summary>
+    public string HeaderETag() => Hosting.ETags.Of(this with { Etag = null, Warnings = null, DroppedExceptions = null });
+
+    /// <summary>
+    /// The <c>ETag</c> of the event (a series: of its master, which carries the exceptions) — the If-Match of
+    /// every change, also of occurrence edits.
+    /// </summary>
+    public static string SeriesETag(EventView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        return From(view with { Occurrence = null }).HeaderETag();
+    }
 
     public static string Format(EventStatus status) => status switch
     {
@@ -178,14 +304,25 @@ public sealed class EventTimeRequest
     public EventTimeInput ToInput() => new(DateTime, TimeZone, Date);
 }
 
-/// <summary>Recurrence rules (RFC 5545). Not supported yet: any value is <c>422 recurrence_not_supported</c>.</summary>
+/// <summary>
+/// Recurrence (RFC 5545, data-model.md §9). <c>rrule</c>: FREQ DAILY | WEEKLY | MONTHLY | YEARLY with INTERVAL,
+/// COUNT (≤ 5000) or UNTIL, BYMONTH, BYMONTHDAY, BYDAY (ordinals like 2MO / -1FR for monthly and yearly rules),
+/// BYSETPOS and WKST; other parts → 422 recurrence_not_supported, malformed values → 422 recurrence_invalid.
+/// The start is the first occurrence (it always counts). Occurrences keep the start's local time across DST.
+/// </summary>
 public sealed class EventRecurrenceRequest
 {
+    /// <summary>The RRULE value, e.g. <c>FREQ=WEEKLY;BYDAY=MO,WE</c> (an <c>RRULE:</c> prefix is accepted).</summary>
+    [StringLength(Core.Recurrence.RecurrenceRule.MaxLength + 6)]
     public string? Rrule { get; init; }
 
+    /// <summary>Extra occurrences (≤ 100, not before the start): wall clock in the series' zone (<c>2026-11-09T18:00:00</c>) or dates for all-day series.</summary>
     public IReadOnlyList<string>? Rdates { get; init; }
 
+    /// <summary>Excluded occurrences (≤ 1000), by their start like <c>rdates</c>.</summary>
     public IReadOnlyList<string>? Exdates { get; init; }
+
+    public EventRecurrenceInput ToInput() => new(Rrule, Rdates, Exdates);
 }
 
 /// <summary>Members shared by create and update.</summary>
@@ -219,12 +356,29 @@ public abstract class EventDetailsRequest
     /// <summary>At most 20 texts of up to 50 characters (no commas).</summary>
     public IReadOnlyList<string>? Categories { get; init; }
 
-    /// <summary>Not supported yet (M2-E): leave out or send null.</summary>
-    public EventRecurrenceRequest? Recurrence { get; init; }
+    /// <summary>
+    /// Makes the event a series (data-model.md §9). On PATCH, <c>null</c> turns a series into a single event (its
+    /// first occurrence) and drops its exceptions; absent leaves the recurrence unchanged.
+    /// </summary>
+    public EventRecurrenceRequest? Recurrence
+    {
+        get => _recurrence;
+        init
+        {
+            _recurrence = value;
+            RecurrenceGiven = true;
+        }
+    }
+
+    /// <summary>The request carried <c>recurrence</c> (also as an explicit <c>null</c>).</summary>
+    [JsonIgnore]
+    public bool RecurrenceGiven { get; private init; }
+
+    private readonly EventRecurrenceRequest? _recurrence;
 
     public EventDetails Details() => new(Title, Description, Location, Url, ParseStatus(Status), ParseTransparency(Transparency), Color, Categories);
 
-    private static EventStatus? ParseStatus(string? value) => value switch
+    internal static EventStatus? ParseStatus(string? value) => value switch
     {
         null => null,
         "confirmed" => EventStatus.Confirmed,
@@ -233,7 +387,7 @@ public abstract class EventDetailsRequest
         _ => throw Validation.Failed("status", "Use confirmed, tentative or cancelled."),
     };
 
-    private static EventTransparency? ParseTransparency(string? value) => value switch
+    internal static EventTransparency? ParseTransparency(string? value) => value switch
     {
         null => null,
         "opaque" => EventTransparency.Opaque,
@@ -242,7 +396,7 @@ public abstract class EventDetailsRequest
     };
 }
 
-/// <summary>A new single event. Needs <c>contribute</c> on the calendar.</summary>
+/// <summary>A new event — single, or a series with <c>recurrence</c>. Needs <c>contribute</c> on the calendar.</summary>
 public sealed class CreateEventRequest : EventDetailsRequest
 {
     [Required]
@@ -272,6 +426,55 @@ public sealed class UpdateEventRequest : EventDetailsRequest
     public EventTimeRequest? End { get; init; }
 }
 
+/// <summary>
+/// JSON Merge Patch of one occurrence of a series ("this occurrence"): absent or <c>null</c> members stay unchanged;
+/// values equal to the series' make the occurrence follow the series again; an empty <c>description</c> or
+/// <c>location</c> removes it for this occurrence. Times move the occurrence (same kind and zone as the series).
+/// </summary>
+public sealed class UpdateOccurrenceRequest
+{
+    /// <summary>1–500 characters (trimmed).</summary>
+    [StringLength(Event.TitleMaxLength)]
+    public string? Title { get; init; }
+
+    [StringLength(Event.DescriptionMaxLength)]
+    public string? Description { get; init; }
+
+    [StringLength(Event.LocationMaxLength)]
+    public string? Location { get; init; }
+
+    /// <summary><c>confirmed</c>, <c>tentative</c> or <c>cancelled</c> (to drop the occurrence, use DELETE).</summary>
+    public string? Status { get; init; }
+
+    /// <summary><c>opaque</c> or <c>transparent</c>.</summary>
+    public string? Transparency { get; init; }
+
+    public EventTimeRequest? Start { get; init; }
+
+    public EventTimeRequest? End { get; init; }
+
+    public OccurrenceChanges ToChanges() =>
+        new(Title, Description, Location, EventDetailsRequest.ParseStatus(Status), EventDetailsRequest.ParseTransparency(Transparency), Start?.ToInput(), End?.ToInput());
+}
+
+/// <summary>
+/// "This and following": splits the series at <c>recurrenceId</c> into a new series (new UID, related to the
+/// original), with the members of a merge patch applied to the new series (absent = as the original).
+/// </summary>
+public sealed class SplitEventRequest : EventDetailsRequest
+{
+    /// <summary>The occurrence where the new series starts (not the first one): its <c>recurrenceId</c>.</summary>
+    [Required]
+    [StringLength(64)]
+    public string? RecurrenceId { get; init; }
+
+    public EventTimeRequest? Start { get; init; }
+
+    public EventTimeRequest? End { get; init; }
+
+    public EventChanges ToChanges() => new(Details(), Start?.ToInput(), End?.ToInput(), RecurrenceGiven, Recurrence?.ToInput());
+}
+
 /// <summary>Moves an event to another calendar (permissions.md §4.6).</summary>
 public sealed class MoveEventRequest
 {
@@ -288,8 +491,16 @@ internal static class EventWindows
 
     public const int MaxCalendarIds = 200;
 
-    public static EventWindowQuery Parse(DateTimeOffset? from, DateTimeOffset? to, Guid[]? calendarIds, string? timeZone)
+    /// <summary>The <c>expand</c> value that returns series as occurrences.</summary>
+    public const string Occurrences = "occurrences";
+
+    public static EventWindowQuery Parse(DateTimeOffset? from, DateTimeOffset? to, Guid[]? calendarIds, string? timeZone, string? expand = null)
     {
+        if (expand is not (null or Occurrences))
+        {
+            throw Validation.Failed("expand", "Use expand=occurrences (or leave it out for series masters).");
+        }
+
         var start = from is { } f ? NodaTime.Instant.FromDateTimeOffset(f) : throw Validation.Failed("from", "Give the window start as an RFC 3339 instant, e.g. 2026-11-01T00:00:00Z.");
         var end = to is { } t ? NodaTime.Instant.FromDateTimeOffset(t) : throw Validation.Failed("to", "Give the window end as an RFC 3339 instant, e.g. 2026-12-01T00:00:00Z.");
         if (end <= start)
@@ -314,6 +525,6 @@ internal static class EventWindows
                 ?? throw EventErrors.TimeZoneInvalid("timeZone", timeZone);
         }
 
-        return new EventWindowQuery(start, end, calendarIds is { Length: > 0 } ? [.. calendarIds.Distinct()] : null, zone);
+        return new EventWindowQuery(start, end, calendarIds is { Length: > 0 } ? [.. calendarIds.Distinct()] : null, zone, expand == Occurrences);
     }
 }

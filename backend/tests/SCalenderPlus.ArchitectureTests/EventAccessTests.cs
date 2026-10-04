@@ -38,6 +38,7 @@ public sealed class EventAccessTests
         Assert.Contains(violations, v => v.Contains("ReadsEventsDirectly.Count", StringComparison.Ordinal));
         Assert.Contains(violations, v => v.Contains("ReadsEventsDirectly.InQuery", StringComparison.Ordinal)); // inside a LINQ expression tree
         Assert.Contains(violations, v => v.Contains("ReadsEventsDirectly.Generic", StringComparison.Ordinal)); // Set<Event>()
+        Assert.Contains(violations, v => v.Contains("ReadsEventsDirectly.Exceptions", StringComparison.Ordinal)); // exceptions of series
         Assert.Contains(violations, v => v.Contains("HoldsTheSet.Events (field)", StringComparison.Ordinal) || v.Contains("HoldsTheSet.<Events>", StringComparison.Ordinal));
         Assert.DoesNotContain(violations, v => v.Contains("UsesCalendarsOnly", StringComparison.Ordinal));
     }

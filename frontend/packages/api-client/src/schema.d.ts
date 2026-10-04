@@ -572,13 +572,13 @@ export interface paths {
     }
     /**
      * Events in a time window, as I see them (not paged)
-     * @description Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. At most 5,000 events (truncated: true when more matched).
+     * @description Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. Series: without expand their master (with recurrence and exceptions) when an occurrence overlaps the window (sync clients); with expand=occurrences each occurrence in the window (occurrenceId, recurrenceId, exceptions applied, cancelled ones left out; etag = the series' ETag) for calendar views. At most 5,000 items (truncated: true when more matched; at most 1,000 occurrences per series).
      */
     get: operations['ListEvents']
     put?: never
     /**
-     * Create a single event in a calendar (contribute)
-     * @description Timed ({ dateTime, timeZone }, zone default: the calendar's) or all-day ({ date }, end exclusive). A local time in a DST gap is shifted forward and reported in warnings (time_shifted_dst_gap); an ambiguous one takes the earlier offset (time_ambiguous_earlier_offset). Below contribute: 403; no level: 404. Frozen calendars: 409 calendar_frozen. Recurrence: 422 recurrence_not_supported. Duplicate uid: 409 uid_conflict.
+     * Create an event or a series in a calendar (contribute)
+     * @description Timed ({ dateTime, timeZone }, zone default: the calendar's) or all-day ({ date }, end exclusive). A local time in a DST gap is shifted forward and reported in warnings (time_shifted_dst_gap); an ambiguous one takes the earlier offset (time_ambiguous_earlier_offset). With recurrence ({ rrule, rdates?, exdates? }) a series whose first occurrence is start/end; unsupported RRULE parts: 422 recurrence_not_supported, malformed: 422 recurrence_invalid. Below contribute: 403; no level: 404. Frozen calendars: 409 calendar_frozen. Duplicate uid: 409 uid_conflict.
      */
     post: operations['CreateEvent']
     delete?: never
@@ -601,15 +601,59 @@ export interface paths {
     get: operations['GetEvent']
     put?: never
     post?: never
-    /** Delete an event (edit; soft delete, requires If-Match) */
+    /** Delete an event or a whole series (edit; soft delete, requires If-Match) */
     delete: operations['DeleteEvent']
     options?: never
     head?: never
     /**
-     * Change an event (edit; JSON Merge Patch, requires If-Match)
-     * @description Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.
+     * Change an event, or all occurrences of a series (edit; JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. recurrence: a new rule (or null to stop recurring). Series: when the first occurrence moves, the exceptions (and rdates/exdates unless recurrence is given) shift with it; exceptions that no longer match an occurrence are dropped and listed in droppedExceptions. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.
      */
     patch: operations['UpdateEvent']
+    trace?: never
+  }
+  '/api/v1/events/{id}/occurrences/{recurrenceId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Cancel one occurrence of a series (edit; requires If-Match of the series)
+     * @description The occurrence disappears (an exception marked cancelled; iCalendar EXDATE). 404: not a series, or no such (live) occurrence. Below edit: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *).
+     */
+    delete: operations['CancelOccurrence']
+    options?: never
+    head?: never
+    /**
+     * Change one occurrence of a series (edit; JSON Merge Patch, requires If-Match of the series)
+     * @description This occurrence only: title, description, location, status, transparency and its times (same kind and zone as the series) — stored as an exception keyed by recurrenceId (the occurrence's original start: UTC instant, or date for all-day series). Values equal to the series' follow the series again. 404: not a series, or no such occurrence (cancelled ones included). Below edit on the series: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *); stale: 412. The response is the occurrence; its ETag header the series' new ETag.
+     */
+    patch: operations['UpdateOccurrence']
+    trace?: never
+  }
+  '/api/v1/events/{id}/split': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Change this and the following occurrences: split the series (edit; requires If-Match)
+     * @description The series ends before the occurrence recurrenceId (UNTIL, or a smaller COUNT); a new series (new id and UID, relatedTo the original's UID) starts there with the original's creator, a copy of its permission overrides (no plan check), its later rdates/exdates and exceptions, and the other members applied as a merge patch (like PATCH /events/{id}; exceptions that no longer match are dropped and listed in droppedExceptions). The first occurrence: 400 (change the series instead). 404: not a series or no such occurrence. Below edit: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *). 201 with the new series.
+     */
+    post: operations['SplitEvent']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
     trace?: never
   }
   '/api/v1/events/{id}/move': {
@@ -829,6 +873,17 @@ export interface components {
       id: string
       displayName: null | string
     }
+    EventExceptionResponse: {
+      recurrenceId: string
+      cancelled?: null | boolean
+      title?: null | string
+      description?: null | string
+      location?: null | string
+      status?: null | string
+      transparency?: null | string
+      start?: null | components['schemas']['EventTimeResponse']
+      end?: null | components['schemas']['EventTimeResponse']
+    }
     EventOverridesResponse: {
       /** Format: uuid */
       eventId: string
@@ -837,6 +892,11 @@ export interface components {
     }
     EventRecurrenceRequest: {
       rrule?: null | string
+      rdates?: null | string[]
+      exdates?: null | string[]
+    }
+    EventRecurrenceResponse: {
+      rrule: string
       rdates?: null | string[]
       exdates?: null | string[]
     }
@@ -869,6 +929,13 @@ export interface components {
       sharedWithMe?: null | boolean
       etag?: null | string
       warnings?: null | components['schemas']['EventWarningResponse'][]
+      recurrence?: null | components['schemas']['EventRecurrenceResponse']
+      exceptions?: null | components['schemas']['EventExceptionResponse'][]
+      relatedTo?: null | string
+      occurrenceId?: null | string
+      recurrenceId?: null | string
+      modified?: null | boolean
+      droppedExceptions?: null | string[]
     }
     EventTimeRequest: {
       dateTime?: null | string
@@ -1130,6 +1197,20 @@ export interface components {
       member: string
       viewer: string
     }
+    SplitEventRequest: {
+      recurrenceId: null | string
+      start?: null | components['schemas']['EventTimeRequest']
+      end?: null | components['schemas']['EventTimeRequest']
+      title?: null | string
+      description?: null | string
+      location?: null | string
+      url?: null | string
+      status?: null | string
+      transparency?: null | string
+      color?: null | string
+      categories?: null | string[]
+      recurrence?: null | components['schemas']['EventRecurrenceRequest']
+    }
     TransferBillingRequest: {
       /** Format: uuid */
       userId: string
@@ -1172,6 +1253,15 @@ export interface components {
       name?: null | string
       description?: null | string
       memberListVisibility?: null | string
+    }
+    UpdateOccurrenceRequest: {
+      title?: null | string
+      description?: null | string
+      location?: null | string
+      status?: null | string
+      transparency?: null | string
+      start?: null | components['schemas']['EventTimeRequest']
+      end?: null | components['schemas']['EventTimeRequest']
     }
     UpdateProfileRequest: {
       displayName?: null | string
@@ -2510,6 +2600,7 @@ export interface operations {
         to?: string
         calendarIds?: string[]
         timeZone?: string
+        expand?: string
       }
       header?: never
       path?: never
@@ -2652,6 +2743,114 @@ export interface operations {
     responses: {
       /** @description OK */
       200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CancelOccurrence: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        recurrenceId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateOccurrence: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+        recurrenceId: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateOccurrenceRequest']
+        'application/json': components['schemas']['UpdateOccurrenceRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EventResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  SplitEvent: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SplitEventRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
         headers: {
           [name: string]: unknown
         }

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using NodaTime;
 using SCalenderPlus.Core.Permissions;
+using SCalenderPlus.Core.Recurrence;
 
 namespace SCalenderPlus.Core.Events;
 
@@ -92,11 +93,32 @@ public sealed partial class Event
 
     public Instant EndUtc { get; set; }
 
-    /// <summary>RFC 5545 RRULE of a series master (M2-E); always null until recurrence is supported.</summary>
+    /// <summary>
+    /// RFC 5545 RRULE of a series master in canonical form (<see cref="RecurrenceRule.ToString"/>, <c>UNTIL</c>
+    /// bound to the series: UTC for timed, a date for all-day series); null for single events.
+    /// </summary>
     public string? Rrule { get; set; }
 
-    /// <summary>End of the last occurrence of a series (M2-E); null = infinite (or not recurring).</summary>
+    /// <summary><c>RDATE</c>s of a series: wall clock in <see cref="TimeZone"/> (all-day: dates at midnight).</summary>
+    public IList<LocalDateTime> RDates { get; set; } = [];
+
+    /// <summary><c>EXDATE</c>s of a series: nominal starts of excluded occurrences, like <see cref="RDates"/>.</summary>
+    public IList<LocalDateTime> ExDates { get; set; } = [];
+
+    /// <summary>
+    /// End of the last occurrence of a series (moved exceptions included); null = infinite (or not recurring).
+    /// Maintained by <see cref="RefreshSeriesBounds"/>.
+    /// </summary>
     public Instant? SeriesUntilUtc { get; set; }
+
+    /// <summary>Start of a moved exception that lies before the first occurrence (it widens <c>occurs_range</c>); null otherwise.</summary>
+    public Instant? SeriesStartUtc { get; set; }
+
+    /// <summary>iCalendar <c>RELATED-TO</c>: the UID of the series this one was split from ("this and following").</summary>
+    public string? RelatedTo { get; set; }
+
+    /// <summary>Modified and cancelled occurrences of a series (<c>event_exceptions</c>).</summary>
+    public List<EventExceptionEntry> Exceptions { get; set; } = [];
 
     /// <summary>Fast path of the permission engine: only events with overrides need them loaded (M2-D).</summary>
     public bool HasOverrides { get; set; }
@@ -114,6 +136,9 @@ public sealed partial class Event
     public uint Version { get; set; }
 
     public bool IsDeleted => DeletedAt is not null;
+
+    /// <summary>A series master (has an RRULE).</summary>
+    public bool IsSeries => Rrule is not null;
 
     /// <summary>
     /// The upper bound of <c>occurs_range</c>: the end of a single event, <see cref="SeriesUntilUtc"/> of a series
@@ -140,6 +165,77 @@ public sealed partial class Event
         EndUtc = times.EndUtc;
     }
 
+    /// <summary>The recurrence set of a series (first occurrence = the stored times); null for single events.</summary>
+    public RecurrenceSet? Recurrence() =>
+        Rrule is null
+            ? null
+            : new RecurrenceSet(Times, RecurrenceRule.Parse(Rrule, out var problem) ?? throw new InvalidOperationException($"Stored RRULE of event {Id} is invalid: {problem!.Message}"), [.. RDates], [.. ExDates]);
+
+    /// <summary>
+    /// The occurrences of a series overlapping <c>[from, to)</c> by their instants (all-day: padded bounds), with
+    /// <see cref="Exceptions"/> applied — cancelled ones left out, moved ones where they moved to — by start, at most
+    /// <paramref name="max"/> (<see cref="OccurrenceList.Truncated"/> beyond).
+    /// </summary>
+    public OccurrenceList Occurrences(Instant from, Instant to, int max = RecurrenceSet.MaxPerWindow)
+    {
+        var set = Recurrence() ?? throw new InvalidOperationException("Only series have occurrences.");
+        var window = set.Between(from, to, max);
+        var exceptions = Exceptions.ToDictionary(x => x.RecurrenceId);
+        var items = new List<EventOccurrence>(window.Items.Count);
+        foreach (var occurrence in window.Items)
+        {
+            var exception = exceptions.GetValueOrDefault(occurrence.RecurrenceId);
+            if (exception is not ({ Cancelled: true } or { IsMoved: true }))
+            {
+                items.Add(new EventOccurrence(this, occurrence, exception));
+            }
+        }
+
+        // Moved occurrences count where they are now (stored exceptions always belong to the set, see RefreshExceptions).
+        foreach (var exception in Exceptions.Where(x => x is { IsMoved: true, Cancelled: false }))
+        {
+            if (exception.MovedTimes(TimeZone)!.Overlaps(from, to, null))
+            {
+                items.Add(new EventOccurrence(this, set.At(exception.RecurrenceId), exception));
+            }
+        }
+
+        items.Sort((a, b) => a.Times.StartUtc != b.Times.StartUtc ? a.Times.StartUtc.CompareTo(b.Times.StartUtc) : a.RecurrenceId.CompareTo(b.RecurrenceId));
+        return items.Count > max
+            ? new OccurrenceList([.. items.Take(max)], true)
+            : new OccurrenceList(items, window.Truncated);
+    }
+
+    /// <summary>
+    /// The occurrence with <paramref name="recurrenceId"/> as viewers see it, or null when the series has none —
+    /// also when it is cancelled, unless <paramref name="includeCancelled"/>.
+    /// </summary>
+    public EventOccurrence? FindOccurrence(LocalDateTime recurrenceId, bool includeCancelled = false)
+    {
+        var original = Recurrence()?.Find(recurrenceId);
+        var exception = Exceptions.FirstOrDefault(x => x.RecurrenceId == recurrenceId);
+        return original is null || (exception is { Cancelled: true } && !includeCancelled) ? null : new EventOccurrence(this, original, exception);
+    }
+
+    /// <summary>
+    /// Recomputes <see cref="SeriesUntilUtc"/> (the rule's last occurrence and moved exceptions; null when infinite)
+    /// and <see cref="SeriesStartUtc"/> after a change of the times, the recurrence or the exceptions.
+    /// </summary>
+    public void RefreshSeriesBounds()
+    {
+        if (Recurrence() is not { } set)
+        {
+            SeriesUntilUtc = null;
+            SeriesStartUtc = null;
+            return;
+        }
+
+        var moved = Exceptions.Where(x => x is { IsMoved: true, Cancelled: false }).ToList();
+        SeriesUntilUtc = set.LastEnd() is { } last ? moved.Select(x => x.EndUtc!.Value).Append(last).Max() : null;
+        var earliest = moved.Select(x => x.StartUtc!.Value).DefaultIfEmpty(StartUtc).Min();
+        SeriesStartUtc = earliest < StartUtc ? earliest : null;
+    }
+
     /// <summary>The engine's view of this event with <paramref name="overrides"/> (none until M2-D stores them).</summary>
     public EventAcl ToAcl(IReadOnlyList<EventOverride>? overrides = null) => new(Id, CalendarId, CreatorUserId, overrides);
 
@@ -159,6 +255,9 @@ public sealed partial class Event
     [GeneratedRegex("^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant)]
     private static partial Regex ColorPattern();
 }
+
+/// <summary>Occurrences of a series in a window, by start; <see cref="Truncated"/> when capped.</summary>
+public sealed record OccurrenceList(IReadOnlyList<EventOccurrence> Items, bool Truncated);
 
 /// <summary>Kind of a <see cref="CalendarChange"/> (stored as <c>smallint</c>).</summary>
 public enum CalendarChangeKind : short

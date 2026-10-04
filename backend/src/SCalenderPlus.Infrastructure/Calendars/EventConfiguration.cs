@@ -6,19 +6,31 @@ using SCalenderPlus.Core.Events;
 
 namespace SCalenderPlus.Infrastructure.Calendars;
 
-/// <summary><c>events</c>, <c>event_overrides</c> and the sync log <c>calendar_changes</c> (docs/architecture/data-model.md §4).</summary>
-internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEntityTypeConfiguration<CalendarChange>, IEntityTypeConfiguration<EventOverrideEntry>
+/// <summary><c>events</c>, <c>event_exceptions</c>, <c>event_overrides</c> and the sync log <c>calendar_changes</c> (docs/architecture/data-model.md §4).</summary>
+internal sealed class EventConfiguration :
+    IEntityTypeConfiguration<Event>,
+    IEntityTypeConfiguration<EventExceptionEntry>,
+    IEntityTypeConfiguration<CalendarChange>,
+    IEntityTypeConfiguration<EventOverrideEntry>
 {
+    /// <summary>
+    /// One exception per occurrence of a series. Deferrable (checked at commit) because re-keying a series' exceptions
+    /// shifts several keys at once (an intermediate state may repeat one); created by SQL in the migration
+    /// <c>AddRecurrence</c>, since EF Core cannot model deferrable constraints.
+    /// </summary>
+    public const string ExceptionKeyConstraint = "uq_event_exceptions_event_id_recurrence_id";
+
     /// <summary>The GiST index of window queries (asserted by the EXPLAIN test).</summary>
     public const string WindowIndex = "ix_events_calendar_id_occurs_range";
 
     /// <summary>
     /// <c>occurs_range</c> (generated): <c>[start_utc, end_utc)</c> of single events (a zero-length event is the
-    /// point <c>[start_utc, start_utc]</c>, so it still overlaps windows); series masters (M2-E) reach to
-    /// <c>series_until_utc</c> or infinity.
+    /// point <c>[start_utc, start_utc]</c>, so it still overlaps windows); series masters reach from their first
+    /// occurrence (or an earlier moved exception, <c>series_start_utc</c>) to <c>series_until_utc</c> or infinity.
     /// </summary>
     public const string OccursRangeSql =
-        "tstzrange(start_utc, CASE WHEN rrule IS NULL THEN end_utc ELSE coalesce(series_until_utc, 'infinity'::timestamptz) END, " +
+        "tstzrange(CASE WHEN rrule IS NULL THEN start_utc ELSE least(start_utc, series_start_utc) END, " +
+        "CASE WHEN rrule IS NULL THEN end_utc ELSE coalesce(series_until_utc, 'infinity'::timestamptz) END, " +
         "CASE WHEN rrule IS NULL AND end_utc = start_utc THEN '[]' ELSE '[)' END)";
 
     public void Configure(EntityTypeBuilder<Event> builder)
@@ -42,6 +54,9 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEnt
         builder.Property(e => e.Status).HasConversion<short>();
         builder.Property(e => e.Transparency).HasConversion<short>();
         builder.Property(e => e.Categories).HasColumnType("text[]");
+        builder.Property(e => e.RDates).HasColumnName("rdates").HasColumnType("timestamp without time zone[]");
+        builder.Property(e => e.ExDates).HasColumnName("exdates").HasColumnType("timestamp without time zone[]");
+        builder.Property(e => e.RelatedTo).HasMaxLength(Event.UidMaxLength);
         builder.Property(e => e.Version).IsRowVersion();
         builder.Property<Interval>("OccursRange")
             .HasColumnName("occurs_range")
@@ -49,6 +64,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEnt
         builder.Ignore(e => e.IsDeleted);
         builder.Ignore(e => e.OccursUntil);
         builder.Ignore(e => e.Times);
+        builder.Ignore(e => e.IsSeries);
 
         // Window queries per calendar (btree_gist for the uuid column); live events only.
         builder.HasIndex(nameof(Event.CalendarId), "OccursRange")
@@ -61,6 +77,32 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>, IEnt
 
         // Events go with their calendar (calendars are hard-deleted, permissions.md §4.6).
         builder.HasOne<Calendar>().WithMany().HasForeignKey(e => e.CalendarId).OnDelete(DeleteBehavior.Cascade);
+
+        // Exceptions go with their series (soft-deleted masters keep them for a restore).
+        builder.HasMany(e => e.Exceptions).WithOne().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    public void Configure(EntityTypeBuilder<EventExceptionEntry> builder)
+    {
+        builder.ToTable("event_exceptions", t =>
+        {
+            t.HasCheckConstraint(
+                "ck_event_exceptions_times",
+                "(start_utc IS NULL AND end_utc IS NULL AND start_local IS NULL AND end_local IS NULL AND start_date IS NULL AND end_date IS NULL) OR " +
+                "(start_utc IS NOT NULL AND end_utc >= start_utc AND ((start_local IS NOT NULL AND end_local IS NOT NULL AND start_date IS NULL AND end_date IS NULL) OR " +
+                "(start_date IS NOT NULL AND end_date > start_date AND start_local IS NULL AND end_local IS NULL)))");
+        });
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.Title).HasMaxLength(Event.TitleMaxLength);
+        builder.Property(x => x.Description).HasMaxLength(Event.DescriptionMaxLength);
+        builder.Property(x => x.Location).HasMaxLength(Event.LocationMaxLength);
+        builder.Property(x => x.Status).HasConversion<short?>();
+        builder.Property(x => x.Transparency).HasConversion<short?>();
+        builder.Ignore(x => x.IsMoved);
+        builder.Ignore(x => x.IsEmpty);
+
+        // The unique key (event_id, recurrence_id) is the deferrable constraint ExceptionKeyConstraint (migration SQL).
+        builder.HasIndex(x => x.EventId);
     }
 
     public void Configure(EntityTypeBuilder<CalendarChange> builder)

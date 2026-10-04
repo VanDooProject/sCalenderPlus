@@ -159,7 +159,57 @@ export const mockBusyEvent: CalendarEvent = {
   myLevel: 'free_busy',
 }
 
-const mockEvents = [mockEvent, mockBusyEvent]
+/** A weekly series of the mock user in {@link mockCalendar} (Tuesdays 18:00–19:30 Berlin, 8 occurrences). */
+export const mockSeries: CalendarEvent = {
+  ...mockEvent,
+  id: '0192f2c4-0000-7000-8000-000000000403',
+  uid: '0192f2c4-0000-7000-8000-000000000403@scalenderplus',
+  title: 'Weekly practice',
+  categories: [],
+  start: {
+    dateTime: '2026-11-03T18:00:00',
+    timeZone: 'Europe/Berlin',
+    utc: '2026-11-03T17:00:00Z',
+  },
+  end: { dateTime: '2026-11-03T19:30:00', timeZone: 'Europe/Berlin', utc: '2026-11-03T18:30:00Z' },
+  recurrence: { rrule: 'FREQ=WEEKLY;COUNT=8' },
+}
+
+const mockEvents = [mockEvent, mockBusyEvent, mockSeries]
+
+const week = 7 * 24 * 60 * 60 * 1000
+
+/** Shifts a time value by whole weeks (the mock series stays in winter time: no DST handling). */
+function plusWeeks(
+  value: components['schemas']['EventTimeResponse'],
+  weeks: number,
+): components['schemas']['EventTimeResponse'] {
+  const utc = value.utc ? new Date(Date.parse(value.utc) + weeks * week) : undefined
+  const local = value.dateTime
+    ? new Date(Date.parse(`${value.dateTime}Z`) + weeks * week)
+    : undefined
+  return {
+    ...value,
+    dateTime: local?.toISOString().slice(0, 19),
+    utc: utc?.toISOString().replace('.000Z', 'Z'),
+  }
+}
+
+/** The occurrences of {@link mockSeries} (the api expands any rule; the mock knows this one). */
+function mockOccurrences(): CalendarEvent[] {
+  return Array.from({ length: 8 }, (_, i) => {
+    const start = plusWeeks(mockSeries.start, i)
+    const recurrenceId = start.utc ?? ''
+    return {
+      ...mockSeries,
+      start,
+      end: plusWeeks(mockSeries.end, i),
+      occurrenceId: `${mockSeries.id}:${recurrenceId}`,
+      recurrenceId,
+      etag: '"series-0403"',
+    }
+  })
+}
 
 /** A time value of a request as the api answers it (no zone conversion: utc is left out). */
 function eventTime(
@@ -388,8 +438,13 @@ export const handlers = [
     const from = query.get('from') ?? ''
     const to = query.get('to') ?? ''
     const calendarIds = query.getAll('calendarIds')
+    // Series as their occurrences (expand=occurrences) or their master; the real api expands any rule.
+    const candidates =
+      query.get('expand') === 'occurrences'
+        ? [...mockEvents.filter((e) => !e.recurrence), ...mockOccurrences()]
+        : mockEvents
     // Rough overlap on the UTC (timed) or date (all-day) bounds; the real api places all-day events per zone.
-    const items = mockEvents.filter(
+    const items = candidates.filter(
       (e) =>
         (calendarIds.length === 0 || calendarIds.includes(e.calendarId)) &&
         (e.start.utc ?? e.start.date ?? '') < to &&
@@ -443,6 +498,65 @@ export const handlers = [
     })
   }),
   http.delete('/api/v1/events/{id}', ({ response }) => response(204).empty()),
+  http.patch(
+    '/api/v1/events/{id}/occurrences/{recurrenceId}',
+    async ({ params, request, response }) => {
+      const occurrence =
+        params.id === mockSeries.id
+          ? mockOccurrences().find((o) => o.recurrenceId === params.recurrenceId)
+          : undefined
+      if (!occurrence) {
+        return response('default').json(
+          notFound(`/api/v1/events/${params.id}/occurrences/${params.recurrenceId}`),
+          { status: 404 },
+        )
+      }
+      const patch = (await request.json()) as components['schemas']['UpdateOccurrenceRequest']
+      const zone = occurrence.start.timeZone ?? mockCalendar.defaultTimeZone
+      return response(200).json({
+        ...occurrence,
+        etag: undefined,
+        title: patch.title ?? occurrence.title,
+        location: patch.location === '' ? null : (patch.location ?? occurrence.location),
+        start: patch.start ? eventTime(patch.start, zone) : occurrence.start,
+        end: patch.end ? eventTime(patch.end, zone) : occurrence.end,
+        modified: true,
+      })
+    },
+  ),
+  http.delete('/api/v1/events/{id}/occurrences/{recurrenceId}', ({ params, response }) =>
+    params.id === mockSeries.id &&
+    mockOccurrences().some((o) => o.recurrenceId === params.recurrenceId)
+      ? response(204).empty()
+      : response('default').json(
+          notFound(`/api/v1/events/${params.id}/occurrences/${params.recurrenceId}`),
+          { status: 404 },
+        ),
+  ),
+  http.post('/api/v1/events/{id}/split', async ({ params, request, response }) => {
+    const body = await request.json()
+    const occurrence =
+      params.id === mockSeries.id
+        ? mockOccurrences().find((o) => o.recurrenceId === body.recurrenceId)
+        : undefined
+    if (!occurrence) {
+      return response('default').json(notFound(`/api/v1/events/${params.id}/split`), {
+        status: 404,
+      })
+    }
+    const id = crypto.randomUUID()
+    const zone = occurrence.start.timeZone ?? mockCalendar.defaultTimeZone
+    return response(201).json({
+      ...mockSeries,
+      id,
+      uid: `${id}@scalenderplus`,
+      relatedTo: mockSeries.uid,
+      title: body.title ?? mockSeries.title,
+      start: body.start ? eventTime(body.start, zone) : occurrence.start,
+      end: body.end ? eventTime(body.end, zone) : occurrence.end,
+      recurrence: body.recurrence?.rrule ? { rrule: body.recurrence.rrule } : mockSeries.recurrence,
+    })
+  }),
   http.post('/api/v1/events/{id}/move', async ({ params, request, response }) => {
     const event = mockEvents.find((e) => e.id === params.id)
     if (!event) {

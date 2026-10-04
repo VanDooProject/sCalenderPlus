@@ -12,6 +12,8 @@ internal sealed class ReadsEventsDirectly(IAppDbContext db, DbContext context)
     public IQueryable<Guid> InQuery() => db.Calendars.Where(c => db.Events.Any(e => e.CalendarId == c.Id)).Select(c => c.Id);
 
     public int Generic() => context.Set<Event>().Count();
+
+    public int Exceptions() => db.EventExceptions.Count();
 }
 
 internal sealed class HoldsTheSet

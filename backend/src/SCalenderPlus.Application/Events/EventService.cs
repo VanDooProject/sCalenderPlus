@@ -31,23 +31,33 @@ public sealed record EventDetails(
     string? Color = null,
     IReadOnlyList<string>? Categories = null);
 
-/// <summary>A new single event in <see cref="CalendarId"/>.</summary>
+/// <summary>A new event in <see cref="CalendarId"/>: single, or a series with <paramref name="Recurrence"/>.</summary>
 /// <param name="Uid">iCalendar UID to keep (imports, CalDAV); default <c>{id}@scalenderplus</c>.</param>
-/// <param name="HasRecurrence">The request carried recurrence rules: refused until M2-E.</param>
-public sealed record NewEvent(Guid CalendarId, EventTimeInput Start, EventTimeInput End, EventDetails Details, string? Uid = null, bool HasRecurrence = false);
-
-/// <summary>Merge-patch of an event: <c>null</c> members stay unchanged (see <see cref="EventDetails"/> for removals).</summary>
-public sealed record EventChanges(EventDetails Details, EventTimeInput? Start = null, EventTimeInput? End = null, bool HasRecurrence = false);
-
-/// <summary>The outcome of a create/update: the event as the actor sees it and how requested times were resolved (DST).</summary>
-public sealed record EventResult(EventView View, IReadOnlyList<TimeAdjustment> Adjustments);
+public sealed record NewEvent(Guid CalendarId, EventTimeInput Start, EventTimeInput End, EventDetails Details, string? Uid = null, EventRecurrenceInput? Recurrence = null);
 
 /// <summary>
-/// Single events CRUD (issue #44, api.md §4): creating needs <c>contribute</c> on the calendar
+/// Merge-patch of an event: <c>null</c> members stay unchanged (see <see cref="EventDetails"/> for removals).
+/// <paramref name="RecurrenceGiven"/> with a null <paramref name="Recurrence"/> turns a series into a single event.
+/// </summary>
+public sealed record EventChanges(EventDetails Details, EventTimeInput? Start = null, EventTimeInput? End = null, bool RecurrenceGiven = false, EventRecurrenceInput? Recurrence = null);
+
+/// <summary>
+/// The outcome of a create/update: the event as the actor sees it, how requested times were resolved (DST) and
+/// the exceptions of a series that no longer matched an occurrence and were dropped (api recurrence ids).
+/// </summary>
+public sealed record EventResult(EventView View, IReadOnlyList<TimeAdjustment> Adjustments, IReadOnlyList<string>? DroppedExceptions = null);
+
+/// <summary>What applying <see cref="EventChanges"/> did besides changing the row.</summary>
+internal sealed record ChangeOutcome(IReadOnlyList<TimeAdjustment> Adjustments, IReadOnlyList<string> DroppedExceptions);
+
+/// <summary>
+/// Events CRUD (issues #44, #50, api.md §4): creating needs <c>contribute</c> on the calendar
 /// (<see cref="CalendarAction.CreateEvent"/>), reading ≥ <c>free_busy</c>, changing and deleting ≥ <c>edit</c> on
 /// the event — levels from the permission engine through <see cref="EventQueryService"/> (none → 404, too low →
 /// 403). Frozen calendars refuse changes (<c>409 calendar_frozen</c>). Every mutation is audited and appended to the
-/// sync log (<see cref="EventWriter"/>); deletes are soft. Recurring events come with M2-E (<c>422</c> until then).
+/// sync log (<see cref="EventWriter"/>); deletes are soft. A <c>recurrence</c> makes the event a series master
+/// (data-model.md §9); changing a series here is "all occurrences": its exceptions are re-keyed by the shift of the
+/// first occurrence and dropped (reported) when they no longer match an occurrence.
 /// </summary>
 public sealed class EventService(
     IAppDbContext db,
@@ -72,11 +82,6 @@ public sealed class EventService(
             throw CalendarErrors.Frozen();
         }
 
-        if (request.HasRecurrence)
-        {
-            throw EventErrors.RecurrenceNotSupported();
-        }
-
         var times = ParseTimes(request.Start, request.End, calendar.Calendar.DefaultTimeZone);
         var now = clock.Now();
         var ev = new Event
@@ -93,6 +98,11 @@ public sealed class EventService(
         ev.Uid = request.Uid is null ? Event.NativeUid(ev.Id) : ValidUid(request.Uid);
         ApplyOptionalDetails(ev, request.Details);
         ev.SetTimes(times);
+        if (request.Recurrence is not null)
+        {
+            EventRecurrences.Apply(ev, request.Recurrence);
+            ev.RefreshSeriesBounds();
+        }
 
         await db.InTransactionAsync(async ct =>
         {
@@ -129,35 +139,16 @@ public sealed class EventService(
     {
         ArgumentNullException.ThrowIfNull(changes);
         var view = await RequireAsync(actorId, eventId, EventAction.Edit, precondition, cancellationToken).ConfigureAwait(false);
-        if (changes.HasRecurrence)
-        {
-            throw EventErrors.RecurrenceNotSupported();
-        }
-
         var ev = view.Event;
         var before = EventAudit.State(ev);
-        IReadOnlyList<TimeAdjustment> adjustments = [];
-        if (changes.Start is not null || changes.End is not null)
-        {
-            var current = ev.Times;
-            var times = ParseTimes(changes.Start ?? StartInput(current), changes.End ?? EndInput(current, changes.Start is null), view.Calendar.DefaultTimeZone);
-            adjustments = times.Adjustments;
-            ev.SetTimes(times); // unchanged values leave the row unchanged
-        }
-
-        var details = changes.Details;
-        ev.Title = details.Title is null ? ev.Title : ValidTitle(details.Title);
-        ev.Status = details.Status ?? ev.Status;
-        ev.Transparency = details.Transparency ?? ev.Transparency;
-        ApplyOptionalDetails(ev, details);
-
+        var outcome = Apply(ev, changes, view.Calendar.DefaultTimeZone);
         var after = EventAudit.State(ev);
         if (after == before)
         {
-            return new EventResult(view, adjustments);
+            return new EventResult(view, outcome.Adjustments);
         }
 
-        if (before.Times != after.Times || before.Status != after.Status)
+        if (before.Times != after.Times || before.Status != after.Status || before.Recurrence != after.Recurrence)
         {
             ev.Sequence++; // RFC 5545: significant revision
         }
@@ -166,7 +157,10 @@ public sealed class EventService(
         writer.Changed(ev);
         audit.Record(EventAuditActions.Updated, EventAuditActions.ResourceType, ev.Id.ToString(), before, after, await SubjectAsync(view.Calendar, cancellationToken).ConfigureAwait(false));
         await SaveAsync(cancellationToken).ConfigureAwait(false);
-        return new EventResult(await queries.ViewAsync(actorId, ev, view.Calendar, view.Acl, cancellationToken).ConfigureAwait(false), adjustments);
+        return new EventResult(
+            await queries.ViewAsync(actorId, ev, view.Calendar, view.Acl, cancellationToken).ConfigureAwait(false),
+            outcome.Adjustments,
+            outcome.DroppedExceptions);
     }
 
     /// <summary>Soft-deletes the event (≥ <c>edit</c>): it disappears for everyone, the sync log records a delete.</summary>
@@ -181,7 +175,7 @@ public sealed class EventService(
     }
 
     /// <summary>Loads the event for update and checks <paramref name="action"/> (404/403), the precondition (428/412) and the freeze (409).</summary>
-    private async Task<EventView> RequireAsync(Guid actorId, Guid eventId, EventAction action, Action<EventView>? precondition, CancellationToken cancellationToken)
+    internal async Task<EventView> RequireAsync(Guid actorId, Guid eventId, EventAction action, Action<EventView>? precondition, CancellationToken cancellationToken)
     {
         var view = await queries.GetAsync(actorId, eventId, forUpdate: true, cancellationToken).ConfigureAwait(false);
         if (AccessPolicy.Check(view.Level, action) != AccessCheck.Allowed)
@@ -191,6 +185,82 @@ public sealed class EventService(
 
         precondition?.Invoke(view);
         return view.Calendar.FrozenAt is null ? view : throw CalendarErrors.Frozen();
+    }
+
+    /// <summary>
+    /// Applies <paramref name="changes"/> to the (tracked) event: times, details and recurrence. For a series
+    /// whose first occurrence moves (in wall clock), RDATEs/EXDATEs (unless the recurrence is given anew) and the
+    /// exceptions' keys shift by the same amount (data-model.md §9 "all"); exceptions that no longer match an
+    /// occurrence — or all of them when the series switches between timed and all-day or stops recurring — are
+    /// dropped. Moved exceptions keep their times (re-resolved in a new zone). Refreshes the series bounds.
+    /// </summary>
+    internal ChangeOutcome Apply(Event ev, EventChanges changes, string defaultZone)
+    {
+        var oldSet = ev.Recurrence();
+        var (oldAllDay, oldZone) = (ev.AllDay, ev.TimeZone);
+        IReadOnlyList<TimeAdjustment> adjustments = [];
+        if (changes.Start is not null || changes.End is not null)
+        {
+            var current = ev.Times;
+            var times = ParseTimes(changes.Start ?? StartInput(current), changes.End ?? EndInput(current, changes.Start is null), defaultZone);
+            adjustments = times.Adjustments;
+            ev.SetTimes(times); // unchanged values leave the row unchanged
+        }
+
+        var details = changes.Details;
+        ev.Title = details.Title is null ? ev.Title : ValidTitle(details.Title);
+        ev.Status = details.Status ?? ev.Status;
+        ev.Transparency = details.Transparency ?? ev.Transparency;
+        ApplyOptionalDetails(ev, details);
+
+        var kindChanged = oldAllDay != ev.AllDay;
+        var newFirst = ev.AllDay ? ev.StartDate!.Value.AtMidnight() : ev.StartLocal!.Value;
+        var shift = oldSet is null ? Period.Zero : Period.Between(oldSet.FirstRecurrenceId, newFirst, PeriodUnits.Days | PeriodUnits.Hours | PeriodUnits.Minutes | PeriodUnits.Seconds);
+        if (changes.RecurrenceGiven)
+        {
+            if (changes.Recurrence is null)
+            {
+                ev.Rrule = null;
+                ev.RDates = [];
+                ev.ExDates = [];
+            }
+            else
+            {
+                EventRecurrences.Apply(ev, changes.Recurrence);
+            }
+        }
+        else if (oldSet is not null)
+        {
+            LocalDateTime Shift(LocalDateTime value) => kindChanged ? value.Date.PlusDays(shift.Days).At(newFirst.TimeOfDay) : value.Plus(shift);
+            ev.RDates = [.. ev.RDates.Select(Shift)];
+            ev.ExDates = [.. ev.ExDates.Select(Shift)];
+            RecurrenceValues.Rebind(ev); // UNTIL follows a change of kind or zone (and must stay after the start)
+        }
+
+        var dropped = new List<string>();
+        if (oldSet is not null)
+        {
+            var newSet = ev.Recurrence();
+            foreach (var exception in ev.Exceptions.ToList())
+            {
+                var key = exception.RecurrenceId.Plus(shift);
+                if (newSet is null || kindChanged || newSet.Find(key) is null)
+                {
+                    dropped.Add(EventRecurrences.Format(oldSet.At(exception.RecurrenceId)));
+                    writer.RemoveException(ev, exception);
+                    continue;
+                }
+
+                exception.RecurrenceId = key;
+                if (exception.IsMoved && !ev.AllDay && ev.TimeZone != oldZone)
+                {
+                    exception.Move(EventTimes.Timed(exception.StartLocal!.Value, exception.EndLocal!.Value, DateTimeZoneProviders.Tzdb[ev.TimeZone!]));
+                }
+            }
+        }
+
+        ev.RefreshSeriesBounds();
+        return new ChangeOutcome(adjustments, dropped);
     }
 
     private async Task SaveAsync(CancellationToken cancellationToken)
@@ -258,13 +328,13 @@ public sealed class EventService(
             ?? throw Validation.Failed("end.dateTime", "The end must not be before the start.");
     }
 
-    private static EventTimeInput StartInput(EventTimes current) =>
+    internal static EventTimeInput StartInput(EventTimes current) =>
         current.AllDay
             ? new EventTimeInput(Date: LocalDatePattern.Iso.Format(current.StartDate!.Value))
             : new EventTimeInput(LocalDateTimePattern.ExtendedIso.Format(current.StartLocal!.Value), current.TimeZone);
 
     /// <summary>The stored end as input; without its zone when the start changes (the end follows the start's zone).</summary>
-    private static EventTimeInput EndInput(EventTimes current, bool keepZone) =>
+    internal static EventTimeInput EndInput(EventTimes current, bool keepZone) =>
         current.AllDay
             ? new EventTimeInput(Date: LocalDatePattern.Iso.Format(current.EndDate!.Value))
             : new EventTimeInput(LocalDateTimePattern.ExtendedIso.Format(current.EndLocal!.Value), keepZone ? current.TimeZone : null);
@@ -291,7 +361,7 @@ public sealed class EventService(
         throw Validation.Failed(field, "Use a local date and time like 2026-11-02T18:00:00 (no offset; the zone goes into timeZone).");
     }
 
-    private static void ApplyOptionalDetails(Event ev, EventDetails details)
+    internal static void ApplyOptionalDetails(Event ev, EventDetails details)
     {
         ev.Description = details.Description is null ? ev.Description : Optional(details.Description, Event.DescriptionMaxLength, "description");
         ev.Location = details.Location is null ? ev.Location : Optional(details.Location, Event.LocationMaxLength, "location");
@@ -300,7 +370,7 @@ public sealed class EventService(
         ev.Categories = details.Categories is null ? ev.Categories : ValidCategories(details.Categories);
     }
 
-    private static string ValidTitle(string? title)
+    internal static string ValidTitle(string? title)
     {
         var trimmed = title?.Trim() ?? string.Empty;
         return trimmed.Length is >= 1 and <= Event.TitleMaxLength
@@ -308,7 +378,7 @@ public sealed class EventService(
             : throw Validation.Failed("title", $"The title must have 1 to {Event.TitleMaxLength} characters.");
     }
 
-    private static string? Optional(string value, int maxLength, string field)
+    internal static string? Optional(string value, int maxLength, string field)
     {
         var trimmed = value.Trim();
         return trimmed.Length > maxLength
@@ -365,9 +435,11 @@ internal static class EventAudit
             ev.Transparency.ToString().ToLowerInvariant(),
             ev.Color,
             string.Join(",", ev.Categories),
-            Times(ev.Times));
+            Times(ev.Times),
+            RecurrenceValues.Audit(ev),
+            ev.IsSeries ? ev.Exceptions.Count : null);
 
-    private static TimesState Times(EventTimes times) =>
+    public static TimesState Times(EventTimes times) =>
         times.AllDay
             ? new TimesState(true, LocalDatePattern.Iso.Format(times.StartDate!.Value), LocalDatePattern.Iso.Format(times.EndDate!.Value), null)
             : new TimesState(false, LocalDateTimePattern.ExtendedIso.Format(times.StartLocal!.Value), LocalDateTimePattern.ExtendedIso.Format(times.EndLocal!.Value), times.TimeZone);
@@ -383,7 +455,9 @@ internal static class EventAudit
         string Transparency,
         string? Color,
         string Categories,
-        TimesState Times);
+        TimesState Times,
+        string? Recurrence,
+        int? Exceptions);
 
     public sealed record TimesState(bool AllDay, string Start, string End, string? TimeZone);
 }

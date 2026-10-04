@@ -137,10 +137,17 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         // Moves (#48): one event per successful move.
         await SeedEventAsync("lions-moved-by-admin", "lions", Actors.GroupAdmin.Name);
         await SeedEventAsync("lions-moved-by-owner", "lions", Actors.GroupAdmin.Name);
+
+        // Occurrence edits (#51): weekly series of the admin from 2 Nov 2026 18:00 Berlin (occurrence 2: 9 Nov 17:00Z);
+        // cancellations use distinct occurrences, every successful split its own series.
+        foreach (var name in new[] { "lions-series", "lions-split-by-editor", "lions-split-by-admin", "lions-split-by-owner" })
+        {
+            await SeedEventAsync(name, "lions", Actors.GroupAdmin.Name, new EventRecurrenceInput("FREQ=WEEKLY;COUNT=10"));
+        }
     }
 
-    /// <summary>A timed event created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>
-    private async Task SeedEventAsync(string name, string calendar, string actor)
+    /// <summary>A timed event (a series with <paramref name="recurrence"/>) created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>
+    private async Task SeedEventAsync(string name, string calendar, string actor, EventRecurrenceInput? recurrence = null)
     {
         await using var scope = Api.Services.CreateAsyncScope();
         var events = scope.ServiceProvider.GetRequiredService<EventService>();
@@ -150,7 +157,8 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
                 Guid.Parse(Get("calendar:" + calendar)),
                 new EventTimeInput("2026-11-02T18:00:00", "Europe/Berlin"),
                 new EventTimeInput("2026-11-02T20:00:00"),
-                new EventDetails(Title: name)));
+                new EventDetails(Title: name),
+                Recurrence: recurrence));
         Set("event:" + name, created.View.Event.Id.ToString());
     }
 

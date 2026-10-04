@@ -7,9 +7,11 @@ namespace SCalenderPlus.Application.Events;
 
 /// <summary>
 /// The write side of the event choke point (permissions.md §8): the only place besides
-/// <see cref="EventQueryService"/> that touches <c>IAppDbContext.Events</c> (architecture test). It adds new rows
-/// and appends the sync log (<c>calendar_changes</c>) for every change; changes of loaded events are tracked by
-/// the context (the query service loads them for update). Permission checks happen before, in the use cases.
+/// <see cref="EventQueryService"/> that touches <c>IAppDbContext.Events</c> and <c>EventExceptions</c>
+/// (architecture test). It adds new rows (events, exceptions of a series), removes exceptions and appends the
+/// sync log (<c>calendar_changes</c>) for every change; changes of loaded events are tracked by the context (the
+/// query service loads them, with their exceptions, for update). Permission checks happen before, in the use cases.
+/// Exception changes are logged as an <c>upsert</c> of their series (sync clients fetch the series resource).
 /// Staged only: the caller's <c>SaveChangesAsync</c> commits rows, log and audit together.
 /// </summary>
 public sealed class EventWriter(IAppDbContext db, IClock clock)
@@ -45,6 +47,36 @@ public sealed class EventWriter(IAppDbContext db, IClock clock)
         ArgumentNullException.ThrowIfNull(ev);
         Log(sourceCalendarId, ev.Id, CalendarChangeKind.Delete);
         Log(ev, CalendarChangeKind.Upsert);
+    }
+
+    /// <summary>Stages a new exception of the (tracked) series <paramref name="series"/>.</summary>
+    public void AddException(Event series, EventExceptionEntry exception)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+        ArgumentNullException.ThrowIfNull(exception);
+        exception.EventId = series.Id;
+        series.Exceptions.Add(exception);
+        db.EventExceptions.Add(exception);
+    }
+
+    /// <summary>Stages the removal of an exception of the (tracked) series <paramref name="series"/>.</summary>
+    public void RemoveException(Event series, EventExceptionEntry exception)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+        ArgumentNullException.ThrowIfNull(exception);
+        series.Exceptions.Remove(exception);
+        db.EventExceptions.Remove(exception);
+    }
+
+    /// <summary>Moves a (tracked) exception from <paramref name="from"/> to the series <paramref name="to"/> (split).</summary>
+    public static void MoveException(EventExceptionEntry exception, Event from, Event to)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentNullException.ThrowIfNull(from);
+        ArgumentNullException.ThrowIfNull(to);
+        from.Exceptions.Remove(exception);
+        to.Exceptions.Add(exception);
+        exception.EventId = to.Id;
     }
 
     private void Log(Event ev, CalendarChangeKind change) => Log(ev.CalendarId, ev.Id, change);

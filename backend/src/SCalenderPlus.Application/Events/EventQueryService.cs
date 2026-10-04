@@ -10,19 +10,23 @@ using SCalenderPlus.Core.Permissions;
 namespace SCalenderPlus.Application.Events;
 
 /// <summary>
-/// An event as the viewer sees it: the row, its calendar (and the engine's ACL of it), the viewer's effective <see cref="Level"/> (never
-/// <c>none</c>; below <c>read</c> only the busy projection may be shown), whether it reached them only through an
-/// override of a calendar they cannot see (<see cref="SharedWithMe"/>, rule 7) and the creator's display name
-/// (null for viewers below <c>read</c>, system events and deleted accounts).
+/// An event as the viewer sees it: the row (a series master with its exceptions loaded), its calendar (and the
+/// engine's ACL of it), the viewer's effective <see cref="Level"/> (never <c>none</c>; below <c>read</c> only the
+/// busy projection may be shown), whether it reached them only through an override of a calendar they cannot see
+/// (<see cref="SharedWithMe"/>, rule 7), the creator's display name (null for viewers below <c>read</c>, system
+/// events and deleted accounts) and, for an occurrence of a series, the <see cref="Occurrence"/> (the level is
+/// the series' — exceptions have no ACL of their own — except that transparent occurrences are hidden from
+/// <c>free_busy</c> viewers).
 /// </summary>
-public sealed record EventView(Event Event, Calendar Calendar, CalendarAcl Acl, EventLevel Level, bool SharedWithMe, string? CreatorName);
+public sealed record EventView(Event Event, Calendar Calendar, CalendarAcl Acl, EventLevel Level, bool SharedWithMe, string? CreatorName, EventOccurrence? Occurrence = null);
 
 /// <summary>A window query: <c>[From, To)</c>, optionally only some calendars, optionally the viewer's zone for all-day events.</summary>
 /// <param name="CalendarIds">Only events of these calendars; null = every calendar the viewer sees, plus "Shared with me".</param>
 /// <param name="ViewerZone">Places all-day events by their dates in this zone; null = every all-day event that overlaps the window in some zone.</param>
-public sealed record EventWindowQuery(Instant From, Instant To, IReadOnlyCollection<Guid>? CalendarIds = null, DateTimeZone? ViewerZone = null);
+/// <param name="ExpandOccurrences">Series as their occurrences in the window (calendar views) instead of their masters (sync clients).</param>
+public sealed record EventWindowQuery(Instant From, Instant To, IReadOnlyCollection<Guid>? CalendarIds = null, DateTimeZone? ViewerZone = null, bool ExpandOccurrences = false);
 
-/// <summary>The events of a window, ordered by start; <see cref="Truncated"/> when more than <see cref="EventQueryService.MaxWindowEvents"/> matched.</summary>
+/// <summary>The events (or occurrences) of a window, ordered by start; <see cref="Truncated"/> when more than <see cref="EventQueryService.MaxWindowEvents"/> matched.</summary>
 public sealed record EventWindow(IReadOnlyList<EventView> Items, bool Truncated);
 
 /// <summary>
@@ -38,7 +42,7 @@ public sealed class EventQueryService(
     IEventOverrideSource overrides,
     IUserDirectory users)
 {
-    /// <summary>Result cap of a window query (api.md §4: windows are not paged but bounded).</summary>
+    /// <summary>Result cap of a window query (api.md §4: windows are not paged but bounded): events or occurrences.</summary>
     public const int MaxWindowEvents = 5000;
 
     /// <summary>
@@ -48,7 +52,7 @@ public sealed class EventQueryService(
     /// <param name="forUpdate">Track the event for changes (use cases check the required level before changing it).</param>
     public async Task<EventView> GetAsync(Guid actorId, Guid eventId, bool forUpdate = false, CancellationToken cancellationToken = default)
     {
-        var events = forUpdate ? db.Events : db.Events.AsNoTracking();
+        var events = forUpdate ? db.Events.Include(e => e.Exceptions) : db.Events.Include(e => e.Exceptions).AsNoTracking();
         var ev = await events.SingleOrDefaultAsync(e => e.Id == eventId && e.DeletedAt == null, cancellationToken).ConfigureAwait(false)
             ?? throw EventErrors.NotFound();
         var calendar = await calendars.FindAclAsync(ev.CalendarId, cancellationToken).ConfigureAwait(false)
@@ -109,8 +113,12 @@ public sealed class EventQueryService(
     /// Events overlapping the window, as the actor sees them (permissions.md §8 listing): (1) the calendars the
     /// actor sees with their ACLs, (2) one SQL query per window over the GiST index <c>(calendar_id, occurs_range)</c>
     /// for those calendars (<see cref="WindowSql"/>), unioned with the events whose overrides name the actor
-    /// ("Shared with me"), (3) overrides only for events with <c>has_overrides</c>, (4) untraced resolution in
-    /// memory, dropping <c>none</c> and transparent events seen at <c>free_busy</c>.
+    /// ("Shared with me"), (3) overrides only for events with <c>has_overrides</c> and exceptions only for series,
+    /// (4) untraced resolution in memory — once per series — dropping <c>none</c> and transparent events (or
+    /// occurrences) seen at <c>free_busy</c>, (5) series expanded in the window (<see cref="Event.Occurrences"/>):
+    /// as occurrences with <see cref="EventWindowQuery.ExpandOccurrences"/>, otherwise as their master when at least
+    /// one occurrence overlaps. Beyond <see cref="MaxWindowEvents"/> candidate rows the result is the complete prefix
+    /// up to the first row left out (by start) and <see cref="EventWindow.Truncated"/>.
     /// </summary>
     public async Task<EventWindow> WindowAsync(Guid actorId, EventWindowQuery query, CancellationToken cancellationToken = default)
     {
@@ -123,9 +131,10 @@ public sealed class EventQueryService(
             ? []
             : await db.Events.FromSql(WindowSql([.. calendarsById.Keys], query.From, query.To, MaxWindowEvents + 1)).AsNoTracking()
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
-        var truncated = rows.Count > MaxWindowEvents;
-        if (truncated)
+        (Instant Start, Guid Id)? cutoff = null;
+        if (rows.Count > MaxWindowEvents)
         {
+            cutoff = (RangeStart(rows[^1]), rows[^1].Id); // rows left out (and their occurrences) start at or after it
             rows.RemoveAt(rows.Count - 1);
         }
 
@@ -137,7 +146,9 @@ public sealed class EventQueryService(
             var ids = named.Where(id => !known.Contains(id)).ToList();
             var (from, to) = (query.From, query.To);
             var shared = await db.Events.AsNoTracking()
-                .Where(e => ids.Contains(e.Id) && e.DeletedAt == null && e.StartUtc < to && e.EndUtc >= from)
+                .Where(e => ids.Contains(e.Id) && e.DeletedAt == null
+                    && (e.StartUtc < to || (e.Rrule != null && e.SeriesStartUtc < to))
+                    && (e.Rrule == null ? e.EndUtc >= from : e.SeriesUntilUtc == null || e.SeriesUntilUtc > from))
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
             rows.AddRange(query.CalendarIds is null ? shared : shared.Where(e => query.CalendarIds.Contains(e.CalendarId)));
             var missing = rows.Select(r => r.CalendarId).Where(id => !calendarsById.ContainsKey(id)).Distinct().ToList();
@@ -152,30 +163,68 @@ public sealed class EventQueryService(
             }
         }
 
+        await LoadExceptionsAsync(rows, cancellationToken).ConfigureAwait(false);
         var eventOverrides = await OverridesAsync(rows, cancellationToken).ConfigureAwait(false);
         var calendarLevels = calendarsById.ToDictionary(c => c.Key, c => PermissionEngine.ResolveCalendarLevel(principal, c.Value.Acl));
         var views = new List<EventView>(rows.Count);
+        var truncated = cutoff is not null;
         foreach (var ev in rows)
         {
-            if (!ev.Times.Overlaps(query.From, query.To, query.ViewerZone) || !calendarsById.TryGetValue(ev.CalendarId, out var calendar))
+            if (!calendarsById.TryGetValue(ev.CalendarId, out var calendar))
             {
                 continue;
             }
 
-            var view = Resolve(principal, ev, calendar.Calendar, calendar.Acl, calendarLevels[ev.CalendarId], eventOverrides.GetValueOrDefault(ev.Id));
-            if (view is not null)
+            var level = PermissionEngine.ResolveLevel(principal, calendar.Acl, ev.ToAcl(eventOverrides.GetValueOrDefault(ev.Id)));
+            var shared = calendarLevels[ev.CalendarId] == CalendarLevel.None;
+            if (level == EventLevel.None)
             {
-                views.Add(view);
+                continue;
+            }
+
+            if (!ev.IsSeries)
+            {
+                if (ev.Times.Overlaps(query.From, query.To, query.ViewerZone) && EventVisibility.Effective(level, ev.Transparency) is var effective and not EventLevel.None)
+                {
+                    views.Add(new EventView(ev, calendar.Calendar, calendar.Acl, effective, shared, null));
+                }
+
+                continue;
+            }
+
+            // Series: expanded once, resolved once (occurrences share the series' level; transparency may differ).
+            var occurrences = ev.Occurrences(query.From, query.To);
+            truncated |= occurrences.Truncated;
+            var seen = occurrences.Items.Where(o => o.Times.Overlaps(query.From, query.To, query.ViewerZone) && EventVisibility.Effective(level, o.Transparency) != EventLevel.None);
+            if (query.ExpandOccurrences)
+            {
+                views.AddRange(seen.Select(o => new EventView(ev, calendar.Calendar, calendar.Acl, EventVisibility.Effective(level, o.Transparency), shared, null, o)));
+            }
+            else if (seen.Any() && EventVisibility.Effective(level, ev.Transparency) is var master and not EventLevel.None)
+            {
+                views.Add(new EventView(ev, calendar.Calendar, calendar.Acl, master, shared, null));
             }
         }
 
-        views.Sort((a, b) => a.Event.StartUtc != b.Event.StartUtc ? a.Event.StartUtc.CompareTo(b.Event.StartUtc) : a.Event.Id.CompareTo(b.Event.Id));
+        views.Sort(CompareByStart);
+        if (cutoff is { } limit)
+        {
+            views.RemoveAll(v => (Start(v), v.Event.Id).CompareTo(limit) >= 0);
+        }
+
+        if (views.Count > MaxWindowEvents)
+        {
+            views.RemoveRange(MaxWindowEvents, views.Count - MaxWindowEvents);
+            truncated = true;
+        }
+
         return new EventWindow(await WithCreatorNamesAsync(views, cancellationToken).ConfigureAwait(false), truncated);
     }
 
     /// <summary>
     /// The candidate query of a window: live events of <paramref name="calendarIds"/> whose <c>occurs_range</c>
-    /// overlaps <c>[from, to)</c>, by start, at most <paramref name="limit"/>. A lateral join per calendar keeps both
+    /// overlaps <c>[from, to)</c>, by the start of that range (an earlier moved exception counts for a series), at
+    /// most <paramref name="limit"/>. A lateral join per calendar keeps both
     /// columns of the GiST index <c>(calendar_id, occurs_range)</c> usable (GiST cannot search <c>= ANY(array)</c>);
     /// <c>xmin</c> (a system column, not in <c>*</c>) is the row version EF Core materializes.
     /// Public for the EXPLAIN test.
@@ -187,9 +236,40 @@ public sealed class EventQueryService(
             SELECT *, xmin FROM events
             WHERE calendar_id = c.id AND deleted_at IS NULL AND occurs_range && tstzrange({from}, {to}, '[)')
         ) AS e
-        ORDER BY e.start_utc, e.id
+        ORDER BY lower(e.occurs_range), e.id
         LIMIT {limit}
         """;
+
+    /// <summary>The lower bound of <c>occurs_range</c> (the order of <see cref="WindowSql"/>).</summary>
+    private static Instant RangeStart(Event ev) =>
+        ev.IsSeries && ev.SeriesStartUtc is { } earlier && earlier < ev.StartUtc ? earlier : ev.StartUtc;
+
+    private static Instant Start(EventView view) => view.Occurrence?.Times.StartUtc ?? view.Event.StartUtc;
+
+    private static int CompareByStart(EventView a, EventView b)
+    {
+        var byStart = Start(a).CompareTo(Start(b));
+        return byStart != 0 ? byStart
+            : a.Event.Id != b.Event.Id ? a.Event.Id.CompareTo(b.Event.Id)
+            : (a.Occurrence?.RecurrenceId ?? default).CompareTo(b.Occurrence?.RecurrenceId ?? default);
+    }
+
+    /// <summary>Attaches the exceptions of the series among <paramref name="rows"/> (one query).</summary>
+    private async Task LoadExceptionsAsync(List<Event> rows, CancellationToken cancellationToken)
+    {
+        var seriesIds = rows.Where(r => r.IsSeries).Select(r => r.Id).ToList();
+        if (seriesIds.Count == 0)
+        {
+            return;
+        }
+
+        var exceptions = (await db.EventExceptions.AsNoTracking().Where(x => seriesIds.Contains(x.EventId)).ToListAsync(cancellationToken).ConfigureAwait(false))
+            .ToLookup(x => x.EventId);
+        foreach (var row in rows.Where(r => r.IsSeries))
+        {
+            row.Exceptions = [.. exceptions[row.Id]];
+        }
+    }
 
     private async Task<EventView?> ResolveAsync(PrincipalContext principal, Event ev, Calendar calendar, CalendarAcl acl, CancellationToken cancellationToken)
     {

@@ -54,4 +54,8 @@ internal static class CalendarApi
     public static Task<long> GroupAclVersionAsync(this ApiTestHost host, Guid groupId) =>
         host.QueryAsync(db => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleAsync(
             db.Groups.Where(g => g.Id == groupId).Select(g => g.AclVersion), Ct));
+
+    public static Task<long> UserAclVersionAsync(this ApiTestHost host, Guid userId) =>
+        host.QueryAsync(db => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleAsync(
+            db.Users.Where(u => u.Id == userId).Select(u => u.AclVersion), Ct));
 }
