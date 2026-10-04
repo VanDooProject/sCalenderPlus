@@ -225,6 +225,35 @@ public sealed class RecurrenceTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Busy_projection_of_a_master_lists_only_exceptions_that_change_busy_time()
+    {
+        var id = await _mia.CreateEventIdAsync(Weekly("FREQ=WEEKLY;COUNT=4", "2026-11-02T18:00:00", "2026-11-02T20:00:00", title: "Secret"));
+        async Task PatchAsync(string recurrenceId, object body)
+        {
+            using var response = await _mia.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{id}/occurrences/{recurrenceId}", body, "*");
+            Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        }
+
+        await PatchAsync("2026-11-09T17:00:00Z", new { title = "Renamed" }); // details only: not busy-relevant
+        await PatchAsync("2026-11-16T17:00:00Z", new { transparency = "transparent", start = new { dateTime = "2026-11-17T07:00:00" }, end = new { dateTime = "2026-11-17T09:00:00" } });
+        await PatchAsync("2026-11-23T17:00:00Z", new { start = new { dateTime = "2026-11-24T18:00:00" }, end = new { dateTime = "2026-11-24T20:00:00" } });
+
+        var (master, _) = await _eve.GetEventAsync(id);
+
+        var exceptions = master["exceptions"]!.AsArray();
+        Assert.Equal(["2026-11-16T17:00:00Z", "2026-11-23T17:00:00Z"], exceptions.Select(x => (string?)x!["recurrenceId"]));
+        Assert.Equal(["recurrenceId", "transparency"], exceptions[0]!.AsObject().Select(p => p.Key).Order(StringComparer.Ordinal)); // free: no times
+        Assert.Equal("2026-11-24T18:00:00", (string?)exceptions[1]!["start"]!["dateTime"]);
+        var window = await WindowAsync(_eve, "from=2026-11-01T00:00:00Z&to=2026-12-01T00:00:00Z");
+        Assert.Equal(2, Assert.Single(window)!["exceptions"]!.AsArray().Count);
+
+        // Readers see every exception with its details.
+        var (full, _) = await _vic.GetEventAsync(id);
+        Assert.Equal(3, full["exceptions"]!.AsArray().Count);
+        Assert.Equal("2026-11-17T07:00:00", (string?)full["exceptions"]![1]!["start"]!["dateTime"]);
+    }
+
+    [Fact]
     public async Task Series_shared_with_me_reach_me_beyond_their_first_occurrence()
     {
         var personal = await _mia.CreateCalendarAsync("Mia");

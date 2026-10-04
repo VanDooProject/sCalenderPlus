@@ -53,7 +53,9 @@ public sealed record EventRecurrenceResponse(
 
 /// <summary>
 /// A modified or cancelled occurrence of a series ("exception", keyed by RECURRENCE-ID). Members that are absent
-/// inherit the series' values; the busy projection keeps only recurrenceId, cancelled, start, end and transparency.
+/// inherit the series' values. The busy projection lists only exceptions that change busy time — cancelled, moved
+/// or with their own transparency — with recurrenceId, cancelled, start, end and transparency; a transparent
+/// ("free") occurrence comes without its times, as free_busy viewers never see transparent events.
 /// </summary>
 /// <param name="RecurrenceId">The occurrence's original start: a UTC instant (timed) or a date (all-day).</param>
 /// <param name="Start">Where the occurrence moved to (absent: not moved).</param>
@@ -77,16 +79,27 @@ public sealed record EventExceptionResponse(
             return null;
         }
 
-        return [.. series.Exceptions.OrderBy(x => x.RecurrenceId).Select(x =>
+        var exceptions = busy ? series.Exceptions.Where(ChangesBusyTime) : series.Exceptions;
+        IReadOnlyList<EventExceptionResponse> items = [.. exceptions.OrderBy(x => x.RecurrenceId).Select(x =>
         {
             var moved = x.MovedTimes(series.TimeZone) is { } times ? EventTimeResponse.From(times) : ((EventTimeResponse, EventTimeResponse)?)null;
             var transparency = x.Transparency is { } t ? EventResponse.Format(t) : null;
             var id = EventRecurrences.Format(set.At(x.RecurrenceId));
+            if (busy && !x.Cancelled && (x.Transparency ?? series.Transparency) == EventTransparency.Transparent)
+            {
+                moved = null; // free: hidden from free_busy viewers like a transparent event, so not where it moved to
+            }
+
             return busy
                 ? new EventExceptionResponse(id, x.Cancelled ? true : null, null, null, null, null, transparency, moved?.Item1, moved?.Item2)
                 : new EventExceptionResponse(id, x.Cancelled ? true : null, x.Title, x.Description, x.Location, x.Status is { } s ? EventResponse.Format(s) : null, transparency, moved?.Item1, moved?.Item2);
         })];
+        return items.Count == 0 ? null : items;
     }
+
+    /// <summary>Whether the exception changes when the series is busy: cancelled, moved or with its own transparency (not title-like fields).</summary>
+    private static bool ChangesBusyTime(EventExceptionEntry exception) =>
+        exception.Cancelled || exception.IsMoved || exception.Transparency is not null;
 }
 
 /// <summary>A requested time was resolved differently (data-model.md §10): show it to the user.</summary>
