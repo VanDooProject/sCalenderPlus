@@ -22,6 +22,9 @@ public interface IAppDbContext
 
     DbSet<CalendarGrantEntry> CalendarGrants { get; }
 
+    /// <summary>Personal overlays of calendars (<c>user_calendar_prefs</c>): hidden, color.</summary>
+    DbSet<CalendarPrefs> CalendarPrefs { get; }
+
     /// <summary>
     /// Events: read only through <c>Events.EventQueryService</c> (permission-aware) and added only through
     /// <c>Events.EventWriter</c> — an architecture test forbids every other use (tenant isolation, permissions.md §8).

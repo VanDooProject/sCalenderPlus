@@ -39,6 +39,7 @@ internal static class CalendarEndpoints
         calendars.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteCalendar")
             .WithSummary("Delete the calendar with its grants (owners only, requires If-Match)");
         calendars.MapGrantEndpoints();
+        calendars.MapPrefsEndpoints(v1);
 
         return calendars;
     }

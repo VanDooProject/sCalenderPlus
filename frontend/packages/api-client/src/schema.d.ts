@@ -583,6 +583,50 @@ export interface paths {
     patch: operations['UpdateCalendarGrant']
     trace?: never
   }
+  '/api/v1/calendars/{id}/prefs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My overlay of a calendar I see (with ETag)
+     * @description The defaults (shown, calendar color) when none is stored. No level: 404.
+     */
+    get: operations['GetCalendarPrefs']
+    /**
+     * Replace my overlay of a calendar I see (requires If-Match)
+     * @description Personal only (nobody else sees it); any level ≥ free_busy, frozen calendars included. color null = the calendar's color. If-Match: the ETag of GET /calendars/{id}/prefs, the etag of GET /me/calendar-prefs, or *.
+     */
+    put: operations['PutCalendarPrefs']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/calendar-prefs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My calendar overlays (hidden, color)
+     * @description Only calendars with an overlay are listed; every other calendar is shown in its own color. Overlays of calendars the caller no longer sees may be listed: show only those of GET /calendars.
+     */
+    get: operations['ListMyCalendarPrefs']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/events': {
     parameters: {
       query?: never
@@ -769,6 +813,16 @@ export interface components {
       type: string
       /** Format: uuid */
       id: string
+    }
+    CalendarPrefsListResponse: {
+      items: components['schemas']['CalendarPrefsResponse'][]
+    }
+    CalendarPrefsResponse: {
+      /** Format: uuid */
+      calendarId: string
+      hidden: boolean
+      color: null | string
+      etag: string
     }
     CalendarResponse: {
       /** Format: uuid */
@@ -1196,6 +1250,10 @@ export interface components {
       errors?: {
         [key: string]: string[]
       }
+    }
+    PutCalendarPrefsRequest: {
+      hidden: null | boolean
+      color?: null | string
     }
     ReauthenticationRequest: {
       password?: null | string
@@ -2648,6 +2706,103 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['GrantResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetCalendarPrefs: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarPrefsResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  PutCalendarPrefs: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PutCalendarPrefsRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarPrefsResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListMyCalendarPrefs: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalendarPrefsListResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

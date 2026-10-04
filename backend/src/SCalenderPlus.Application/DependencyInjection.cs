@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<AclVersions>();
         services.AddScoped<CalendarService>();
         services.AddScoped<CalendarGrantService>();
+        services.AddScoped<CalendarPrefsService>();
         services.AddScoped<CalendarGroupLifecycle>();
 
         services.TryAddScoped<IEventOverrideSource, EventOverrideSource>();

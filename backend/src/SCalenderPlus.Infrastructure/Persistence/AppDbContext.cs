@@ -30,6 +30,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<CalendarGrantEntry> CalendarGrants => Set<CalendarGrantEntry>();
 
+    public DbSet<CalendarPrefs> CalendarPrefs => Set<CalendarPrefs>();
+
     public DbSet<Event> Events => Set<Event>();
 
     public DbSet<CalendarChange> CalendarChanges => Set<CalendarChange>();

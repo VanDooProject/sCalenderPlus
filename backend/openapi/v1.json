@@ -2002,6 +2002,154 @@
         ]
       }
     },
+    "/api/v1/calendars/{id}/prefs": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "My overlay of a calendar I see (with ETag)",
+        "description": "The defaults (shown, calendar color) when none is stored. No level: 404.",
+        "operationId": "GetCalendarPrefs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarPrefsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Replace my overlay of a calendar I see (requires If-Match)",
+        "description": "Personal only (nobody else sees it); any level ≥ free_busy, frozen calendars included. color null = the calendar's color. If-Match: the ETag of GET /calendars/{id}/prefs, the etag of GET /me/calendar-prefs, or *.",
+        "operationId": "PutCalendarPrefs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutCalendarPrefsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarPrefsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/me/calendar-prefs": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "My calendar overlays (hidden, color)",
+        "description": "Only calendars with an overlay are listed; every other calendar is shown in its own color. Overlays of calendars the caller no longer sees may be listed: show only those of GET /calendars.",
+        "operationId": "ListMyCalendarPrefs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarPrefsListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/events": {
       "get": {
         "tags": [
@@ -2809,6 +2957,47 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "CalendarPrefsListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarPrefsResponse"
+            }
+          }
+        }
+      },
+      "CalendarPrefsResponse": {
+        "required": [
+          "calendarId",
+          "hidden",
+          "color",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "etag": {
+            "type": "string"
           }
         }
       },
@@ -4519,6 +4708,28 @@
           }
         },
         "description": "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`)."
+      },
+      "PutCalendarPrefsRequest": {
+        "required": [
+          "hidden"
+        ],
+        "type": "object",
+        "properties": {
+          "hidden": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "color": {
+            "maxLength": 7,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "ReauthenticationRequest": {
         "type": "object",

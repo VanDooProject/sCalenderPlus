@@ -347,6 +347,31 @@ public static class AuthorizationMatrix
             .WithRoute(s => Grant(s, "grant-removed-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
 
+        // Personal calendar overlay (#56): everyone who sees the calendar; nobody else.
+        .. For("GET", "/api/v1/me/calendar-prefs")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.OtherTenant, HttpStatusCode.OK),
+        .. For("GET", "/api/v1/calendars/{id}/prefs")
+            .WithRoute(LionsCalendar)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("PUT", "/api/v1/calendars/{id}/prefs")
+            .WithRoute(LionsCalendar)
+            .WithBody(_ => JsonContent.Create(new { hidden = false, color = (string?)null })) // the defaults: no effect on other cases
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.OK)
+            .Expect(Actors.GroupViewer, HttpStatusCode.OK)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
         // Events (#44, #45): calendar level contribute creates; event levels from the engine — none → 404, too low → 403.
         // The window lists what each caller sees (none-level events are left out, not refused).
         .. For("GET", "/api/v1/events")

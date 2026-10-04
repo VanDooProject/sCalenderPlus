@@ -105,7 +105,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | **Calendars** | `GET /calendars` (all visible, with `myLevel`), `POST /calendars`, `GET/PATCH/DELETE /calendars/{id}`, `POST /calendars/{id}/transfer`, `POST /calendars/{id}/archive` |
 | **Calendar grants** | `GET/POST /calendars/{id}/grants`, `PATCH/DELETE /calendars/{id}/grants/{grantId}` |
 | **Share links** | `GET/POST /calendars/{id}/share-links`, `DELETE /share-links/{id}` |
-| **My calendar prefs** | `PUT /calendars/{id}/prefs` (hidden, color, default reminders) |
+| **My calendar prefs** | `GET /me/calendar-prefs`, `GET/PUT /calendars/{id}/prefs` (hidden, color; implemented M3, default reminders with reminders) |
 | **Events** | `GET /events?from&to&calendarIds&expand=occurrences` (window), `POST /events`, `GET/PATCH/DELETE /events/{id}`, `POST /events/{id}/move` (`{targetCalendarId}`, permissions §4.6, implemented), `GET /events/search?q=` (v1, only `Le ≥ read`) |
 | **Occurrences** | `PATCH /events/{id}/occurrences/{recurrenceId}` (this), `POST /events/{id}/split` (this and following), `DELETE /events/{id}/occurrences/{recurrenceId}` (implemented, see "Recurring events") |
 | **Event overrides** | `GET /events/{id}/overrides`, `PUT /events/{id}/overrides` (replace full set, atomic), `GET /events/{id}/access/explain?userId=` (implemented); `GET /events/{id}/access` (my level + capabilities, later) |
@@ -166,6 +166,10 @@ Use cases: `Application/Calendars/CalendarService`; access decisions only throug
   - Lifecycle: removing or lowering a grant revokes the individual event shares of the people who lose level through it (permissions.md §4.6, `EventShareRevocation`); optional `?revokeEventShares=false` on `PATCH`/`DELETE` keeps them.
 - `acl_version`: `calendars.acl_version` is bumped by changes of `groupRoleDefaults`, the `creators*` settings and every grant change; a grant change also bumps the `acl_version` of the user or group it names, a change of `groupRoleDefaults` that of the owning group (`AclVersions`). Creating a calendar bumps its owner's (user or group) `acl_version`; deleting one bumps the owner's and those of the users and groups its grants and its events' overrides named (their calendar lists and "Shared with me" change). The full list of mutations and what each bumps: [M2 review](../reviews/2026-10-m2-review.md#2-mutation-paths-change-log-and-acl_version).
 - Audit (resource `calendar`, subject = the plan subject): `calendar.created`, `calendar.updated` (before/after; permission settings under `aclRelevant`), `calendar.deleted`, `calendar.grant.created`, `calendar.grant.updated`, `calendar.grant.removed` (before/after `{ grantId, principal, level }`), `calendar.grant.removed_with_group` (the named group was deleted).
+
+### My calendar prefs (implemented, M3)
+
+The personal overlay (`user_calendar_prefs`, `Application/Calendars/CalendarPrefsService`): `GET /me/calendar-prefs` → `{ items: [{ calendarId, hidden, color, etag }] }` (only calendars with a stored overlay; may include calendars the caller no longer sees — show only those of `GET /calendars`); `GET /calendars/{id}/prefs` → the overlay or the defaults (`hidden: false`, `color: null` = the calendar's color) with `ETag`; `PUT /calendars/{id}/prefs { hidden, color? }` replaces it (`If-Match`: the ETag/`etag`, or `*`; 428/412; `color` `#rrggbb` or null, else `400`). Any level ≥ `free_busy` (`none` → `404`), frozen calendars included; personal only, so neither audited nor ACL-relevant. Rows go with the calendar and the account (FK cascade).
 
 ### Events (implemented, M2)
 
