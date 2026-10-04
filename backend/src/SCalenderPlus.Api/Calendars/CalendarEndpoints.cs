@@ -35,7 +35,7 @@ internal static class CalendarEndpoints
         calendars.MapPatch("/{id:guid}", UpdateAsync).WithName("UpdateCalendar")
             .Accepts<UpdateCalendarRequest>(MeEndpoints.MergePatchJson, "application/json")
             .WithSummary("Change name, color, time zone, permission settings or role defaults (manage; JSON Merge Patch, requires If-Match)")
-            .WithDescription("Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).");
+            .WithDescription("Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering role defaults revokes the individual event shares (user overrides above the new level) of the members who lose level, unless revokeEventShares=false. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).");
         calendars.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteCalendar")
             .WithSummary("Delete the calendar with its grants (owners only, requires If-Match)");
         calendars.MapGrantEndpoints();
@@ -89,6 +89,7 @@ internal static class CalendarEndpoints
         Guid id,
         [FromBody] UpdateCalendarRequest request,
         [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromQuery] bool? revokeEventShares,
         ClaimsPrincipal principal,
         CalendarService calendars,
         HttpResponse response,
@@ -107,6 +108,7 @@ internal static class CalendarEndpoints
             id,
             changes,
             current => ETags.Require(ifMatch, ETags.Of(CalendarResponse.From(current)), ETagSource),
+            revokeEventShares ?? true,
             cancellationToken).ConfigureAwait(false);
         var calendar = CalendarResponse.From(view);
         response.Headers.ETag = ETags.Of(calendar);

@@ -12,7 +12,8 @@ namespace SCalenderPlus.Application.Events;
 
 /// <summary>
 /// "Membership removal revokes event shares" (issue #49, permissions.md §4.6): when someone loses calendar level —
-/// removed from a group, demoted, leaving, the group deleted, or a grant removed or lowered — the <c>user:</c>
+/// removed from a group, demoted, leaving, the group deleted, a grant removed or lowered, or the owning group's role
+/// defaults lowered — the <c>user:</c>
 /// overrides naming them on events of the calendars where their level dropped are deleted if they give more than
 /// the calendar now gives them (individual shares; restrictions such as <c>user:X → none</c> stay), unless the
 /// remover opted out (<see cref="MembershipChange.RevokeEventShares"/>, <c>?revokeEventShares=false</c>). An entry
@@ -86,6 +87,23 @@ public sealed class EventShareRevocation(
         var userIds = grantee.Type == PrincipalType.User
             ? [granteeId]
             : await db.GroupMembers.AsNoTracking().Where(m => m.GroupId == granteeId).Select(m => m.UserId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        await RevokeForAsync(before, after, userIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The owning group's role defaults of a calendar were lowered (<paramref name="before"/> → <paramref name="after"/>):
+    /// revokes the shares of the group's members whose level on the calendar dropped.
+    /// </summary>
+    public async Task OnRoleDefaultsChangedAsync(CalendarAcl before, CalendarAcl after, Guid ownerGroupId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+        var userIds = await db.GroupMembers.AsNoTracking().Where(m => m.GroupId == ownerGroupId).Select(m => m.UserId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        await RevokeForAsync(before, after, userIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RevokeForAsync(CalendarAcl before, CalendarAcl after, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    {
         var principals = await calendars.PrincipalsAsync(userIds, cancellationToken).ConfigureAwait(false);
         var losses = new Dictionary<Guid, Loss>();
         foreach (var principal in principals.Values)

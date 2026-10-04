@@ -510,7 +510,7 @@ export interface paths {
     head?: never
     /**
      * Change name, color, time zone, permission settings or role defaults (manage; JSON Merge Patch, requires If-Match)
-     * @description Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).
+     * @description Absent or null members stay unchanged; an empty description removes it. Below manage: 403. Role defaults never above the caller's level; a change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering role defaults revokes the individual event shares (user overrides above the new level) of the members who lose level, unless revokeEventShares=false. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /calendars/{id} (or *).
      */
     patch: operations['UpdateCalendar']
     trace?: never
@@ -2416,7 +2416,9 @@ export interface operations {
   }
   UpdateCalendar: {
     parameters: {
-      query?: never
+      query?: {
+        revokeEventShares?: boolean
+      }
       header?: {
         'If-Match'?: string
       }

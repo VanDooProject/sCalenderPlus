@@ -114,6 +114,21 @@ public sealed class EventQueryService(
     /// Events overlapping the window, as the actor sees them (permissions.md §8 listing): (1) the calendars the
     /// actor sees with their ACLs, (2) one SQL query per window over the GiST index <c>(calendar_id, occurs_range)</c>
     /// for those calendars (<see cref="WindowSql"/>), unioned with the events whose overrides name the actor
+    /// <summary>
+    /// The users and groups the overrides of the calendar's events name (deleted events included): their
+    /// <c>acl_version</c> is bumped when the calendar goes, since its events may sit in their "Shared with me".
+    /// </summary>
+    public async Task<IReadOnlyList<Principal>> OverridePrincipalsAsync(Guid calendarId, CancellationToken cancellationToken = default)
+    {
+        var rows = await db.EventOverrides.AsNoTracking()
+            .Where(o => (o.PrincipalType == PrincipalType.User || o.PrincipalType == PrincipalType.Group)
+                && db.Events.Any(e => e.Id == o.EventId && e.CalendarId == calendarId))
+            .Select(o => new { o.PrincipalType, o.PrincipalId })
+            .Distinct()
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return [.. rows.Select(r => r.PrincipalType == PrincipalType.User ? Principal.User(r.PrincipalId!.Value) : Principal.Group(r.PrincipalId!.Value))];
+    }
+
     /// ("Shared with me"), (3) overrides only for events with <c>has_overrides</c> and exceptions only for series,
     /// (4) untraced resolution in memory — once per series — dropping <c>none</c> and transparent events (or
     /// occurrences) seen at <c>free_busy</c>, (5) series expanded in the window (<see cref="Event.Occurrences"/>):

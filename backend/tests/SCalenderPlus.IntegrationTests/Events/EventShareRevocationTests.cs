@@ -12,8 +12,8 @@ namespace SCalenderPlus.IntegrationTests.Events;
 
 /// <summary>
 /// Issue #49: losing calendar level revokes individual event shares (permissions.md §4.6) — member removal,
-/// leaving, demotion, grant removal and lowering (each with the opt-out <c>?revokeEventShares=false</c>) and group
-/// deletion. Group Lions (Olga owner, Adam admin, Mia member, Vic viewer) owns "Club" (default role defaults); Eve
+/// leaving, demotion, grant removal and lowering, lowering role defaults (each with the opt-out
+/// <c>?revokeEventShares=false</c>) and group deletion; acl_version bumps of calendar creation and deletion. Group Lions (Olga owner, Adam admin, Mia member, Vic viewer) owns "Club" (default role defaults); Eve
 /// and Pat are outside; the group "Friends" (Eve owner, Adam, Mia) has no access to the club.
 /// TODO(M4): also assert that the revoked event leaves the removed member's iCal feed (feeds come with M4).
 /// </summary>
@@ -190,6 +190,70 @@ public sealed class EventShareRevocationTests(PostgresFixture postgres) : IAsync
         Assert.Single(await _host.AuditEventsAsync("event", groupOnly), a => a.Action == "event.overrides.removed_with_group");
         Assert.Equal(["everyone"], (await _host.StoredOverridesAsync(personal)).Select(o => o.Principal.ToString()));
         Assert.Equal("none", await Person("pat").LevelOnAsync(personal));
+    }
+
+    [Fact]
+    public async Task Lowering_role_defaults_revokes_the_shares_of_members_who_lose_level()
+    {
+        // Mia (member → contribute) may edit Adam's training; Vic (viewer → read) may edit his board meeting.
+        var training = await Person("adam").CreateEventIdAsync(EventApi.Timed(_club, title: "Training"));
+        await Person("adam").SetOverridesAsync(training, EventApi.User(Id("mia"), "edit"));
+        var board = await Person("adam").CreateEventIdAsync(EventApi.Timed(_club, title: "Board"));
+        await Person("adam").SetOverridesAsync(board, EventApi.User(Id("vic"), "edit"));
+        var lionsVersion = await _host.GroupAclVersionAsync(_lions);
+
+        await PatchRoleDefaultsAsync(new { member = "free_busy" });
+
+        Assert.Equal("free_busy", await Person("mia").LevelOnAsync(training));
+        Assert.Empty(await _host.StoredOverridesAsync(training));
+        Assert.Single(await _host.AuditEventsAsync("event", training), a => a.Action == "event.overrides.revoked");
+        Assert.Equal(lionsVersion + 1, await _host.GroupAclVersionAsync(_lions)); // the members' levels changed
+
+        // The opt-out keeps the shares.
+        await PatchRoleDefaultsAsync(new { viewer = "free_busy" }, "?revokeEventShares=false");
+        Assert.Equal("edit", await Person("vic").LevelOnAsync(board));
+    }
+
+    [Fact]
+    public async Task Creating_and_deleting_a_calendar_bump_its_owner_and_the_people_its_events_name()
+    {
+        await MembersAsync(await Person("olga").CreateGroupAsync("Contacts"), ("pat", GroupRole.Member));
+        var olgaVersion = await _host.UserAclVersionAsync(Id("olga"));
+        var lionsVersion = await _host.GroupAclVersionAsync(_lions);
+        var home = await Person("olga").CreateCalendarAsync("Home");
+        var lionsCalendar = await Person("olga").CreateCalendarAsync("Lions only", _lions);
+        Assert.Equal(olgaVersion + 1, await _host.UserAclVersionAsync(Id("olga")));
+        Assert.Equal(lionsVersion + 1, await _host.GroupAclVersionAsync(_lions));
+
+        var dinner = await Person("olga").CreateEventIdAsync(EventApi.Timed(home, title: "Dinner"));
+        await Person("olga").SetOverridesAsync(dinner, EventApi.User(Id("pat"), "read"));
+        Assert.True((bool)(await Person("pat").GetEventAsync(dinner)).Body["sharedWithMe"]!);
+        var patVersion = await _host.UserAclVersionAsync(Id("pat"));
+        olgaVersion = await _host.UserAclVersionAsync(Id("olga"));
+
+        using (var deleted = await Person("olga").SendJsonAsync(HttpMethod.Delete, $"/api/v1/calendars/{home}", ifMatch: "*"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        }
+
+        // Pat's "Shared with me" lost the dinner, Olga her calendar: both feeds must notice (M4 caches key on acl_version).
+        Assert.Equal(patVersion + 1, await _host.UserAclVersionAsync(Id("pat")));
+        Assert.Equal(olgaVersion + 1, await _host.UserAclVersionAsync(Id("olga")));
+        Assert.Equal("none", await Person("pat").LevelOnAsync(dinner));
+
+        lionsVersion = await _host.GroupAclVersionAsync(_lions);
+        using (var group = await Person("olga").SendJsonAsync(HttpMethod.Delete, $"/api/v1/calendars/{lionsCalendar}", ifMatch: "*"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, group.StatusCode);
+        }
+
+        Assert.Equal(lionsVersion + 1, await _host.GroupAclVersionAsync(_lions));
+    }
+
+    private async Task PatchRoleDefaultsAsync(object roleDefaults, string query = "")
+    {
+        using var response = await Person("olga").SendJsonAsync(HttpMethod.Patch, $"/api/v1/calendars/{_club}{query}", new { groupRoleDefaults = roleDefaults }, ifMatch: "*");
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     private static List<string> Overrides(string? state) =>
