@@ -551,14 +551,14 @@ export interface paths {
     post?: never
     /**
      * Remove a grant (manage; requires If-Match)
-     * @description A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false.
+     * @description A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false. Allowed in frozen calendars.
      */
     delete: operations['DeleteCalendarGrant']
     options?: never
     head?: never
     /**
      * Change a grant's level (manage; requires If-Match)
-     * @description Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. If-Match: the grant's etag (or *).
+     * @description Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. Frozen calendars: raising is 409 calendar_frozen, lowering is allowed. If-Match: the grant's etag (or *).
      */
     patch: operations['UpdateCalendarGrant']
     trace?: never
@@ -601,7 +601,10 @@ export interface paths {
     get: operations['GetEvent']
     put?: never
     post?: never
-    /** Delete an event or a whole series (edit; soft delete, requires If-Match) */
+    /**
+     * Delete an event or a whole series (edit; soft delete, requires If-Match)
+     * @description Below edit: 403; no level: 404. Allowed in frozen calendars (cleanup). If-Match: the ETag of GET /events/{id} (or *); stale: 412.
+     */
     delete: operations['DeleteEvent']
     options?: never
     head?: never
@@ -667,7 +670,7 @@ export interface paths {
     put?: never
     /**
      * Move an event to another calendar (event manage, target contribute; requires If-Match)
-     * @description Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen source or target: 409 calendar_frozen. Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.
+     * @description Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen target: 409 calendar_frozen (moving out of a frozen calendar is allowed). Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.
      */
     post: operations['MoveEvent']
     delete?: never

@@ -163,7 +163,7 @@ public sealed class EventService(
             outcome.DroppedExceptions);
     }
 
-    /// <summary>Soft-deletes the event (≥ <c>edit</c>): it disappears for everyone, the sync log records a delete.</summary>
+    /// <summary>Soft-deletes the event (≥ <c>edit</c>, also in frozen calendars): it disappears for everyone, the sync log records a delete.</summary>
     public async Task DeleteAsync(Guid actorId, Guid eventId, Action<EventView>? precondition = null, CancellationToken cancellationToken = default)
     {
         var view = await RequireAsync(actorId, eventId, EventAction.Delete, precondition, cancellationToken).ConfigureAwait(false);
@@ -174,7 +174,10 @@ public sealed class EventService(
         await SaveAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Loads the event for update and checks <paramref name="action"/> (404/403), the precondition (428/412) and the freeze (409).</summary>
+    /// <summary>
+    /// Loads the event for update and checks <paramref name="action"/> (404/403), the precondition (428/412) and the
+    /// freeze (409; deleting is allowed in frozen calendars so owners can clean up, plans.md "Downgrades").
+    /// </summary>
     internal async Task<EventView> RequireAsync(Guid actorId, Guid eventId, EventAction action, Action<EventView>? precondition, CancellationToken cancellationToken)
     {
         var view = await queries.GetAsync(actorId, eventId, forUpdate: true, cancellationToken).ConfigureAwait(false);
@@ -184,7 +187,7 @@ public sealed class EventService(
         }
 
         precondition?.Invoke(view);
-        return view.Calendar.FrozenAt is null ? view : throw CalendarErrors.Frozen();
+        return view.Calendar.FrozenAt is null || action == EventAction.Delete ? view : throw CalendarErrors.Frozen();
     }
 
     /// <summary>

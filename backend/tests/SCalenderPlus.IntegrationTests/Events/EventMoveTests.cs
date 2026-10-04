@@ -193,7 +193,7 @@ public sealed class EventMoveTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Frozen_calendars_refuse_moves_in_and_out()
+    public async Task Frozen_calendars_refuse_moves_in_but_not_out()
     {
         var training = await _mia.CreateEventIdAsync(EventApi.Timed(_club, title: "Training"));
         await _host.ExecuteSqlAsync($"UPDATE calendars SET frozen_at = now() WHERE id = {_fixtures}");
@@ -203,9 +203,11 @@ public sealed class EventMoveTests(PostgresFixture postgres) : IAsyncLifetime
             await ProblemResponse.AssertProblemAsync(into, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
         }
 
+        // Moving out of a frozen calendar is cleanup (plans.md "Downgrades": no move-in only).
         await _host.ExecuteSqlAsync($"UPDATE calendars SET frozen_at = now() WHERE id = {_club}");
         using var outOf = await MoveAsync(_mia, training, _personal);
-        await ProblemResponse.AssertProblemAsync(outOf, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
+        Assert.Equal(HttpStatusCode.OK, outOf.StatusCode);
+        Assert.Equal(_personal, (Guid)(await outOf.JsonAsync())["calendarId"]!);
     }
 
     private static Task<HttpResponseMessage> MoveAsync(HttpClient client, Guid eventId, Guid targetCalendarId, string? ifMatch = "*") =>

@@ -38,7 +38,8 @@ internal static class EventEndpoints
             .WithSummary("Change an event, or all occurrences of a series (edit; JSON Merge Patch, requires If-Match)")
             .WithDescription("Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. recurrence: a new rule (or null to stop recurring). Series: when the first occurrence moves, the exceptions (and rdates/exdates unless recurrence is given) shift with it; exceptions that no longer match an occurrence are dropped and listed in droppedExceptions. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.");
         events.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteEvent")
-            .WithSummary("Delete an event or a whole series (edit; soft delete, requires If-Match)");
+            .WithSummary("Delete an event or a whole series (edit; soft delete, requires If-Match)")
+            .WithDescription("Below edit: 403; no level: 404. Allowed in frozen calendars (cleanup). If-Match: the ETag of GET /events/{id} (or *); stale: 412.");
 
         events.MapPatch("/{id:guid}/occurrences/{recurrenceId}", UpdateOccurrenceAsync).WithName("UpdateOccurrence")
             .Accepts<UpdateOccurrenceRequest>(MeEndpoints.MergePatchJson, "application/json")
@@ -53,7 +54,7 @@ internal static class EventEndpoints
 
         events.MapPost("/{id:guid}/move", MoveAsync).WithName("MoveEvent")
             .WithSummary("Move an event to another calendar (event manage, target contribute; requires If-Match)")
-            .WithDescription("Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen source or target: 409 calendar_frozen. Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.");
+            .WithDescription("Below manage on the event: 403; target unknown or invisible: 404; target below contribute: 403 (calendar levels). The event's overrides travel and are re-validated as if you set them in the target: those you could not set there (no floor on the event in the target, or external sharing without the right to it) are listed in 409 override_invalid_in_target (violations). The target owner's plan counts them (402). UID taken in the target: 409 uid_conflict. Frozen target: 409 calendar_frozen (moving out of a frozen calendar is allowed). Same calendar: 400. If-Match: the ETag of GET /events/{id} (or *); the response carries the event as seen in its new calendar.");
         events.MapOverrideEndpoints();
         return events;
     }

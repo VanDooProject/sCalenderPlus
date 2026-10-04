@@ -18,7 +18,8 @@ namespace SCalenderPlus.Application.Events;
 /// (<see cref="OverridePolicy.InvalidInTarget"/> → <c>409 override_invalid_in_target</c> listing them), they count
 /// against the target owner's plan, the UID must be free in the target (<c>409 uid_conflict</c>). Both calendars'
 /// <c>acl_version</c> and those of the principals the overrides name are bumped, the sync log records a delete in
-/// the source and an upsert in the target, and the move is audited.
+/// the source and an upsert in the target, and the move is audited. A frozen target refuses (no move-in); a frozen
+/// source does not (moving out is cleanup, plans.md "Downgrades").
 /// </summary>
 public sealed class EventMoveService(
     IAppDbContext db,
@@ -33,8 +34,8 @@ public sealed class EventMoveService(
 {
     /// <summary>
     /// Moves the event. Refusals in order: <c>404</c> (no level on the event), <c>403 insufficient_permission</c>
-    /// (event below <c>manage</c>), <c>412/428</c> (<paramref name="precondition"/>), <c>409 calendar_frozen</c>
-    /// (source), <c>400 validation_failed</c> (already in the target), <c>404</c> (target unknown or invisible),
+    /// (event below <c>manage</c>), <c>412/428</c> (<paramref name="precondition"/>), <c>400 validation_failed</c>
+    /// (already in the target), <c>404</c> (target unknown or invisible),
     /// <c>403 insufficient_permission</c> (target below <c>contribute</c>, calendar levels), <c>409 calendar_frozen</c>
     /// (target), <c>409 override_invalid_in_target</c>, <c>402 plan_limit_reached</c>, <c>409 uid_conflict</c>.
     /// </summary>
@@ -50,12 +51,7 @@ public sealed class EventMoveService(
                 throw EventErrors.InsufficientLevel(AccessPolicy.RequiredLevel(EventAction.Move), view.Level);
             }
 
-            precondition?.Invoke(view);
-            if (view.Calendar.FrozenAt is not null)
-            {
-                throw CalendarErrors.Frozen();
-            }
-
+            precondition?.Invoke(view); // a frozen source is fine: moving out cleans it up (plans.md, no move-in only)
             var ev = view.Event;
             if (targetCalendarId == ev.CalendarId)
             {

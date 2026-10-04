@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.IntegrationTests.Auth;
@@ -251,6 +253,32 @@ public sealed class GrantTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         using var byOwner = await dad.SendJsonAsync(HttpMethod.Delete, path, ifMatch: "*");
         Assert.Equal(HttpStatusCode.NoContent, byOwner.StatusCode);
+    }
+
+    [Fact]
+    public async Task Frozen_calendars_refuse_new_and_raised_grants_but_allow_taking_access_away()
+    {
+        var dad = await PersonAsync("Dad");
+        var family = await dad.CreateGroupAsync("Family");
+        await JoinAsync(family, "Mom", GroupRole.Member);
+        await JoinAsync(family, "Tom", GroupRole.Member);
+        var home = await dad.CreateCalendarAsync("Home");
+        var momGrant = await GrantAsync(dad, home, "user", Id("Mom"), "read");
+        var tomGrant = await GrantAsync(dad, home, "user", Id("Tom"), "edit");
+        await _host.QueryAsync(db => db.Calendars.Where(c => c.Id == home)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.FrozenAt, SystemClock.Instance.GetCurrentInstant()), Ct));
+
+        using var create = await dad.SendJsonAsync(HttpMethod.Post, $"/api/v1/calendars/{home}/grants", new { principal = new { type = "group", id = family }, level = "read" });
+        await ProblemResponse.AssertProblemAsync(create, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
+        using var raise = await dad.SendJsonAsync(HttpMethod.Patch, $"/api/v1/calendars/{home}/grants/{momGrant}", new { level = "edit" }, "*");
+        await ProblemResponse.AssertProblemAsync(raise, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
+
+        using var lower = await dad.SendJsonAsync(HttpMethod.Patch, $"/api/v1/calendars/{home}/grants/{tomGrant}", new { level = "free_busy" }, "*");
+        Assert.Equal(HttpStatusCode.OK, lower.StatusCode);
+        Assert.Equal("free_busy", (await Client("Tom").MyLevelsAsync())[home]);
+        using var remove = await dad.SendJsonAsync(HttpMethod.Delete, $"/api/v1/calendars/{home}/grants/{momGrant}", ifMatch: "*");
+        Assert.Equal(HttpStatusCode.NoContent, remove.StatusCode);
+        Assert.DoesNotContain(home, (await Client("Mom").MyLevelsAsync()).Keys);
     }
 
     private static async Task<Guid> GrantAsync(HttpClient client, Guid calendarId, string type, Guid id, string level, string? minRole = null)

@@ -29,10 +29,10 @@ internal static class GrantEndpoints
         calendars.MapPatch("/{id:guid}/grants/{grantId:guid}", UpdateAsync).WithName("UpdateCalendarGrant")
             .Accepts<UpdateGrantRequest>(MeEndpoints.MergePatchJson, "application/json")
             .WithSummary("Change a grant's level (manage; requires If-Match)")
-            .WithDescription("Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. If-Match: the grant's etag (or *).");
+            .WithDescription("Old and new level at most the caller's own. A change that would take away the caller's own manage level is 409 permission_self_lockout. Lowering revokes the individual event shares (user overrides above the new level) of those who lose level, unless revokeEventShares=false. Frozen calendars: raising is 409 calendar_frozen, lowering is allowed. If-Match: the grant's etag (or *).");
         calendars.MapDelete("/{id:guid}/grants/{grantId:guid}", DeleteAsync).WithName("DeleteCalendarGrant")
             .WithSummary("Remove a grant (manage; requires If-Match)")
-            .WithDescription("A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false.");
+            .WithDescription("A removal that would take away the caller's own manage level is 409 permission_self_lockout. Revokes the individual event shares (user overrides above what the calendar still gives them) of those who lose level, unless revokeEventShares=false. Allowed in frozen calendars.");
 
         return calendars;
     }

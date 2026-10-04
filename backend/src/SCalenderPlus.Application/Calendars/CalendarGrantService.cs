@@ -22,7 +22,8 @@ public sealed record GrantView(CalendarGrantEntry Grant, string PrincipalName);
 /// (<c>409 permission_self_lockout</c>). Every change bumps <c>calendars.acl_version</c> and the
 /// <c>acl_version</c> of the user or group it names, and is audited on the calendar. Removing or lowering a grant
 /// revokes the individual event shares of the people who lose level through it (<see cref="EventShareRevocation"/>,
-/// permissions.md §4.6) unless the caller opts out.
+/// permissions.md §4.6) unless the caller opts out. Frozen calendars refuse new and raised grants but allow
+/// lowering and removing them (taking access away never waits for a plan upgrade, plans.md "Downgrades").
 /// </summary>
 public sealed class CalendarGrantService(
     IAppDbContext db,
@@ -102,6 +103,11 @@ public sealed class CalendarGrantService(
             var (loaded, grant) = await LoadGrantAsync(actorId, calendarId, grantId, precondition, ct).ConfigureAwait(false);
             EnsureCanGrant(loaded, grant.Level);
             EnsureCanGrant(loaded, level);
+            if (level > grant.Level)
+            {
+                EnsureNotFrozen(loaded); // frozen calendars allow taking access away only (plans.md "Downgrades")
+            }
+
             if (grant.Level != level)
             {
                 var before = State(grant);
@@ -165,7 +171,6 @@ public sealed class CalendarGrantService(
         var loaded = await access.RequireAsync(actorId, calendarId, CalendarAction.ManageSharing, forUpdate: true, cancellationToken).ConfigureAwait(false);
         var grant = loaded.Grants.SingleOrDefault(g => g.Id == grantId) ?? throw CalendarErrors.GrantNotFound();
         precondition?.Invoke(grant);
-        EnsureNotFrozen(loaded);
         return (loaded, grant);
     }
 

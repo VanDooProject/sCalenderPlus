@@ -203,7 +203,7 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Creating_needs_contribute_and_an_unfrozen_calendar()
+    public async Task Creating_needs_contribute_and_an_unfrozen_calendar_which_still_allows_deletes()
     {
         using var viewer = await _vic.SendJsonAsync(HttpMethod.Post, "/api/v1/events", EventApi.Timed(_club));
         var problem = await ProblemResponse.AssertProblemAsync(viewer, HttpStatusCode.Forbidden, ErrorCodes.InsufficientPermission);
@@ -223,9 +223,12 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
         await ProblemResponse.AssertProblemAsync(frozen, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
         using var patch = await _mia.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{id}", new { title = "x" }, "*");
         await ProblemResponse.AssertProblemAsync(patch, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
-        using var delete = await _mia.SendJsonAsync(HttpMethod.Delete, $"/api/v1/events/{id}", ifMatch: "*");
-        await ProblemResponse.AssertProblemAsync(delete, HttpStatusCode.Conflict, ErrorCodes.CalendarFrozen);
         Assert.Equal("Board meeting", (string?)(await _vic.GetEventAsync(id)).Body["title"]); // still visible
+
+        // Deleting is cleanup and stays allowed (plans.md "Downgrades").
+        using var delete = await _mia.SendJsonAsync(HttpMethod.Delete, $"/api/v1/events/{id}", ifMatch: "*");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Equal("none", await _vic.LevelOnAsync(id));
     }
 
     [Fact]
