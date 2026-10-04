@@ -136,10 +136,12 @@ Unique `(calendar_id, principal_type, principal_id, min_role)` `NULLS NOT DISTIN
 | start_date, end_date | date | for all-day events (end exclusive) |
 | time_zone | text null | IANA; null only for all-day |
 | start_utc, end_utc | timestamptz | computed first occurrence instant (all-day: `start_date 00:00Z − 14h` / `end_date 00:00Z + 14h`, so window queries in any viewer zone find it); CHECK `end_utc >= start_utc` |
-| rrule | text null | RFC 5545 RRULE value |
-| rdates, exdates | timestamptz[] / date[] | added with M2-E |
-| series_until_utc | timestamptz null | end of last occurrence; null = infinite |
-| occurs_range | tstzrange | **generated** (stored): single events `[start_utc, end_utc)` (zero-length events `[start_utc, start_utc]`, so they still overlap windows); series masters `[start_utc, coalesce(series_until_utc, 'infinity'))` |
+| rrule | text null | RFC 5545 RRULE value of a series master in canonical form (`UNTIL` bound to the series: UTC for timed, a date for all-day series) |
+| rdates, exdates | timestamp[] | wall clock in `time_zone` (all-day: dates at midnight) — authoritative like `start_local`; EXDATEs are nominal occurrence starts |
+| series_until_utc | timestamptz null | end of the last occurrence (moved exceptions included); null = infinite |
+| series_start_utc | timestamptz null | start of a moved exception before the first occurrence (widens `occurs_range`); null otherwise |
+| related_to | text null | iCalendar RELATED-TO: UID of the series this one was split from |
+| occurs_range | tstzrange | **generated** (stored): single events `[start_utc, end_utc)` (zero-length events `[start_utc, start_utc]`, so they still overlap windows); series masters `[least(start_utc, series_start_utc), coalesce(series_until_utc, 'infinity'))` |
 | has_overrides | bool | fast path for permission engine |
 | sequence | int | iCal SEQUENCE, incremented on significant change |
 | category_ids | uuid[] | v1 |
@@ -162,14 +164,15 @@ Indexes:
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| event_id | uuid FK | series master |
-| recurrence_id_utc | timestamptz | original occurrence start (iCal RECURRENCE-ID) |
-| recurrence_id_date | date null | for all-day series |
-| cancelled | bool | |
-| title, description, location, start_local/end_local/start_date/end_date, time_zone, status, transparency | nullable | null = inherit from master |
-| start_utc, end_utc | timestamptz | |
+| event_id | uuid FK → events (cascade) | series master |
+| recurrence_id | timestamp | original (nominal) occurrence start as wall clock in the series' zone; all-day: the date at midnight (iCal RECURRENCE-ID) |
+| cancelled | bool | exported as EXDATE |
+| title, description, location, status, transparency | nullable | null = inherit from master; empty description/location = removed for this occurrence |
+| start_local/end_local or start_date/end_date | nullable | moved occurrence (same kind and zone as the series; no `time_zone` column) |
+| start_utc, end_utc | timestamptz null | derived instants of a moved occurrence (all-day: padded) |
+| created_at, updated_at | | |
 
-Unique `(event_id, recurrence_id_utc)`. Exceptions inherit the series ACL (MVP).
+Unique `(event_id, recurrence_id)` as a **deferrable** constraint `uq_event_exceptions_event_id_recurrence_id` (re-keying shifts several keys in one transaction; created by migration SQL because EF Core cannot model deferrable constraints); CHECK `ck_event_exceptions_times`. Keyed by wall clock, not UTC as first planned: the wall clock is authoritative (§10), so a tzdb update never orphans an exception; the api shows the UTC form. No row version of its own: every exception change touches the master (its `xmin` guards concurrent edits). Read only through `EventQueryService` and written through `EventWriter` (architecture test). Exceptions inherit the series ACL (MVP).
 
 ### `event_overrides`
 
@@ -232,13 +235,16 @@ Tokens are 32 random bytes (base64url) and stored only as SHA-256 hashes; lookup
 ## 9. Recurrence
 
 - The **series master** stores `RRULE`, `RDATE`, `EXDATE` and the first occurrence (wall clock + zone). Modified/cancelled instances live in `event_exceptions`, keyed by RECURRENCE-ID — a 1:1 mapping to iCalendar, so feeds and CalDAV round-trip losslessly.
-- **No materialised occurrences.** Occurrences are expanded on read for the requested window (Ical.Net evaluator wrapped in `Core.Recurrence`, using NodaTime for zone math). `occurs_range` lets the index pre-select candidate series; a hard cap (e.g. 2,000 occurrences per series per request, max window 13 months) prevents abuse.
-- Edit modes:
-  - *this occurrence* → upsert exception;
-  - *this and following* → split: set master `UNTIL` before the occurrence, create a new series (new UID, `RELATED-TO` the old one), move future exceptions;
-  - *all* → update master; exceptions keep overridden fields; if start time changes, exceptions are re-keyed by the time delta.
-- Infinite series: `series_until_utc = null`; `COUNT`-based rules get `series_until_utc` computed on save.
-- Re-evaluation if tzdb changes (`tzdb.recompute` job).
+- **No materialised occurrences.** Occurrences are expanded on read for the requested window by `Core/Recurrence` (`RecurrenceRule`: parser/validator of the supported subset with canonical output; `RuleDates`: the per-period date generator; `RecurrenceSet`: rule + RDATE + EXDATE with COUNT/UNTIL, windows, lookups and the series end) and `Event.Occurrences` (exceptions applied). `occurs_range` lets the index pre-select candidate series.
+- **Why in-house and not Ical.Net**: `Core` depends on NodaTime only (architecture test), the window query and the plan rules need expansion inside the domain, and our time model (wall clock authoritative, DST gaps shifted forward like `EventTimes`, exact durations) must hold for every occurrence. Ical.Net (5.x, netstandard) has its own date/zone types and evaluation pipeline, would have to be wrapped outside `Core`, and pulls a full iCalendar object model into every window query. The supported subset only has day-granular parts, so a rule is a sequence of dates: ≈ 300 lines, verified against every applicable example of RFC 5545 §3.8.5.3 (golden tests) and property tests (sorted, within the window, COUNT, EXDATE, split windows, fast-forward = scan, lookups). Ical.Net stays the candidate for iCalendar **serialization** (M4 feeds) and for cross-checking our output there.
+- **Semantics**: DTSTART always counts as the first occurrence (RFC 5545 §3.8.5.3); `COUNT` counts rule occurrences before EXDATE removes any; an RDATE equal to a rule occurrence counts once; occurrences keep the first occurrence's local time of day (DST-stable) and its exact duration (all-day: number of days); an occurrence in a DST gap is shifted forward by the gap (its RECURRENCE-ID stays the nominal time).
+- **Caps** (abuse protection): per series and window ≤ 1,000 occurrences (a 13-month window of a daily series has ≈ 400; sub-daily rules do not exist), per window response ≤ 5,000 items, `COUNT` ≤ 5,000, `INTERVAL` ≤ 1,000, ≤ 100 RDATEs, ≤ 1,000 EXDATEs, rule text ≤ 500 characters. Rules without `COUNT` jump to the window arithmetically; a rule that (almost) never matches stops after examining 1,000,000 days per expansion (and at the end of the window), so expansion cost is bounded.
+- **Series end**: `series_until_utc` = end of the last occurrence (COUNT: enumerated on save; UNTIL: searched backwards from UNTIL; RDATEs and moved exceptions included), null for infinite series — the upper bound of `occurs_range` and of `PlanLimits.IsActive` (an infinite series is always active). Recomputed whenever times, recurrence or exceptions change (`Event.RefreshSeriesBounds`).
+- Edit modes (api.md "Recurring events"):
+  - *this occurrence* → upsert exception (cancel = exception with `cancelled`);
+  - *this and following* → split: set the master's `UNTIL` before the occurrence (or reduce its `COUNT`), create a new series (new UID, `RELATED-TO` the old one, same creator, copied overrides), move later RDATEs/EXDATEs and exceptions;
+  - *all* → update master; exceptions keep overridden fields; if the first occurrence's wall clock moves, exceptions (and RDATEs/EXDATEs unless a new recurrence is given) are re-keyed by that shift; exceptions that no longer match an occurrence are dropped and reported (`droppedExceptions`).
+- Re-evaluation if tzdb changes (`tzdb.recompute` job; later): stored wall clocks and keys stay, derived UTC values (`start_utc`, `series_until_utc`, moved exceptions' instants) are recomputed.
 
 ## 10. Time zone handling
 
