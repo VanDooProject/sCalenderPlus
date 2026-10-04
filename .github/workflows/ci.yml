@@ -317,6 +317,9 @@ jobs:
       APP_ENVIRONMENT: ci
       E2E_FULLSTACK_BASE_URL: http://localhost:8080
       E2E_MAILPIT_URL: http://localhost:8025
+      # Every test signs up and in its own users from the runner's one address (and a retry repeats that).
+      RATE_LIMIT_AUTH_PER_MINUTE: 100
+      RATE_LIMIT_SIGN_UP_PER_HOUR: 100
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8

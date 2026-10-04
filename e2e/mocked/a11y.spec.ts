@@ -1,13 +1,22 @@
 import { expect, test } from '@playwright/test'
 import { expectAccessible } from '../support/a11y'
-import { mock, startSignedOut } from './fixtures'
+import { groups, mock, startSignedOut } from './fixtures'
 
 const signedOutPages = [
   ['login', '/login', 'Sign in'],
   ['register', '/register', 'Create your account'],
   ['forgot password', '/forgot-password', 'Reset your password'],
-  ['reset password', `/reset-password?userId=${mock.userId}&token=${mock.linkToken}`, 'Choose a new password'],
-  ['verify email', `/verify-email?userId=${mock.userId}&token=${mock.linkToken}`, 'Email address confirmed'],
+  [
+    'reset password',
+    `/reset-password?userId=${mock.userId}&token=${mock.linkToken}`,
+    'Choose a new password',
+  ],
+  [
+    'verify email',
+    `/verify-email?userId=${mock.userId}&token=${mock.linkToken}`,
+    'Email address confirmed',
+  ],
+  ['invite (signed out)', `/invite?token=${groups.inviteToken}`, 'Join Choir'],
 ] as const
 
 const signedInPages = [
@@ -15,6 +24,10 @@ const signedInPages = [
   ['groups', '/groups', 'Groups'],
   ['profile', '/settings/profile', 'Settings'],
   ['security', '/settings/security', 'Settings'],
+  ['group members', `/groups/${groups.lions}/members`, 'FC Lions'],
+  ['group invites', `/groups/${groups.lions}/invites`, 'FC Lions'],
+  ['group settings', `/groups/${groups.lions}/settings`, 'FC Lions'],
+  ['invite (signed in)', `/invite?token=${groups.inviteToken}`, 'Join Choir'],
 ] as const
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -50,6 +63,22 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Sign in' }).click()
       await expect(page.getByLabel('Authentication code')).toBeVisible()
       await expectAccessible(page, '2FA step')
+    })
+
+    test('group dialogs and menus have no serious a11y violations', async ({ page }) => {
+      await page.goto('/groups')
+      await page.getByRole('button', { name: 'New group' }).click()
+      await expect(page.getByRole('dialog', { name: 'Create a group' })).toBeVisible()
+      await expectAccessible(page, 'create group dialog')
+      await page.keyboard.press('Escape')
+
+      await page.goto(`/groups/${groups.lions}/members`)
+      await page.getByRole('button', { name: 'Actions for Max' }).click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await expectAccessible(page, 'member menu')
+      await page.getByRole('menuitem', { name: 'Remove from group' }).click()
+      await expect(page.getByRole('dialog', { name: 'Remove Max?' })).toBeVisible()
+      await expectAccessible(page, 'remove member dialog')
     })
 
     test('2FA setup and open menus have no serious a11y violations', async ({ page }) => {

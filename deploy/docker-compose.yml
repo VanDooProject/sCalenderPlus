@@ -56,6 +56,10 @@ services:
       Database__AutoMigrate: 'false'
       # Trust X-Forwarded-* only from private networks (web/Caddy and Traefik); the api has no public port.
       ReverseProxy__KnownNetworks: ${TRUSTED_PROXY_NETWORKS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
+      # Per-IP limits of the auth endpoints (defaults as in production); the fullstack e2e suite signs up and
+      # in several users from one address and raises them.
+      RateLimiting__Auth__PermitLimit: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      RateLimiting__SignUp__PermitLimit: ${RATE_LIMIT_SIGN_UP_PER_HOUR:-5}
     depends_on:
       migrate:
         condition: service_completed_successfully
