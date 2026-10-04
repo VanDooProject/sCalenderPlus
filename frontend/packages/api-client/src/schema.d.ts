@@ -466,6 +466,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/invites/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * What an invite token leads to (no sign-in needed)
+     * @description Group name, inviter's display name, role and expiry of a usable invite, so the invite page can show them before signing in or joining. The token goes in the body (never the URL: access logs). Unknown, expired, revoked and used-up tokens are 400 token_invalid alike. Rate limited per client IP.
+     */
+    post: operations['PreviewGroupInvite']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/calendars': {
     parameters: {
       query?: never
@@ -1061,6 +1081,13 @@ export interface components {
       items: components['schemas']['InviteResponse'][]
       nextCursor: null | string
     }
+    InvitePreviewResponse: {
+      groupName: string
+      inviterName: null | string
+      role: string
+      /** Format: date-time */
+      expiresAt: string
+    }
     InviteResponse: {
       /** Format: uuid */
       id: string
@@ -1138,6 +1165,9 @@ export interface components {
       createdBy: string
       /** Format: date-time */
       createdAt: string
+    }
+    PreviewInviteRequest: {
+      token: string
     }
     PrincipalRequest: {
       type: string
@@ -2274,6 +2304,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['GroupResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  PreviewGroupInvite: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PreviewInviteRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['InvitePreviewResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

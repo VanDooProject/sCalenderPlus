@@ -19,6 +19,10 @@ namespace SCalenderPlus.Application.Groups;
 /// <param name="MaxUses">Links only: 1–1000, default 50. Email invites are single-use.</param>
 public sealed record NewInvite(string? Email, GroupRole Role, int? ExpiresInDays = null, int? MaxUses = null);
 
+/// <summary>What the invite page shows before joining; nothing that identifies the invited address or the members.</summary>
+/// <param name="InviterName">Display name of whoever created the invite (null if that account is gone).</param>
+public sealed record InvitePreview(string GroupName, string? InviterName, GroupRole Role, Instant ExpiresAt);
+
 /// <param name="Link">The invite link with the token (links only, shown once); email invites are only sent by email.</param>
 public sealed record CreatedInvite(GroupInvite Invite, Uri? Link);
 
@@ -155,6 +159,29 @@ public sealed class GroupInviteService(
         invite.RevokedAt = now;
         audit.Record(GroupAuditActions.InviteRevoked, GroupAuditActions.ResourceType, invite.GroupId.ToString(), InviteState(invite), new { RevokedAt = now.ToDateTimeOffset() }, billingOwner);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The group name, inviter and role of a usable invite, for the invite page before signing in and accepting
+    /// (the token is the credential, like when accepting).
+    /// </summary>
+    /// <exception cref="AppException"><c>token_invalid</c> (unknown, expired, revoked, used up — alike).</exception>
+    public async Task<InvitePreview> PreviewAsync(string token, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        var hash = HashToken(token.Trim());
+        var now = clock.Now();
+        var found = await db.GroupInvites.AsNoTracking()
+            .Where(i => i.TokenHash == hash)
+            .Join(db.Groups, i => i.GroupId, g => g.Id, (i, g) => new { Invite = i, GroupName = g.Name })
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (found is null || !found.Invite.IsPending(now))
+        {
+            throw GroupErrors.InviteInvalid();
+        }
+
+        var inviter = (await users.GetAsync([found.Invite.CreatedBy], cancellationToken).ConfigureAwait(false)).GetValueOrDefault(found.Invite.CreatedBy);
+        return new InvitePreview(found.GroupName, inviter?.DisplayName, found.Invite.Role, found.Invite.ExpiresAt);
     }
 
     /// <summary>

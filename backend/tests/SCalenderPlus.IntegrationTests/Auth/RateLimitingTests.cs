@@ -86,6 +86,26 @@ public sealed class RateLimitingTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Invite_previews_are_limited_per_client_ip()
+    {
+        await using var host = await StartAsync(s => s["RateLimiting:InvitePreview:PermitLimit"] = "2");
+        using var client = host.CreateClient();
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var guess = await PreviewFromAsync(client, "203.0.113.9", "guess" + i);
+            await ProblemResponse.AssertProblemAsync(guess, HttpStatusCode.BadRequest, ErrorCodes.TokenInvalid);
+        }
+
+        using var limited = await PreviewFromAsync(client, "203.0.113.9", "guess");
+        await ProblemResponse.AssertProblemAsync(limited, HttpStatusCode.TooManyRequests, ErrorCodes.RateLimited);
+        Assert.True(limited.Headers.Contains("Retry-After"));
+
+        using var otherClient = await PreviewFromAsync(client, "198.51.100.24", "guess");
+        Assert.Equal(HttpStatusCode.BadRequest, otherClient.StatusCode);
+    }
+
+    [Fact]
     public async Task Session_abuse_limit_applies_per_signed_in_user()
     {
         await using var host = await StartAsync(s => s["RateLimiting:Session:PermitLimit"] = "5");
@@ -192,6 +212,17 @@ public sealed class RateLimitingTests(PostgresFixture postgres)
                 configure?.Invoke(settings);
             },
             services => TestPipeline.Add(services, new Dictionary<string, RequestDelegate>(StringComparer.Ordinal)));
+
+    private static async Task<HttpResponseMessage> PreviewFromAsync(HttpClient client, string clientAddress, string token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/v1/invites/preview", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { token }),
+        };
+        request.Headers.Add(TestPipeline.RemoteIpHeader, "127.0.0.1"); // the trusted proxy (web)
+        request.Headers.Add("X-Forwarded-For", clientAddress);
+        return await client.SendAsync(request, Ct);
+    }
 
     private static async Task<HttpResponseMessage> LoginFromAsync(HttpClient client, string clientAddress)
     {

@@ -58,3 +58,6 @@ export type TwoFactorStatus = components['schemas']['TwoFactorStatusResponse']
 
 /** A calendar visible to the signed-in user (`GET /api/v1/calendars`). */
 export type CalendarResponse = components['schemas']['CalendarResponse']
+
+/** What an invite token leads to (`POST /api/v1/invites/preview`, anonymous): group, inviter, role, expiry. */
+export type InvitePreviewResponse = components['schemas']['InvitePreviewResponse']

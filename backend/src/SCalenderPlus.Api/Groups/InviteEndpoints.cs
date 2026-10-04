@@ -12,7 +12,7 @@ namespace SCalenderPlus.Api.Groups;
 
 /// <summary>
 /// Group invites by email and by link (issue #36): create and list them below <c>/groups/{id}/invites</c>,
-/// revoke with <c>DELETE /invites/{id}</c>, join with <c>POST /invites/accept</c>. Creating and accepting need a
+/// revoke with <c>DELETE /invites/{id}</c>, join with <c>POST /invites/accept</c> (shown first with the anonymous <c>POST /invites/preview</c>). Creating and accepting need a
 /// verified email address (<c>403 email_not_verified</c>) and are rate limited per user. Rules live in
 /// <see cref="GroupInviteService"/> / <c>Core.Groups.MembershipPolicy</c>.
 /// </summary>
@@ -39,8 +39,18 @@ internal static class InviteEndpoints
             .RequireVerifiedEmail().RequireRateLimiting(RateLimitingSetup.InviteAccept)
             .WithSummary("Join a group with an invite token")
             .WithDescription("Needs a verified email address (403 email_not_verified); email invites only for the invited address (403 invite_email_mismatch). Unknown, expired, revoked and used-up tokens are 400 token_invalid alike. Members accepting again keep their role. Returns the group.");
+        invites.MapPost("/preview", PreviewAsync).WithName("PreviewGroupInvite")
+            .AllowAnonymous().RequireRateLimiting(RateLimitingSetup.InvitePreview)
+            .WithSummary("What an invite token leads to (no sign-in needed)")
+            .WithDescription("Group name, inviter's display name, role and expiry of a usable invite, so the invite page can show them before signing in or joining. The token goes in the body (never the URL: access logs). Unknown, expired, revoked and used-up tokens are 400 token_invalid alike. Rate limited per client IP.");
         return invites;
     }
+
+    private static async Task<Ok<InvitePreviewResponse>> PreviewAsync(
+        PreviewInviteRequest request,
+        GroupInviteService invites,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(InvitePreviewResponse.From(await invites.PreviewAsync(request.Token, cancellationToken).ConfigureAwait(false)));
 
     private static async Task<Created<CreateInviteResponse>> CreateAsync(
         Guid id,

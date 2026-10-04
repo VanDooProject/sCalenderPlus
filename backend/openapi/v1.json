@@ -1426,6 +1426,48 @@
         ]
       }
     },
+    "/api/v1/invites/preview": {
+      "post": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "What an invite token leads to (no sign-in needed)",
+        "description": "Group name, inviter's display name, role and expiry of a usable invite, so the invite page can show them before signing in or joining. The token goes in the body (never the URL: access logs). Unknown, expired, revoked and used-up tokens are 400 token_invalid alike. Rate limited per client IP.",
+        "operationId": "PreviewGroupInvite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitePreviewResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calendars": {
       "get": {
         "tags": [
@@ -4056,6 +4098,33 @@
           }
         }
       },
+      "InvitePreviewResponse": {
+        "required": [
+          "groupName",
+          "inviterName",
+          "role",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string"
+          },
+          "inviterName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "InviteResponse": {
         "required": [
           "id",
@@ -4343,6 +4412,18 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "PreviewInviteRequest": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "type": "string"
           }
         }
       },

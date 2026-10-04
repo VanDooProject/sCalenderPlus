@@ -39,6 +39,14 @@ public static class AuthorizationMatrix
             "Opened from the emailed link; the token is the credential.",
             _ => JsonContent.Create(new { userId = Guid.CreateVersion7(), token = "invalid", newPassword = "new password 123" }),
             HttpStatusCode.BadRequest),
+
+        // Group invites (#55): the invite page shows what a token leads to before signing in; the token is the
+        // credential (group name, inviter name, role and expiry only; per-IP rate limit).
+        Anonymous(
+            "POST",
+            "/api/v1/invites/preview",
+            "Invite page before sign-in; the token is the credential and reveals only group name, inviter, role, expiry.",
+            s => JsonContent.Create(new { token = s.Get("token:acceptable") })),
     ];
 
     public static IReadOnlyList<MatrixCase> Cases { get; } =

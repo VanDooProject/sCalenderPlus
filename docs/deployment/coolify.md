@@ -69,6 +69,8 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `Auth__External__Google__ClientId/Secret` (Microsoft, Apple) | api | | v1 |
 | `RateLimiting__Auth__PermitLimit`, `RateLimiting__Auth__Window` | api | | `10`, `00:01:00` — per client IP: login, 2FA, email confirmation, password reset |
 | `RateLimiting__SignUp__PermitLimit`, `RateLimiting__SignUp__Window` | api | | `5`, `01:00:00` — per client IP: sign-ups |
+| `RateLimiting__InviteCreate__*`, `RateLimiting__InviteAccept__*` | api | | `50`, `01:00:00` and `10`, `00:01:00` — per signed-in user: invites created, invite acceptances |
+| `RateLimiting__InvitePreview__PermitLimit`, `RateLimiting__InvitePreview__Window` | api | | `30`, `00:01:00` — per client IP: invite previews (invite page before sign-in) |
 | `RateLimiting__Session__PermitLimit`, `RateLimiting__Session__Window` | api | | `600`, `00:01:00` — per signed-in user (web app sessions; abuse limit only) |
 | `RateLimiting__TokenPlans__Free`, `__Pro`, `__Team` | api | | `60`, `600`, `1200` requests/min per API token (v1, API tokens) |
 | `SignUp__BlockDisposableEmailDomains`, `SignUp__BlockedEmailDomains` | api | | `true` (bundled list of disposable-email providers), extra comma-separated domains (subdomains included) |

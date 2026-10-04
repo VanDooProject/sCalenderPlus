@@ -146,6 +146,86 @@ public sealed partial class InviteTests(GroupHostFixture fixture) : IClassFixtur
     }
 
     [Fact]
+    public async Task Preview_shows_group_inviter_role_and_expiry_without_a_session()
+    {
+        var token = await CreateLinkAsync();
+        using var anonymous = _host.CreateClient();
+
+        using var preview = await PreviewAsync(anonymous, $"  {token} ");
+
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        var body = (await preview.JsonAsync()).AsObject();
+        Assert.Equal(["groupName", "inviterName", "role", "expiresAt"], body.Select(p => p.Key));
+        Assert.Equal("FC Lions", (string?)body["groupName"]);
+        Assert.Equal("olga", (string?)body["inviterName"]);
+        Assert.Equal("member", (string?)body["role"]);
+        var pending = Assert.Single(await PendingAsync())!;
+        Assert.Equal((DateTimeOffset)pending["expiresAt"]!, (DateTimeOffset)body["expiresAt"]!);
+
+        // Looking does not use the invite.
+        Assert.Equal(0, (int)pending["uses"]!);
+        Assert.DoesNotContain(await _host.AuditEventsAsync("group", _groupId), e => e.Action == "group.member.joined");
+    }
+
+    [Fact]
+    public async Task Preview_of_an_email_invite_reveals_neither_the_address_nor_whether_it_has_an_account()
+    {
+        var email = ApiTestHost.UniqueEmail("pia");
+        using var created = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { email, role = "admin" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var token = InviteToken(await _host.SingleEmailToAsync(email));
+        using var anonymous = _host.CreateClient();
+
+        using var preview = await PreviewAsync(anonymous, token);
+
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        var text = await preview.Content.ReadAsStringAsync(Ct);
+        Assert.DoesNotContain(email, text, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("admin", (string?)(await preview.JsonAsync())["role"]);
+    }
+
+    [Fact]
+    public async Task Preview_of_unknown_revoked_used_up_and_expired_invites_is_token_invalid_alike()
+    {
+        using var anonymous = _host.CreateClient();
+        var revoked = await CreateLinkAsync();
+        var revokedId = (Guid)Assert.Single(await PendingAsync())!["id"]!;
+        using (var revoke = await _owner.SendJsonAsync(HttpMethod.Delete, $"/api/v1/invites/{revokedId}"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
+        }
+
+        using var single = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { role = "member", maxUses = 1 });
+        var usedUp = Uri.UnescapeDataString(((string)(await single.JsonAsync())["url"]!).Split("token=")[1]);
+        var (_, joiner) = await PersonAsync("jo");
+        using (var accepted = await AcceptAsync(joiner, usedUp))
+        {
+            Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        }
+
+        using var soon = await _owner.SendJsonAsync(HttpMethod.Post, InvitesPath, new { role = "member", expiresInDays = 1 });
+        var expired = Uri.UnescapeDataString(((string)(await soon.JsonAsync())["url"]!).Split("token=")[1]);
+        fixture.Clock.Advance(Duration.FromDays(1) + Duration.FromMinutes(1));
+
+        foreach (var token in new[] { "not-a-token", revoked, usedUp, expired })
+        {
+            using var preview = await PreviewAsync(anonymous, token);
+            await ProblemResponse.AssertProblemAsync(preview, HttpStatusCode.BadRequest, ErrorCodes.TokenInvalid);
+        }
+    }
+
+    [Fact]
+    public async Task Preview_needs_the_csrf_header_like_every_unsafe_request()
+    {
+        var token = await CreateLinkAsync();
+        using var withoutHeader = _host.CreateClient(csrfHeader: false);
+
+        using var preview = await PreviewAsync(withoutHeader, token);
+
+        await ProblemResponse.AssertProblemAsync(preview, HttpStatusCode.Forbidden, ErrorCodes.CsrfHeaderMissing);
+    }
+
+    [Fact]
     public async Task Members_accepting_again_keep_their_role_and_unknown_tokens_are_invalid()
     {
         var token = await CreateLinkAsync();
@@ -379,6 +459,9 @@ public sealed partial class InviteTests(GroupHostFixture fixture) : IClassFixtur
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.JsonAsync())["items"]!.AsArray();
     }
+
+    private static Task<HttpResponseMessage> PreviewAsync(HttpClient client, string token) =>
+        client.SendJsonAsync(HttpMethod.Post, "/api/v1/invites/preview", new { token });
 
     private static Task<HttpResponseMessage> AcceptAsync(HttpClient client, string token) =>
         client.SendJsonAsync(HttpMethod.Post, "/api/v1/invites/accept", new { token });

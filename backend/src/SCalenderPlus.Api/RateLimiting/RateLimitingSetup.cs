@@ -16,7 +16,7 @@ namespace SCalenderPlus.Api.RateLimiting;
 /// <item><see cref="Auth"/> and <see cref="SignUp"/> policies: per client IP (after trusted forwarded headers;
 /// IPv6 grouped by /64), fixed windows, on the anonymous auth endpoints.</item>
 /// <item><see cref="InviteCreate"/> and <see cref="InviteAccept"/> policies: per signed-in user, fixed windows
-/// (invite-email spam, invite-token guessing).</item>
+/// (invite-email spam, invite-token guessing); <see cref="InvitePreview"/> per client IP (anonymous token guessing).</item>
 /// <item>Global limiter: per signed-in user for cookie sessions (generous sliding window); per API token by
 /// plan once tokens exist (<see cref="ApiTokenAuthenticationType"/>); anonymous requests are only limited by
 /// the endpoint policies.</item>
@@ -29,6 +29,7 @@ public static class RateLimitingSetup
     public const string SignUp = "sign-up";
     public const string InviteCreate = "invite-create";
     public const string InviteAccept = "invite-accept";
+    public const string InvitePreview = "invite-preview";
 
     /// <summary>
     /// <see cref="ClaimsIdentity.AuthenticationType"/> the API token handler (v1) will give its identities; it
@@ -44,7 +45,7 @@ public static class RateLimitingSetup
             .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
             .ValidateDataAnnotations()
             .Validate(
-                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept),
+                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept) && Valid(o.InvitePreview),
                 "RateLimiting: every PermitLimit must be ≥ 1 and every Window between 1 second and 1 day.")
             .ValidateOnStart();
 
@@ -58,6 +59,7 @@ public static class RateLimitingSetup
             options.AddPolicy(SignUp, context => FixedWindowPerClient(context, SignUp, settings.SignUp));
             options.AddPolicy(InviteCreate, context => FixedWindowPerUser(context, InviteCreate, settings.InviteCreate));
             options.AddPolicy(InviteAccept, context => FixedWindowPerUser(context, InviteAccept, settings.InviteAccept));
+            options.AddPolicy(InvitePreview, context => FixedWindowPerClient(context, InvitePreview, settings.InvitePreview));
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => GlobalPartition(context.User, settings));
         });
         return services;

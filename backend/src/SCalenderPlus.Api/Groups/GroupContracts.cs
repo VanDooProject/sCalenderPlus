@@ -183,3 +183,25 @@ public sealed class AcceptInviteRequest
     [MaxLength(200)]
     public string Token { get; init; } = string.Empty;
 }
+
+public sealed class PreviewInviteRequest
+{
+    /// <summary>The <c>token</c> query value of the invite link.</summary>
+    [Required]
+    [MaxLength(200)]
+    public string Token { get; init; } = string.Empty;
+}
+
+/// <summary>What an invite leads to, shown before signing in and joining.</summary>
+/// <param name="GroupName">The group's name.</param>
+/// <param name="InviterName">Display name of whoever created the invite; null if that account was deleted.</param>
+/// <param name="Role">The role on joining.</param>
+/// <param name="ExpiresAt">When the invite stops working.</param>
+public sealed record InvitePreviewResponse(string GroupName, string? InviterName, string Role, DateTimeOffset ExpiresAt)
+{
+    public static InvitePreviewResponse From(InvitePreview preview)
+    {
+        ArgumentNullException.ThrowIfNull(preview);
+        return new InvitePreviewResponse(preview.GroupName, preview.InviterName, GroupRoles.Format(preview.Role), preview.ExpiresAt.ToDateTimeOffset());
+    }
+}
