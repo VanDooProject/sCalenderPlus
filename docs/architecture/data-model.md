@@ -141,7 +141,7 @@ Unique `(calendar_id, principal_type, principal_id, min_role)` `NULLS NOT DISTIN
 | series_until_utc | timestamptz null | end of the last occurrence (moved exceptions included); null = infinite |
 | series_start_utc | timestamptz null | start of a moved exception before the first occurrence (widens `occurs_range`); null otherwise |
 | related_to | text null | iCalendar RELATED-TO: UID of the series this one was split from |
-| occurs_range | tstzrange | **generated** (stored): single events `[start_utc, end_utc)` (zero-length events `[start_utc, start_utc]`, so they still overlap windows); series masters `[least(start_utc, series_start_utc), coalesce(series_until_utc, 'infinity'))` |
+| occurs_range | tstzrange | **generated** (stored): single events `[start_utc, end_utc)` (zero-length events `[start_utc, start_utc]`, so they still overlap windows); series masters `[least(start_utc, series_start_utc), coalesce(series_until_utc, 'infinity')]` (inclusive: a zero-length last occurrence ends where it starts) |
 | has_overrides | bool | fast path for permission engine |
 | sequence | int | iCal SEQUENCE, incremented on significant change |
 | category_ids | uuid[] | v1 |

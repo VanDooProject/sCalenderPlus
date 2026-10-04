@@ -254,6 +254,19 @@ public sealed class RecurrenceTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Zero_length_series_are_found_at_their_last_occurrence()
+    {
+        // Reminder-like series without duration: the series ends where its last occurrence starts.
+        var once = await _mia.CreateEventIdAsync(Weekly("FREQ=WEEKLY;COUNT=1", "2026-11-02T18:00:00", "2026-11-02T18:00:00", title: "Once"));
+        var twice = await _mia.CreateEventIdAsync(Weekly("FREQ=WEEKLY;COUNT=2", "2026-11-02T18:00:00", "2026-11-02T18:00:00", title: "Twice"));
+
+        var first = await WindowAsync(_vic, "from=2026-11-02T17:00:00Z&to=2026-11-03T00:00:00Z&expand=occurrences");
+        Assert.Equal([once, twice], first.Select(i => (Guid)i!["id"]!).Order());
+        var last = await WindowAsync(_vic, "from=2026-11-09T17:00:00Z&to=2026-11-10T00:00:00Z");
+        Assert.Equal(twice, (Guid)Assert.Single(last)!["id"]!);
+    }
+
+    [Fact]
     public async Task Series_shared_with_me_reach_me_beyond_their_first_occurrence()
     {
         var personal = await _mia.CreateCalendarAsync("Mia");

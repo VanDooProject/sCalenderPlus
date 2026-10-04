@@ -26,12 +26,13 @@ internal sealed class EventConfiguration :
     /// <summary>
     /// <c>occurs_range</c> (generated): <c>[start_utc, end_utc)</c> of single events (a zero-length event is the
     /// point <c>[start_utc, start_utc]</c>, so it still overlaps windows); series masters reach from their first
-    /// occurrence (or an earlier moved exception, <c>series_start_utc</c>) to <c>series_until_utc</c> or infinity.
+    /// occurrence (or an earlier moved exception, <c>series_start_utc</c>) to <c>series_until_utc</c> or infinity,
+    /// inclusive — a zero-length last occurrence ends where it starts, and must still overlap a window starting there.
     /// </summary>
     public const string OccursRangeSql =
         "tstzrange(CASE WHEN rrule IS NULL THEN start_utc ELSE least(start_utc, series_start_utc) END, " +
         "CASE WHEN rrule IS NULL THEN end_utc ELSE coalesce(series_until_utc, 'infinity'::timestamptz) END, " +
-        "CASE WHEN rrule IS NULL AND end_utc = start_utc THEN '[]' ELSE '[)' END)";
+        "CASE WHEN rrule IS NOT NULL OR end_utc = start_utc THEN '[]' ELSE '[)' END)";
 
     public void Configure(EntityTypeBuilder<Event> builder)
     {
