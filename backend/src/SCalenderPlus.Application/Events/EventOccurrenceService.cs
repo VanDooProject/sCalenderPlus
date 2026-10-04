@@ -162,6 +162,18 @@ public sealed class EventOccurrenceService(
                 throw Validation.Failed("recurrenceId", "This is the first occurrence: change the whole series with PATCH /events/{id} instead.");
             }
 
+            // The new series' start is its first occurrence and anchors the rule (weekday, day of month, time of
+            // day): it must be an occurrence of the rule at its nominal wall clock, or the following ones would move.
+            if (!set.IsRuleOccurrence(key))
+            {
+                throw Validation.Failed("recurrenceId", "This occurrence is an extra date (RDATE), not one of the rule: change it on its own (PATCH /events/{id}/occurrences/{recurrenceId}) or split at an occurrence of the rule.");
+            }
+
+            if (!series.AllDay && occurrence.Original.Times.StartLocal != key)
+            {
+                throw Validation.Failed("recurrenceId", "This occurrence falls into a daylight saving time gap (its start is shifted), so a series cannot start there: split at another occurrence.");
+            }
+
             var before = new SplitState(RecurrenceValues.Audit(series), null);
             var now = clock.Now();
             var rule = set.Rule;

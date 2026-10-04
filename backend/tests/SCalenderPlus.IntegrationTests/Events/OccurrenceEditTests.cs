@@ -24,6 +24,7 @@ namespace SCalenderPlus.IntegrationTests.Events;
 public sealed class OccurrenceEditTests(PostgresFixture postgres) : IAsyncLifetime
 {
     private const string November = "from=2026-11-01T00:00:00Z&to=2026-12-01T00:00:00Z&expand=occurrences";
+    private static readonly string[] _extraWednesday = ["2026-11-11T09:00:00"];
 
     private readonly List<HttpClient> _clients = [];
     private ApiTestHost _host = null!;
@@ -271,6 +272,48 @@ public sealed class OccurrenceEditTests(PostgresFixture postgres) : IAsyncLifeti
         Assert.Equal("FREQ=WEEKLY;UNTIL=20261116T165959Z", (string?)(await _mia.GetEventAsync(id)).Body["recurrence"]!["rrule"]);
         Assert.Equal(Instant.FromUtc(2026, 11, 9, 18, 30), (await _host.StoredEventAsync(id))!.SeriesUntilUtc);
         Assert.Null((await _host.StoredEventAsync((Guid)created["id"]!))!.SeriesUntilUtc);
+    }
+
+    [Fact]
+    public async Task Splitting_needs_an_occurrence_of_the_rule_at_its_nominal_time()
+    {
+        // Mondays 18:00 plus an extra Wednesday 9:00 (RDATE): a series starting there would recur on Wednesdays at 9:00.
+        var (body, _) = await _mia.CreateEventAsync(new
+        {
+            calendarId = _club,
+            title = "Training",
+            start = new { dateTime = "2026-11-02T18:00:00", timeZone = "Europe/Berlin" },
+            end = new { dateTime = "2026-11-02T19:30:00" },
+            recurrence = new { rrule = "FREQ=WEEKLY;COUNT=6", rdates = _extraWednesday },
+        });
+        var id = (Guid)body["id"]!;
+        using (var extra = await _mia.SendJsonAsync(HttpMethod.Post, $"/api/v1/events/{id}/split", new { recurrenceId = "2026-11-11T08:00:00Z" }, "*"))
+        {
+            Assert.NotNull((await ProblemResponse.AssertProblemAsync(extra, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed))["errors"]!["recurrenceId"]);
+        }
+
+        // Daily 2:30 Berlin across the start of summer time (28 Mar 2027, 2:00 → 3:00): that day's occurrence is
+        // shifted to 3:30, and a series starting there would recur at 3:30 instead of 2:30.
+        var (night, _) = await _mia.CreateEventAsync(new
+        {
+            calendarId = _club,
+            title = "Night shift",
+            start = new { dateTime = "2027-03-26T02:30:00", timeZone = "Europe/Berlin" },
+            end = new { dateTime = "2027-03-26T03:00:00" },
+            recurrence = new { rrule = "FREQ=DAILY;COUNT=5" },
+        });
+        var nightId = (Guid)night["id"]!;
+        using (var gap = await _mia.SendJsonAsync(HttpMethod.Post, $"/api/v1/events/{nightId}/split", new { recurrenceId = "2027-03-28T01:30:00Z" }, "*"))
+        {
+            Assert.NotNull((await ProblemResponse.AssertProblemAsync(gap, HttpStatusCode.BadRequest, ErrorCodes.ValidationFailed))["errors"]!["recurrenceId"]);
+        }
+
+        // The next day splits fine and keeps 2:30.
+        using var split = await _mia.SendJsonAsync(HttpMethod.Post, $"/api/v1/events/{nightId}/split", new { recurrenceId = "2027-03-29T00:30:00Z" }, "*");
+        Assert.Equal(HttpStatusCode.Created, split.StatusCode);
+        var created = await split.JsonAsync();
+        Assert.Equal("2027-03-29T02:30:00", (string?)created["start"]!["dateTime"]);
+        Assert.Equal("FREQ=DAILY;COUNT=2", (string?)created["recurrence"]!["rrule"]);
     }
 
     [Fact]

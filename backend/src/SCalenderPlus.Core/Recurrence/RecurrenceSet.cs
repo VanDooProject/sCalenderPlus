@@ -223,7 +223,7 @@ public sealed class RecurrenceSet
     }
 
     /// <summary>Whether the rule (not an RDATE) generates <paramref name="recurrenceId"/> (EXDATE not considered).</summary>
-    private bool IsRuleOccurrence(LocalDateTime recurrenceId)
+    public bool IsRuleOccurrence(LocalDateTime recurrenceId)
     {
         if (recurrenceId.TimeOfDay != FirstRecurrenceId.TimeOfDay || recurrenceId < FirstRecurrenceId)
         {

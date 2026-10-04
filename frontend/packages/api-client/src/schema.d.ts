@@ -650,7 +650,7 @@ export interface paths {
     put?: never
     /**
      * Change this and the following occurrences: split the series (edit; requires If-Match)
-     * @description The series ends before the occurrence recurrenceId (UNTIL, or a smaller COUNT); a new series (new id and UID, relatedTo the original's UID) starts there with the original's creator, a copy of its permission overrides (no plan check), its later rdates/exdates and exceptions, and the other members applied as a merge patch (like PATCH /events/{id}; exceptions that no longer match are dropped and listed in droppedExceptions). The first occurrence: 400 (change the series instead). 404: not a series or no such occurrence. Below edit: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *). 201 with the new series.
+     * @description The series ends before the occurrence recurrenceId (UNTIL, or a smaller COUNT); a new series (new id and UID, relatedTo the original's UID) starts there with the original's creator, a copy of its permission overrides (no plan check), its later rdates/exdates and exceptions, and the other members applied as a merge patch (like PATCH /events/{id}; exceptions that no longer match are dropped and listed in droppedExceptions). The first occurrence, an extra date (rdate) and an occurrence shifted by a DST gap: 400 (a new series must start at an occurrence of the rule at its own time). 404: not a series or no such occurrence. Below edit: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *). 201 with the new series.
      */
     post: operations['SplitEvent']
     delete?: never
