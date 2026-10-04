@@ -109,17 +109,27 @@
 |---|---|---|
 | Framework | **Vue 3** (`<script setup>`, TS strict) + **Vite** | Requirement. |
 | Package manager | **pnpm** workspaces | Fast, strict; monorepo-friendly. |
-| Routing / state | Vue Router; **Pinia** for UI/session state; **TanStack Query (vue-query)** for server state | Server cache, invalidation, optimistic updates without hand-written stores. |
+| Routing / state | Vue Router; **TanStack Query (vue-query)** for server state (the session is the `['me']` query); small module-level composables for UI state (theme, toasts); **Pinia** only once shared client state outgrows them | Server cache, invalidation, optimistic updates without hand-written stores. |
 | API client | **openapi-typescript** (types) + **openapi-fetch** | Tiny runtime, types straight from OpenAPI; no codegen of classes. See [api.md](api.md). |
 | Calendar grid | **FullCalendar** v6 (MIT standard plugins: daygrid, timegrid, list, interaction, rrule) | Mature, accessible-ish, handles DnD/resizing. Premium (resource) plugins not needed. Alternative: Schedule-X. |
-| Styling / components | **Tailwind CSS v4** + **Reka UI** (headless, accessible primitives) | Accessible primitives + design tokens; dark mode via CSS variables. |
-| Forms | **VeeValidate** + Zod schemas | |
+| Styling / components | **Tailwind CSS v4** + **Reka UI** (headless, accessible primitives) wrapped as `Ui*` components in `packages/ui`; icons **Lucide** (`@lucide/vue`, tree-shaken); **Inter** self-hosted (`@fontsource-variable/inter`, CSP `font-src 'self'`) | Accessible primitives + design tokens; dark mode via CSS variables. |
+| Forms | Auth/settings forms: a small `useForm` composable (client rules + problem `errors` per field); **VeeValidate** + Zod schemas when the event editor needs cross-field rules | |
+| QR codes | **uqr** (encoder only, ~10 kB), rendered as SVG in the page | The 2FA secret never leaves the browser for a QR service. |
 | i18n | **vue-i18n** (en, de) | |
 | Dates | **Temporal polyfill** (`temporal-polyfill`) | Correct time zones in the browser; aligns with NodaTime concepts. |
 | PWA | **vite-plugin-pwa** (Workbox) | Install, offline shell, web push. |
 | Mocks | **MSW** handlers in `packages/api-client` | Shared by dev "mock mode", Vitest and Playwright mocked e2e. |
 | Unit tests | **Vitest** + Vue Test Utils | |
 | Landing | **vite-ssg** + shared `ui` package | Prerendered static HTML for SEO; same stack as app. |
+
+### 4.1 Web app structure (implemented, M3)
+
+- **Routes** (`frontend/app/src/router.ts`, every page and layout its own chunk): the shell (`layouts/AppShell.vue`: sidebar with navigation and the calendar list, top bar with language, theme and user menu, a drawer below `lg`) holds `/calendar`, `/groups`, `/settings/profile`, `/settings/security`; the auth layout holds `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email` (email links) and `/invite`. Route meta: `requiresAuth` (signed out → `/login?next=<path>`; `next` is accepted only as an in-app path), `guestOnly` (signed in → `next` or the calendar), `title` (i18n key of the document title). After client-side navigation the page's `h1` gets the focus.
+- **Session**: `GET /me` is the `['me']` query (`composables/session.ts`); a `401` there means signed out (`null`), not an error. The guard awaits it (`ensureQueryData`); login/2FA put the returned user in the cache and refetch the `ETag` that profile changes send as `If-Match`; logout clears the whole query cache. Any other request answering `401 unauthenticated` ends the session centrally (`appContext.ts`): cache cleared, protected page → login with `next`, toast.
+- **Errors**: openapi-fetch results go through `call()` (`lib/apiError.ts`), which throws `ApiError` (status, problem, `code`, field `errors`, `Retry-After`) or `NetworkError`. Messages come only from i18n: `errors.code.<code>` for every `ErrorCode` of the contract (the client exports the codes as a runtime list checked with `satisfies Record<ErrorCode, true>`; a type assertion fails `typecheck` when the English messages miss one, and a test checks every locale), `rate_limited` names the wait from `Retry-After`. Forms show field errors under the fields and a form-level alert (`role="alert"`) and focus the first invalid field; mutations without local handling become an error toast; `app.config.errorHandler` catches the rest.
+- **Theme**: light/dark/system, stored in `localStorage` (`scal.theme`) and applied before the first paint by `public/theme-init.js` (a file, because the CSP forbids inline scripts); the `dark` class on `<html>` switches the `--scal-*` variables of `packages/ui/src/tokens.css`.
+- **i18n**: en/de JSON, precompiled at build time by `@intlify/unplugin-vue-i18n` (runtime-only vue-i18n: smaller and no runtime code generation under the CSP). The language follows the stored choice, the browser and, after login or a profile change, the profile's `locale`.
+- **Mock mode**: the MSW handlers keep a small session (`mockAuth`: signed in, pending second factor, profile with a version-based `ETag`, 2FA state) and answer `401` for protected paths while signed out; `mockCredentials` lists the inputs that trigger 2FA, rate limits or invalid links. Mock mode starts signed in; `localStorage['scal.mock.session'] = 'signed-out'` starts at the login page (used by the mocked e2e suite).
 
 ## 5. Cross-cutting decisions
 

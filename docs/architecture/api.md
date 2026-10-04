@@ -260,10 +260,12 @@ backend/openapi/v1.json
    └─ pnpm -C frontend --filter @scalenderplus/api-client generate
         ├─ openapi-typescript → src/schema.d.ts (types only, then prettier)
         └─ src/client.ts       → createApiClient(): createClient<paths>() from openapi-fetch (hand-written)
-                                  + middleware: X-Requested-With (done); problem+json → ApiError, auth refresh (native) later
+                                  + middleware: X-Requested-With (done); auth refresh (native) later
+        src/errors.ts          → errorCodes: every ErrorCode as a runtime list (exhaustive by type)
 ```
 
 - Usage: `const { data, error } = await api.GET('/api/v1/events', { params: { query: { from, to } } })` — paths, params and responses fully typed; renames break the TS build.
+- Errors: the app wraps calls in `call()` (`frontend/app/src/lib/apiError.ts`), which turns problem responses into `ApiError` (with `code`, field `errors`, `Retry-After`) and missing responses into `NetworkError`; messages come from i18n per `code` (overview.md §4.1).
 - Vue integration: thin composables per resource (`useEvents(range)`, `useUpdateEvent()`) wrapping TanStack Query with query keys and invalidation rules; optimistic updates for drag & drop with rollback on `412`.
 - **MSW mock handlers** live next to the client (`src/mocks/handlers.ts`, export `@scalenderplus/api-client/mocks`) and are typed against the same `paths` via `openapi-msw`, so mocks break when the contract changes. Used by: dev mock mode (`pnpm --filter app dev:mock`, i.e. `vite --mode mock` with the `msw/vite` plugin serving the worker script), Vitest component tests, Playwright mocked e2e.
 - The generated schema is regenerated in CI and diff-checked (like `v1.json`).
