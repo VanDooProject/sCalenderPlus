@@ -40,7 +40,6 @@ public static class DependencyInjection
         services.AddSingleton<AccountEmails>();
         services.AddSingleton<EmailDomainPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
-        services.AddScoped<IJobHandler, SendEmailJobHandler>();
 
         services.AddScoped<GroupService>();
         services.AddScoped<GroupMembershipService>();
@@ -63,6 +62,18 @@ public static class DependencyInjection
         services.AddScoped<EventOccurrenceService>();
         services.AddScoped<EventShareRevocation>();
         services.AddScoped<IGroupMembershipObserver>(sp => sp.GetRequiredService<EventShareRevocation>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Worker only: the handlers of the jobs use cases enqueue. The api only enqueues (<see cref="IJobScheduler"/>);
+    /// handlers depend on senders (<see cref="IEmailSender"/>, …) that only the worker registers
+    /// (<c>AddJobProcessing</c>), so registering them in the api would fail its start-up validation.
+    /// </summary>
+    public static IServiceCollection AddJobHandlers(this IServiceCollection services)
+    {
+        services.AddScoped<IJobHandler, SendEmailJobHandler>();
 
         return services;
     }

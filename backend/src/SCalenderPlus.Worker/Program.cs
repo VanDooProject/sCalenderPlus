@@ -27,7 +27,8 @@ public sealed class Program
         builder.Services
             .AddApplication(builder.Configuration)
             .AddInfrastructure(builder.Configuration)
-            .AddJobProcessing(builder.Configuration);
+            .AddJobProcessing(builder.Configuration)
+            .AddJobHandlers();
 
         builder.Services.AddSingleton<JobLoopHeartbeat>();
         builder.Services.AddHostedService<JobLoopService>();

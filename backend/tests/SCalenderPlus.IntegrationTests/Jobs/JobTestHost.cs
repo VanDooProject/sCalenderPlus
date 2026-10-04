@@ -53,6 +53,7 @@ internal sealed class JobTestHost : IAsyncDisposable
             .AddApplication(configuration)
             .AddInfrastructure(configuration)
             .AddJobProcessing(configuration)
+            .AddJobHandlers()
             .AddSingleton(clock);
         foreach (var handler in handlers)
         {

@@ -6,17 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace SCalenderPlus.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// In-memory host (TestServer) for Api or Worker with explicit settings, environment "Testing", and optional
-/// extra services (test doubles, <see cref="TestPipeline"/> hooks) registered after the host's own.
+/// In-memory host (TestServer) for Api or Worker with explicit settings, environment "Testing" (or another one),
+/// and optional extra services (test doubles, <see cref="TestPipeline"/> hooks) registered after the host's own.
 /// </summary>
 public sealed class HostFactory<TProgram>(
     IReadOnlyDictionary<string, string?> settings,
-    Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<TProgram>
+    Action<IServiceCollection>? configureServices = null,
+    string environment = "Testing") : WebApplicationFactory<TProgram>
     where TProgram : class
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(environment);
         foreach (var (key, value) in settings)
         {
             builder.UseSetting(key, value);
