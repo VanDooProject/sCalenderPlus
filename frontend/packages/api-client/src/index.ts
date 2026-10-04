@@ -6,6 +6,7 @@
 import type { components } from './schema'
 
 export { createApiClient, type ApiClient, type ApiClientOptions } from './client'
+export { errorCodes, isErrorCode } from './errors'
 export type { components, operations, paths } from './schema'
 
 export type HealthResponse = components['schemas']['HealthResponse']
@@ -51,3 +52,9 @@ export type ProblemDetails = components['schemas']['ProblemDetails']
 
 /** Versioned REST base path; same-origin (proxied by `web`). */
 export const API_BASE_PATH = '/api/v1'
+
+/** Status of two-factor authentication (`GET /api/v1/me/two-factor`). */
+export type TwoFactorStatus = components['schemas']['TwoFactorStatusResponse']
+
+/** A calendar visible to the signed-in user (`GET /api/v1/calendars`). */
+export type CalendarResponse = components['schemas']['CalendarResponse']

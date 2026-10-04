@@ -3,22 +3,259 @@
     "name": "sCalenderPlus",
     "tagline": "Geteilte Kalender mit Berechtigungen pro Termin."
   },
-  "nav": {
-    "home": "Start",
-    "language": "Sprache"
+  "environment": "Umgebung: {name}",
+  "common": {
+    "retry": "Erneut versuchen",
+    "loading": "Wird geladen…",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "save": "Änderungen speichern",
+    "discard": "Verwerfen",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "download": "Herunterladen"
   },
-  "home": {
-    "title": "Willkommen",
-    "intro": "Unterschiedliche Berechtigungen für unterschiedliche Termine im selben Kalender — in jeder Kalender-App.",
-    "apiStatus": "API-Status",
-    "apiStatusOk": "erreichbar",
-    "apiStatusDown": "nicht erreichbar",
-    "apiStatusLoading": "wird geprüft…",
-    "retry": "Erneut prüfen"
+  "a11y": {
+    "skipToContent": "Zum Inhalt springen",
+    "notifications": "Benachrichtigungen ({hotkey})"
+  },
+  "nav": {
+    "main": "Hauptnavigation",
+    "openMenu": "Navigation öffnen",
+    "closeMenu": "Navigation schließen",
+    "calendar": "Kalender",
+    "groups": "Gruppen",
+    "settings": "Einstellungen",
+    "language": "Sprache",
+    "languageLabel": "Sprache: {current}",
+    "userMenu": "Kontomenü von {name}"
+  },
+  "theme": {
+    "title": "Darstellung",
+    "label": "Darstellung: {current}",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "sidebar": {
+    "calendars": "Meine Kalender",
+    "noCalendars": "Noch keine Kalender.",
+    "calendarsError": "Kalender konnten nicht geladen werden."
+  },
+  "verifyBanner": {
+    "text": "Bitte bestätige deine E-Mail-Adresse {email}, um andere einzuladen und Einladungen anzunehmen.",
+    "resend": "Link erneut senden",
+    "sent": "Wir haben dir einen neuen Bestätigungslink geschickt."
+  },
+  "calendar": {
+    "title": "Kalender",
+    "greeting": "Willkommen zurück, {name}.",
+    "comingTitle": "Die Kalenderansichten sind unterwegs",
+    "comingText": "Monats-, Wochen-, Tages- und Listenansicht kommen mit dem nächsten Update. Deine Kalender stehen schon in der Seitenleiste."
+  },
+  "groups": {
+    "title": "Gruppen",
+    "description": "Vereine, Teams und Familien, mit denen du Kalender teilst.",
+    "comingTitle": "Die Gruppenverwaltung kommt als Nächstes",
+    "comingText": "Bald kannst du hier Gruppen anlegen, Mitglieder per E-Mail oder Link einladen und Rollen verwalten."
+  },
+  "invite": {
+    "title": "Du bist eingeladen",
+    "description": "Tritt der Gruppe bei, um ihre geteilten Kalender zu sehen und zu bearbeiten.",
+    "signedInAs": "Du trittst als {email} bei.",
+    "accept": "Einladung annehmen",
+    "joined": "Du bist {name} beigetreten.",
+    "signInFirst": "Melde dich an oder erstelle ein Konto, um die Einladung anzunehmen.",
+    "invalidText": "Dieser Einladungslink ist unvollständig. Bitte um einen neuen Link."
+  },
+  "settings": {
+    "description": "Verwalte dein Profil und wie du dich anmeldest.",
+    "profile": {
+      "title": "Profil",
+      "description": "Wie andere dich sehen und wie dir Datum und Uhrzeit angezeigt werden.",
+      "verified": "Bestätigt",
+      "unverified": "Nicht bestätigt",
+      "locale": "Sprache",
+      "localeHint": "Gilt auch für E-Mails.",
+      "timeZone": "Zeitzone",
+      "timeZoneHint": "Termine werden in dieser Zeitzone angezeigt.",
+      "timeZoneSearch": "Zeitzonen durchsuchen",
+      "timeZoneShowAll": "Zeitzonen anzeigen",
+      "timeZoneNone": "Keine passende Zeitzone.",
+      "weekStart": "Woche beginnt am",
+      "saved": "Profil gespeichert."
+    },
+    "security": {
+      "title": "Sicherheit",
+      "twoFactorTitle": "Zwei-Faktor-Authentifizierung",
+      "twoFactorDescription": "Schütze dein Konto zusätzlich zum Passwort mit einem Code aus einer Authenticator-App.",
+      "statusOn": "Zwei-Faktor-Authentifizierung ist aktiv",
+      "statusOff": "Zwei-Faktor-Authentifizierung ist aus",
+      "offText": "Nutze eine Authenticator-App wie 2FAS, Aegis, Google Authenticator oder 1Password.",
+      "verifyFirst": "Bestätige deine E-Mail-Adresse, bevor du die Zwei-Faktor-Authentifizierung einschaltest.",
+      "setup": "Zwei-Faktor-Authentifizierung einrichten",
+      "step1": "1. Scanne den QR-Code mit deiner Authenticator-App",
+      "qrLabel": "QR-Code für deine Authenticator-App",
+      "manualKey": "Scannen klappt nicht? Gib diesen Schlüssel von Hand ein:",
+      "copyKey": "Schlüssel kopieren",
+      "step2": "2. Gib den 6-stelligen Code aus der App und dein Passwort ein",
+      "enable": "Einschalten",
+      "enabled": "Zwei-Faktor-Authentifizierung ist aktiv.",
+      "disable": "Ausschalten",
+      "disabled": "Zwei-Faktor-Authentifizierung ist ausgeschaltet.",
+      "disableTitle": "Zwei-Faktor-Authentifizierung ausschalten?",
+      "disableText": "Dein Konto ist dann nur noch durch dein Passwort geschützt. Bestätige mit deinem Passwort oder einem aktuellen Code.",
+      "regenerate": "Neue Wiederherstellungscodes",
+      "regenerateTitle": "Neue Wiederherstellungscodes erstellen?",
+      "regenerateText": "Deine bisherigen Wiederherstellungscodes werden ungültig. Bestätige mit deinem Passwort oder einem aktuellen Code.",
+      "recoveryLeft": "Keine Wiederherstellungscodes übrig | Ein Wiederherstellungscode übrig | {n} Wiederherstellungscodes übrig",
+      "recoveryLow": "Deine Wiederherstellungscodes gehen zur Neige. Erstelle neue, damit du dich nicht aussperrst.",
+      "recoveryCodes": "Wiederherstellungscodes",
+      "recoveryFileHeader": "sCalenderPlus-Wiederherstellungscodes. Jeder Code funktioniert einmal. Bewahre sie sicher auf.",
+      "codesTitle": "Speichere deine Wiederherstellungscodes",
+      "codesText": "Falls du dein Handy verlierst, kannst du dich mit jedem dieser Codes einmal anmelden. Sie werden nur jetzt angezeigt.",
+      "codesSaved": "Ich habe die Codes gespeichert",
+      "useCodeInstead": "Stattdessen einen Authenticator-Code verwenden",
+      "usePasswordInstead": "Stattdessen das Passwort verwenden"
+    }
+  },
+  "auth": {
+    "email": "E-Mail-Adresse",
+    "password": "Passwort",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort wiederholen",
+    "displayName": "Name",
+    "passwordHint": "Mindestens {min} Zeichen. Ein Satz aus ein paar Wörtern eignet sich gut.",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "backToLogin": "Zurück zur Anmeldung",
+    "linkInvalidTitle": "Dieser Link funktioniert nicht",
+    "sessionEnded": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+    "login": {
+      "title": "Anmelden",
+      "description": "Willkommen zurück. Melde dich bei deinen Kalendern an.",
+      "forgot": "Passwort vergessen?",
+      "rememberMe": "Angemeldet bleiben",
+      "submit": "Anmelden",
+      "noAccount": "Neu hier?",
+      "register": "Konto erstellen",
+      "secondFactorExpired": "Die Anmeldung hat zu lange gedauert. Bitte gib dein Passwort erneut ein."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Gib den 6-stelligen Code aus deiner Authenticator-App ein.",
+      "recoveryDescription": "Gib einen der Wiederherstellungscodes ein, die du beim Einrichten gespeichert hast.",
+      "code": "Authentifizierungscode",
+      "recoveryCode": "Wiederherstellungscode",
+      "recoveryHint": "Jeder Wiederherstellungscode funktioniert einmal.",
+      "submit": "Bestätigen",
+      "useRecovery": "Stattdessen einen Wiederherstellungscode verwenden",
+      "useCode": "Stattdessen einen Authentifizierungscode verwenden",
+      "back": "Mit einem anderen Konto anmelden"
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "description": "Teile Kalender mit Berechtigungen pro Termin. Kostenlos starten.",
+      "submit": "Konto erstellen",
+      "haveAccount": "Du hast schon ein Konto?",
+      "login": "Anmelden",
+      "doneTitle": "Schau in dein Postfach",
+      "doneText": "Wir haben einen Bestätigungslink an {email} geschickt. Öffne ihn, um deine Adresse zu bestätigen.",
+      "doneHint": "Du kannst dich schon jetzt anmelden. Keine E-Mail bekommen? Sieh im Spam-Ordner nach oder fordere nach der Anmeldung einen neuen Link an.",
+      "toLogin": "Weiter zur Anmeldung"
+    },
+    "forgot": {
+      "title": "Passwort zurücksetzen",
+      "description": "Gib deine E-Mail-Adresse ein. Wir schicken dir einen Link, mit dem du ein neues Passwort wählst.",
+      "submit": "Link senden",
+      "doneTitle": "Schau in dein Postfach",
+      "doneText": "Falls es ein Konto für {email} gibt, bekommst du einen Link zum Zurücksetzen. Der Link ist einen Tag gültig."
+    },
+    "reset": {
+      "title": "Neues Passwort wählen",
+      "description": "Mit dem neuen Passwort wirst du auf allen anderen Geräten abgemeldet.",
+      "submit": "Neues Passwort speichern",
+      "doneTitle": "Passwort geändert",
+      "doneText": "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
+      "toLogin": "Anmelden",
+      "invalidText": "Der Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordere einen neuen an.",
+      "requestNew": "Neuen Link anfordern"
+    },
+    "verify": {
+      "title": "E-Mail-Adresse bestätigen",
+      "pending": "Deine E-Mail-Adresse wird bestätigt…",
+      "doneTitle": "E-Mail-Adresse bestätigt",
+      "doneText": "Danke! Du kannst jetzt andere einladen und Einladungen annehmen.",
+      "continue": "Weiter zu deinem Kalender",
+      "toLogin": "Anmelden",
+      "invalidText": "Der Bestätigungslink ist ungültig, abgelaufen oder wurde schon benutzt.",
+      "errorTitle": "Wir konnten deine E-Mail-Adresse nicht bestätigen"
+    },
+    "logout": {
+      "action": "Abmelden",
+      "done": "Du bist abgemeldet."
+    }
+  },
+  "validation": {
+    "required": "Bitte fülle dieses Feld aus.",
+    "email": "Gib eine gültige E-Mail-Adresse ein.",
+    "passwordLength": "Verwende mindestens {min} Zeichen.",
+    "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "code": "Gib den 6-stelligen Code ein."
+  },
+  "errors": {
+    "unexpected": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es erneut.",
+    "checkFields": "Bitte prüfe die markierten Felder.",
+    "rateLimitedRetry": "Zu viele Versuche. Bitte versuche es in {wait} erneut.",
+    "apiUnavailableTitle": "Der Server ist nicht erreichbar",
+    "apiUnavailable": "sCalenderPlus ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal.",
+    "code": {
+      "bad_request": "Die Anfrage konnte nicht verarbeitet werden.",
+      "billing_owner_must_be_owner": "Die Rechnungsverantwortung muss bei einem Gruppeninhaber liegen.",
+      "billing_owner_transfer_required": "Übertrage die Rechnungsverantwortung zuerst an einen anderen Inhaber.",
+      "calendar_frozen": "Dieser Kalender ist schreibgeschützt, weil das Tariflimit überschritten ist.",
+      "conflict": "Das widerspricht dem aktuellen Stand. Lade neu und versuche es erneut.",
+      "csrf_header_missing": "Die Anfrage wurde aus Sicherheitsgründen blockiert. Lade die Seite neu und versuche es erneut.",
+      "email_domain_not_allowed": "Bitte verwende eine dauerhafte E-Mail-Adresse.",
+      "email_not_verified": "Bestätige zuerst deine E-Mail-Adresse.",
+      "external_sharing_not_allowed": "Teilen außerhalb der Gruppe ist für diesen Kalender nicht erlaubt.",
+      "feature_not_in_plan": "Diese Funktion ist in deinem Tarif nicht enthalten.",
+      "group_frozen": "Diese Gruppe ist schreibgeschützt, weil das Tariflimit überschritten ist.",
+      "group_has_calendars": "Lösche oder verschiebe zuerst die Kalender der Gruppe.",
+      "insufficient_permission": "Dazu fehlt dir die Berechtigung.",
+      "internal_error": "Bei uns ist etwas schiefgelaufen. Bitte versuche es erneut.",
+      "invalid_credentials": "E-Mail-Adresse oder Passwort ist falsch.",
+      "invite_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse geschickt.",
+      "last_owner": "Eine Gruppe braucht mindestens einen Inhaber.",
+      "method_not_allowed": "Diese Aktion wird nicht unterstützt.",
+      "not_found": "Nicht gefunden oder kein Zugriff.",
+      "override_invalid": "Diese Berechtigungen sind für diesen Termin nicht gültig.",
+      "override_invalid_in_target": "Die Berechtigungen des Termins sind im Zielkalender nicht gültig.",
+      "payload_too_large": "Die Datei ist zu groß.",
+      "permission_self_lockout": "Du kannst dir so nicht selbst den Zugriff entziehen.",
+      "plan_limit_reached": "Du hast das Limit deines Tarifs erreicht.",
+      "precondition_failed": "Jemand hat das inzwischen geändert. Wir haben den neuesten Stand geladen; bitte prüfe und speichere erneut.",
+      "precondition_required": "Lade die Seite neu und versuche es erneut.",
+      "rate_limited": "Zu viele Versuche. Bitte warte einen Moment und versuche es erneut.",
+      "reauthentication_failed": "Das Passwort oder der Code ist falsch.",
+      "recurrence_invalid": "Die Wiederholungsregel ist ungültig.",
+      "recurrence_not_supported": "Diese Wiederholungsregel wird nicht unterstützt.",
+      "service_unavailable": "Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal.",
+      "time_zone_invalid": "Wähle eine gültige Zeitzone.",
+      "token_expired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+      "token_invalid": "Der Link ist ungültig, abgelaufen oder wurde schon benutzt.",
+      "two_factor_required": "Zwei-Faktor-Authentifizierung ist erforderlich.",
+      "uid_conflict": "Ein Termin mit dieser Kennung existiert bereits.",
+      "unauthenticated": "Bitte melde dich an, um fortzufahren.",
+      "unsupported_media_type": "Dieser Dateityp wird nicht unterstützt.",
+      "validation_failed": "Bitte prüfe deine Eingaben."
+    }
   },
   "notFound": {
     "title": "Seite nicht gefunden",
-    "back": "Zurück zur Startseite"
-  },
-  "environment": "Umgebung: {name}"
+    "text": "Die gesuchte Seite gibt es nicht oder sie wurde verschoben.",
+    "back": "Zu deinem Kalender"
+  }
 }

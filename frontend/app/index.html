@@ -2,10 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>sCalenderPlus</title>
+    <!-- Applies the stored light/dark theme before the first paint (external: strict CSP). -->
+    <script src="/theme-init.js"></script>
   </head>
-  <body class="bg-surface text-on-surface antialiased">
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

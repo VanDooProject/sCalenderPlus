@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import vueI18n from '@intlify/unplugin-vue-i18n/vite'
 import { msw } from 'msw/vite'
 
 // Same-origin in every environment: in dev Vite proxies backend paths to the api (port 5080),
@@ -15,7 +16,24 @@ const proxiedPaths = ['/api', '/ical', '/dav', '/.well-known', '/health', '/open
 // shared handlers from @scalenderplus/api-client/mocks. The plugin serves the service worker
 // script; it is not part of normal builds.
 export default defineConfig(({ mode }) => ({
-  plugins: [vue(), tailwindcss(), ...(mode === 'mock' ? [msw({ mode: 'worker-only' })] : [])],
+  plugins: [
+    vue(),
+    tailwindcss(),
+    // Precompiles the locale JSON: the runtime-only vue-i18n build ships no message compiler
+    // (smaller, and no runtime code generation under the strict CSP). Vitest uses the full build
+    // and the plain JSON (the i18n tests read the files as written).
+    ...(process.env.VITEST
+      ? []
+      : [
+          vueI18n({
+            include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
+            runtimeOnly: true,
+            strictMessage: true,
+            escapeHtml: false,
+          }),
+        ]),
+    ...(mode === 'mock' ? [msw({ mode: 'worker-only' })] : []),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -29,5 +47,6 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.spec.ts'],
+    setupFiles: ['src/__tests__/setup.ts'],
   },
 }))

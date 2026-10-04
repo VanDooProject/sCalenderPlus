@@ -1,38 +1,166 @@
 /*
  * Design tokens shared by app and landing (Tailwind CSS v4 theme variables).
  * Import after `@import 'tailwindcss';` in the consuming stylesheet.
+ *
+ * Components use the semantic colors (`bg-surface`, `text-on-surface-muted`, `bg-primary`, …), never
+ * raw palette steps, so light and dark mode only swap the `--scal-*` variables below. The theme is
+ * chosen by the `dark` class on <html> (set before first paint by `public/theme-init.js` in the app:
+ * stored preference light/dark, or the system preference).
  */
-@theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+@custom-variant dark (&:where(.dark, .dark *));
 
-  --color-brand-50: oklch(0.97 0.02 255);
-  --color-brand-100: oklch(0.93 0.04 255);
-  --color-brand-500: oklch(0.6 0.17 255);
-  --color-brand-600: oklch(0.53 0.18 255);
-  --color-brand-700: oklch(0.46 0.16 255);
+@theme static {
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Brand palette (indigo-blue). Prefer the semantic `primary` tokens in components. */
+  --color-brand-50: oklch(0.97 0.02 268);
+  --color-brand-100: oklch(0.93 0.045 268);
+  --color-brand-200: oklch(0.87 0.08 268);
+  --color-brand-300: oklch(0.78 0.12 268);
+  --color-brand-400: oklch(0.7 0.16 268);
+  --color-brand-500: oklch(0.6 0.2 268);
+  --color-brand-600: oklch(0.52 0.21 268);
+  --color-brand-700: oklch(0.45 0.19 268);
+  --color-brand-800: oklch(0.38 0.15 268);
+  --color-brand-900: oklch(0.31 0.11 268);
 
   --color-surface: var(--scal-surface);
   --color-surface-muted: var(--scal-surface-muted);
+  --color-surface-raised: var(--scal-surface-raised);
+  --color-surface-hover: var(--scal-surface-hover);
   --color-on-surface: var(--scal-on-surface);
   --color-on-surface-muted: var(--scal-on-surface-muted);
   --color-border: var(--scal-border);
+  --color-border-strong: var(--scal-border-strong);
+
+  --color-primary: var(--scal-primary);
+  --color-primary-hover: var(--scal-primary-hover);
+  --color-on-primary: var(--scal-on-primary);
+  --color-primary-soft: var(--scal-primary-soft);
+  --color-on-primary-soft: var(--scal-on-primary-soft);
+
+  --color-danger: var(--scal-danger);
+  --color-danger-hover: var(--scal-danger-hover);
+  --color-on-danger: var(--scal-on-danger);
+  --color-danger-soft: var(--scal-danger-soft);
+  --color-on-danger-soft: var(--scal-on-danger-soft);
+  --color-success-soft: var(--scal-success-soft);
+  --color-on-success-soft: var(--scal-on-success-soft);
+  --color-warning-soft: var(--scal-warning-soft);
+  --color-on-warning-soft: var(--scal-on-warning-soft);
+  --color-info-soft: var(--scal-info-soft);
+  --color-on-info-soft: var(--scal-on-info-soft);
+
+  --color-focus: var(--scal-focus);
+  --color-overlay: var(--scal-overlay);
+
+  --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.06), 0 4px 16px oklch(0 0 0 / 0.08);
+  --shadow-overlay: 0 8px 24px oklch(0 0 0 / 0.16), 0 2px 6px oklch(0 0 0 / 0.08);
+
+  --animate-fade-in: scal-fade-in 150ms ease-out;
+  --animate-scale-in: scal-scale-in 150ms ease-out;
+  --animate-slide-in-left: scal-slide-in-left 200ms ease-out;
+  --animate-slide-in-right: scal-slide-in-right 200ms ease-out;
 }
 
-/* Light/dark surfaces via CSS variables (system preference for now; explicit theme toggle in M3). */
+@keyframes scal-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes scal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes scal-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes scal-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+
 :root {
-  --scal-surface: oklch(1 0 0);
-  --scal-surface-muted: oklch(0.97 0.005 255);
-  --scal-on-surface: oklch(0.21 0.02 255);
-  --scal-on-surface-muted: oklch(0.45 0.02 255);
-  --scal-border: oklch(0.9 0.01 255);
+  color-scheme: light;
+  --scal-surface: oklch(0.985 0.003 268);
+  --scal-surface-muted: oklch(0.965 0.006 268);
+  --scal-surface-raised: oklch(1 0 0);
+  --scal-surface-hover: oklch(0.94 0.01 268);
+  --scal-on-surface: oklch(0.22 0.02 268);
+  --scal-on-surface-muted: oklch(0.47 0.02 268);
+  --scal-border: oklch(0.9 0.01 268);
+  --scal-border-strong: oklch(0.78 0.015 268);
+
+  --scal-primary: var(--color-brand-600);
+  --scal-primary-hover: var(--color-brand-700);
+  --scal-on-primary: oklch(1 0 0);
+  --scal-primary-soft: var(--color-brand-50);
+  --scal-on-primary-soft: var(--color-brand-700);
+
+  --scal-danger: oklch(0.52 0.2 25);
+  --scal-danger-hover: oklch(0.46 0.19 25);
+  --scal-on-danger: oklch(1 0 0);
+  --scal-danger-soft: oklch(0.96 0.025 25);
+  --scal-on-danger-soft: oklch(0.44 0.17 25);
+  --scal-success-soft: oklch(0.96 0.035 155);
+  --scal-on-success-soft: oklch(0.4 0.11 155);
+  --scal-warning-soft: oklch(0.97 0.05 85);
+  --scal-on-warning-soft: oklch(0.43 0.1 70);
+  --scal-info-soft: var(--color-brand-50);
+  --scal-on-info-soft: var(--color-brand-800);
+
+  --scal-focus: var(--color-brand-500);
+  --scal-overlay: oklch(0.2 0.02 268 / 0.45);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --scal-surface: oklch(0.18 0.02 255);
-    --scal-surface-muted: oklch(0.23 0.02 255);
-    --scal-on-surface: oklch(0.95 0.01 255);
-    --scal-on-surface-muted: oklch(0.72 0.02 255);
-    --scal-border: oklch(0.32 0.02 255);
+:root.dark {
+  color-scheme: dark;
+  --scal-surface: oklch(0.17 0.012 268);
+  --scal-surface-muted: oklch(0.2 0.014 268);
+  --scal-surface-raised: oklch(0.225 0.016 268);
+  --scal-surface-hover: oklch(0.28 0.02 268);
+  --scal-on-surface: oklch(0.95 0.008 268);
+  --scal-on-surface-muted: oklch(0.73 0.02 268);
+  --scal-border: oklch(0.31 0.018 268);
+  --scal-border-strong: oklch(0.42 0.02 268);
+
+  --scal-primary: var(--color-brand-300);
+  --scal-primary-hover: var(--color-brand-200);
+  --scal-on-primary: oklch(0.2 0.05 268);
+  --scal-primary-soft: oklch(0.3 0.06 268);
+  --scal-on-primary-soft: var(--color-brand-100);
+
+  --scal-danger: oklch(0.72 0.15 25);
+  --scal-danger-hover: oklch(0.78 0.12 25);
+  --scal-on-danger: oklch(0.2 0.05 25);
+  --scal-danger-soft: oklch(0.29 0.07 25);
+  --scal-on-danger-soft: oklch(0.88 0.06 25);
+  --scal-success-soft: oklch(0.28 0.05 155);
+  --scal-on-success-soft: oklch(0.88 0.08 155);
+  --scal-warning-soft: oklch(0.3 0.05 80);
+  --scal-on-warning-soft: oklch(0.9 0.09 85);
+  --scal-info-soft: oklch(0.28 0.05 268);
+  --scal-on-info-soft: var(--color-brand-100);
+
+  --scal-focus: var(--color-brand-300);
+  --scal-overlay: oklch(0 0 0 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
   }
 }

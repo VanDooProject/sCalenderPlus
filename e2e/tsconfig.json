@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["playwright.config.ts", "mocked/**/*.ts", "fullstack/**/*.ts"]
+  "include": ["playwright.config.ts", "mocked/**/*.ts", "fullstack/**/*.ts", "support/**/*.ts"]
 }

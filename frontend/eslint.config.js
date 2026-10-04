@@ -31,5 +31,13 @@ export default defineConfigWithVueTs(
       globals: { ...globals.node },
     },
   },
+  {
+    name: 'scal/tests',
+    files: ['**/*.spec.ts'],
+    rules: {
+      // Specs define small wrapper components inline.
+      'vue/one-component-per-file': 'off',
+    },
+  },
   skipFormatting,
 )

@@ -3,22 +3,259 @@
     "name": "sCalenderPlus",
     "tagline": "Shared calendars with per-event permissions."
   },
-  "nav": {
-    "home": "Home",
-    "language": "Language"
+  "environment": "Environment: {name}",
+  "common": {
+    "retry": "Try again",
+    "loading": "Loading…",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "discard": "Discard",
+    "copy": "Copy",
+    "copied": "Copied",
+    "download": "Download"
   },
-  "home": {
-    "title": "Welcome",
-    "intro": "Different permissions for different events in the same calendar — in every calendar app.",
-    "apiStatus": "API status",
-    "apiStatusOk": "reachable",
-    "apiStatusDown": "unreachable",
-    "apiStatusLoading": "checking…",
-    "retry": "Check again"
+  "a11y": {
+    "skipToContent": "Skip to content",
+    "notifications": "Notifications ({hotkey})"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "openMenu": "Open navigation",
+    "closeMenu": "Close navigation",
+    "calendar": "Calendar",
+    "groups": "Groups",
+    "settings": "Settings",
+    "language": "Language",
+    "languageLabel": "Language: {current}",
+    "userMenu": "Account menu for {name}"
+  },
+  "theme": {
+    "title": "Appearance",
+    "label": "Appearance: {current}",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "sidebar": {
+    "calendars": "My calendars",
+    "noCalendars": "No calendars yet.",
+    "calendarsError": "Calendars could not be loaded."
+  },
+  "verifyBanner": {
+    "text": "Please confirm your email address {email} to invite others and accept invitations.",
+    "resend": "Send the link again",
+    "sent": "We sent you a new confirmation link."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "greeting": "Welcome back, {name}.",
+    "comingTitle": "Calendar views are on their way",
+    "comingText": "Month, week, day and agenda views arrive with the next update. Your calendars are already listed in the sidebar."
+  },
+  "groups": {
+    "title": "Groups",
+    "description": "Clubs, teams and families you share calendars with.",
+    "comingTitle": "Group management is coming next",
+    "comingText": "Soon you can create groups, invite members by email or link and manage roles here."
+  },
+  "invite": {
+    "title": "You're invited",
+    "description": "Join the group to see and edit its shared calendars.",
+    "signedInAs": "You'll join as {email}.",
+    "accept": "Accept invitation",
+    "joined": "You joined {name}.",
+    "signInFirst": "Sign in or create an account to accept the invitation.",
+    "invalidText": "This invitation link is incomplete. Ask for a new link."
+  },
+  "settings": {
+    "description": "Manage your profile and how you sign in.",
+    "profile": {
+      "title": "Profile",
+      "description": "How others see you and how dates and times are shown to you.",
+      "verified": "Verified",
+      "unverified": "Not verified",
+      "locale": "Language",
+      "localeHint": "Also used for emails.",
+      "timeZone": "Time zone",
+      "timeZoneHint": "Event times are shown in this time zone.",
+      "timeZoneSearch": "Search time zones",
+      "timeZoneShowAll": "Show time zones",
+      "timeZoneNone": "No matching time zone.",
+      "weekStart": "Week starts on",
+      "saved": "Profile saved."
+    },
+    "security": {
+      "title": "Security",
+      "twoFactorTitle": "Two-factor authentication",
+      "twoFactorDescription": "Protect your account with a code from an authenticator app in addition to your password.",
+      "statusOn": "Two-factor authentication is on",
+      "statusOff": "Two-factor authentication is off",
+      "offText": "Use an authenticator app such as 2FAS, Aegis, Google Authenticator or 1Password.",
+      "verifyFirst": "Confirm your email address before turning on two-factor authentication.",
+      "setup": "Set up two-factor authentication",
+      "step1": "1. Scan the QR code with your authenticator app",
+      "qrLabel": "QR code for your authenticator app",
+      "manualKey": "Can't scan it? Enter this key manually:",
+      "copyKey": "Copy key",
+      "step2": "2. Enter the 6-digit code from the app and your password",
+      "enable": "Turn on",
+      "enabled": "Two-factor authentication is on.",
+      "disable": "Turn off",
+      "disabled": "Two-factor authentication is off.",
+      "disableTitle": "Turn off two-factor authentication?",
+      "disableText": "Your account will be protected by your password only. Confirm with your password or a current code.",
+      "regenerate": "New recovery codes",
+      "regenerateTitle": "Create new recovery codes?",
+      "regenerateText": "Your current recovery codes stop working. Confirm with your password or a current code.",
+      "recoveryLeft": "No recovery codes left | One recovery code left | {n} recovery codes left",
+      "recoveryLow": "You're running out of recovery codes. Create new ones so you don't get locked out.",
+      "recoveryCodes": "Recovery codes",
+      "recoveryFileHeader": "sCalenderPlus recovery codes. Each code works once. Keep them somewhere safe.",
+      "codesTitle": "Save your recovery codes",
+      "codesText": "If you lose your phone, each of these codes lets you sign in once. They are shown only now.",
+      "codesSaved": "I saved my codes",
+      "useCodeInstead": "Use an authenticator code instead",
+      "usePasswordInstead": "Use your password instead"
+    }
+  },
+  "auth": {
+    "email": "Email address",
+    "password": "Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat the new password",
+    "displayName": "Name",
+    "passwordHint": "At least {min} characters. A passphrase of a few words works well.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "backToLogin": "Back to sign in",
+    "linkInvalidTitle": "This link doesn't work",
+    "sessionEnded": "Your session has ended. Please sign in again.",
+    "login": {
+      "title": "Sign in",
+      "description": "Welcome back. Sign in to your calendars.",
+      "forgot": "Forgot password?",
+      "rememberMe": "Keep me signed in",
+      "submit": "Sign in",
+      "noAccount": "New here?",
+      "register": "Create an account",
+      "secondFactorExpired": "The sign-in took too long. Please enter your password again."
+    },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "description": "Enter the 6-digit code from your authenticator app.",
+      "recoveryDescription": "Enter one of the recovery codes you saved when you set up two-factor authentication.",
+      "code": "Authentication code",
+      "recoveryCode": "Recovery code",
+      "recoveryHint": "Each recovery code works once.",
+      "submit": "Verify",
+      "useRecovery": "Use a recovery code instead",
+      "useCode": "Use an authentication code instead",
+      "back": "Sign in with another account"
+    },
+    "register": {
+      "title": "Create your account",
+      "description": "Share calendars with per-event permissions. Free to start.",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "login": "Sign in",
+      "doneTitle": "Check your email",
+      "doneText": "We sent a confirmation link to {email}. Open it to confirm your address.",
+      "doneHint": "You can already sign in. Didn't get an email? Check your spam folder or request a new link after signing in.",
+      "toLogin": "Continue to sign in"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "description": "Enter your email address and we'll send you a link to choose a new password.",
+      "submit": "Send reset link",
+      "doneTitle": "Check your email",
+      "doneText": "If an account exists for {email}, you'll receive a link to reset your password. The link is valid for one day."
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "description": "Your new password signs you out on all other devices.",
+      "submit": "Set new password",
+      "doneTitle": "Password changed",
+      "doneText": "You can now sign in with your new password.",
+      "toLogin": "Sign in",
+      "invalidText": "The reset link is invalid, expired or was already used. Request a new one.",
+      "requestNew": "Request a new link"
+    },
+    "verify": {
+      "title": "Confirm email address",
+      "pending": "Confirming your email address…",
+      "doneTitle": "Email address confirmed",
+      "doneText": "Thanks! You can now invite others and accept invitations.",
+      "continue": "Continue to your calendar",
+      "toLogin": "Sign in",
+      "invalidText": "The confirmation link is invalid, expired or was already used.",
+      "errorTitle": "We couldn't confirm your email address"
+    },
+    "logout": {
+      "action": "Sign out",
+      "done": "You're signed out."
+    }
+  },
+  "validation": {
+    "required": "Please fill in this field.",
+    "email": "Enter a valid email address.",
+    "passwordLength": "Use at least {min} characters.",
+    "passwordMismatch": "The passwords don't match.",
+    "code": "Enter the 6-digit code."
+  },
+  "errors": {
+    "unexpected": "Something went wrong. Please try again.",
+    "network": "No connection to the server. Check your internet connection and try again.",
+    "checkFields": "Please check the highlighted fields.",
+    "rateLimitedRetry": "Too many attempts. Please try again in {wait}.",
+    "apiUnavailableTitle": "We can't reach the server",
+    "apiUnavailable": "sCalenderPlus is temporarily unavailable. Please try again in a moment.",
+    "code": {
+      "bad_request": "The request could not be processed.",
+      "billing_owner_must_be_owner": "The billing owner must be an owner of the group.",
+      "billing_owner_transfer_required": "Transfer the billing to another owner first.",
+      "calendar_frozen": "This calendar is read-only because the plan limit was exceeded.",
+      "conflict": "This conflicts with the current state. Reload and try again.",
+      "csrf_header_missing": "The request was blocked for security reasons. Reload the page and try again.",
+      "email_domain_not_allowed": "Please use a permanent email address.",
+      "email_not_verified": "Confirm your email address first.",
+      "external_sharing_not_allowed": "Sharing outside the group is not allowed for this calendar.",
+      "feature_not_in_plan": "This feature is not included in your plan.",
+      "group_frozen": "This group is read-only because the plan limit was exceeded.",
+      "group_has_calendars": "Delete or move the group's calendars first.",
+      "insufficient_permission": "You don't have permission to do this.",
+      "internal_error": "Something went wrong on our side. Please try again.",
+      "invalid_credentials": "Email address or password is incorrect.",
+      "invite_email_mismatch": "This invitation was sent to a different email address.",
+      "last_owner": "A group needs at least one owner.",
+      "method_not_allowed": "This action is not supported.",
+      "not_found": "Not found, or you don't have access.",
+      "override_invalid": "These permissions are not valid for this event.",
+      "override_invalid_in_target": "The event's permissions are not valid in the target calendar.",
+      "payload_too_large": "The upload is too large.",
+      "permission_self_lockout": "You can't remove your own access this way.",
+      "plan_limit_reached": "You've reached the limit of your plan.",
+      "precondition_failed": "Someone changed this in the meantime. We loaded the latest version; please review and save again.",
+      "precondition_required": "Reload the page and try again.",
+      "rate_limited": "Too many attempts. Please wait a moment and try again.",
+      "reauthentication_failed": "The password or code is incorrect.",
+      "recurrence_invalid": "The repeat rule is not valid.",
+      "recurrence_not_supported": "This repeat rule is not supported.",
+      "service_unavailable": "The service is temporarily unavailable. Please try again in a moment.",
+      "time_zone_invalid": "Choose a valid time zone.",
+      "token_expired": "Your session has expired. Please sign in again.",
+      "token_invalid": "The link is invalid, expired or was already used.",
+      "two_factor_required": "Two-factor authentication is required.",
+      "uid_conflict": "An event with this identifier already exists.",
+      "unauthenticated": "Please sign in to continue.",
+      "unsupported_media_type": "This file type is not supported.",
+      "validation_failed": "Please check your input."
+    }
   },
   "notFound": {
     "title": "Page not found",
-    "back": "Back to home"
-  },
-  "environment": "Environment: {name}"
+    "text": "The page you're looking for doesn't exist or was moved.",
+    "back": "Go to your calendar"
+  }
 }

@@ -3,3 +3,19 @@
 
 /* Workspace packages are symlinked under node_modules, which Tailwind skips by default. */
 @source '../../packages/ui/src';
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-surface text-on-surface antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Headings receive focus programmatically after navigation (App.vue); no ring for that. */
+  h1[tabindex='-1']:focus {
+    outline: none;
+  }
+}
