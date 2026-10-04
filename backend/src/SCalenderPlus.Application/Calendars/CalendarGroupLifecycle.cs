@@ -35,18 +35,8 @@ public sealed class CalendarGroupLifecycle(IAppDbContext db, AclVersions aclVers
         if (grants.Count > 0)
         {
             var calendarIds = grants.Select(g => g.CalendarId).Distinct().ToList();
-            var subjects = await db.Calendars.AsNoTracking()
-                .Where(c => calendarIds.Contains(c.Id))
-                .Select(c => new
-                {
-                    c.Id,
-                    Subject = c.OwnerUserId ?? db.Groups.Where(g => g.Id == c.OwnerGroupId).Select(g => (Guid?)g.OwnerUserId).FirstOrDefault(),
-                })
-                .ToDictionaryAsync(c => c.Id, c => c.Subject, cancellationToken).ConfigureAwait(false);
-            foreach (var calendarId in calendarIds)
-            {
-                await aclVersions.BumpCalendarAsync(calendarId, cancellationToken).ConfigureAwait(false);
-            }
+            var subjects = await CalendarAudit.BillingSubjectsAsync(db, calendarIds, cancellationToken).ConfigureAwait(false);
+            await aclVersions.BumpCalendarsAsync(calendarIds, cancellationToken).ConfigureAwait(false);
 
             foreach (var grant in grants)
             {
@@ -56,7 +46,7 @@ public sealed class CalendarGroupLifecycle(IAppDbContext db, AclVersions aclVers
                     grant.CalendarId.ToString(),
                     CalendarGrantService.State(grant),
                     null,
-                    subjects.GetValueOrDefault(grant.CalendarId));
+                    subjects.TryGetValue(grant.CalendarId, out var subject) ? subject : (Guid?)null);
             }
 
             db.CalendarGrants.RemoveRange(grants);

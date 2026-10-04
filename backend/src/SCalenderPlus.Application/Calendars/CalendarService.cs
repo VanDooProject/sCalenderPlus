@@ -338,6 +338,21 @@ internal static class CalendarAudit
     public static RoleDefaultsState RoleDefaults(GroupRoleDefaults defaults) =>
         new(PermissionLevels.Format(defaults.Admin), PermissionLevels.Format(defaults.Member), PermissionLevels.Format(defaults.Viewer));
 
+    /// <summary>The plan subjects of <paramref name="calendarIds"/> (one query; unknown calendars are missing).</summary>
+    public static async Task<IReadOnlyDictionary<Guid, Guid>> BillingSubjectsAsync(IAppDbContext db, IReadOnlyCollection<Guid> calendarIds, CancellationToken cancellationToken)
+    {
+        var ids = calendarIds.ToList();
+        var rows = await db.Calendars.AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new
+            {
+                c.Id,
+                Subject = c.OwnerUserId ?? db.Groups.Where(g => g.Id == c.OwnerGroupId).Select(g => (Guid?)g.OwnerUserId).FirstOrDefault(),
+            })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return rows.Where(r => r.Subject is not null).ToDictionary(r => r.Id, r => r.Subject!.Value);
+    }
+
     /// <summary>The plan subject: the owning user, or the owning group's billing owner.</summary>
     public static async Task<Guid> BillingSubjectAsync(IAppDbContext db, Calendar calendar, CancellationToken cancellationToken) =>
         calendar.OwnerGroupId is { } groupId
@@ -361,6 +376,17 @@ public sealed class AclVersions(IAppDbContext db, IUserDirectory users)
     public Task BumpCalendarAsync(Guid calendarId, CancellationToken cancellationToken = default) =>
         db.Calendars.Where(c => c.Id == calendarId)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.AclVersion, c => c.AclVersion + 1), cancellationToken);
+
+    /// <summary>Bumps several calendars in one statement.</summary>
+    public Task BumpCalendarsAsync(IReadOnlyCollection<Guid> calendarIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(calendarIds);
+        var ids = calendarIds.Distinct().ToList();
+        return ids.Count == 0
+            ? Task.CompletedTask
+            : db.Calendars.Where(c => ids.Contains(c.Id))
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.AclVersion, c => c.AclVersion + 1), cancellationToken);
+    }
 
     public async Task BumpPrincipalsAsync(IReadOnlyCollection<Principal> principals, CancellationToken cancellationToken = default)
     {

@@ -79,7 +79,8 @@ public sealed class EventQueryService(
     /// deleted ones included (their overrides apply again on restore). No actor and no level check: callers are
     /// system use cases that decide with the engine themselves and never return the rows to anyone.
     /// </summary>
-    public async Task<IReadOnlyList<Event>> ForLifecycleAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default)
+    /// <param name="calendarIds">Only events of these calendars (null: any).</param>
+    public async Task<IReadOnlyList<Event>> ForLifecycleAsync(IReadOnlyCollection<Guid> eventIds, IReadOnlyCollection<Guid>? calendarIds = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(eventIds);
         if (eventIds.Count == 0)
@@ -88,7 +89,14 @@ public sealed class EventQueryService(
         }
 
         var ids = eventIds.ToList();
-        return await db.Events.Where(e => ids.Contains(e.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var events = db.Events.Where(e => ids.Contains(e.Id));
+        if (calendarIds is not null)
+        {
+            var calendarList = calendarIds.ToList();
+            events = events.Where(e => calendarList.Contains(e.CalendarId));
+        }
+
+        return await events.ToListAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -106,14 +114,6 @@ public sealed class EventQueryService(
                     && (c.OwnerUserId == billingOwnerId || db.Groups.Any(g => g.Id == c.OwnerGroupId && g.OwnerUserId == billingOwnerId))),
             cancellationToken);
 
-    /// <summary>Whether a live event of <paramref name="calendarId"/> has <paramref name="uid"/> (no permission check: UIDs are per calendar).</summary>
-    public Task<bool> UidTakenAsync(Guid calendarId, string uid, CancellationToken cancellationToken = default) =>
-        db.Events.AnyAsync(e => e.CalendarId == calendarId && e.Uid == uid && e.DeletedAt == null, cancellationToken);
-
-    /// <summary>
-    /// Events overlapping the window, as the actor sees them (permissions.md §8 listing): (1) the calendars the
-    /// actor sees with their ACLs, (2) one SQL query per window over the GiST index <c>(calendar_id, occurs_range)</c>
-    /// for those calendars (<see cref="WindowSql"/>), unioned with the events whose overrides name the actor
     /// <summary>
     /// The users and groups the overrides of the calendar's events name (deleted events included): their
     /// <c>acl_version</c> is bumped when the calendar goes, since its events may sit in their "Shared with me".
@@ -129,6 +129,14 @@ public sealed class EventQueryService(
         return [.. rows.Select(r => r.PrincipalType == PrincipalType.User ? Principal.User(r.PrincipalId!.Value) : Principal.Group(r.PrincipalId!.Value))];
     }
 
+    /// <summary>Whether a live event of <paramref name="calendarId"/> has <paramref name="uid"/> (no permission check: UIDs are per calendar).</summary>
+    public Task<bool> UidTakenAsync(Guid calendarId, string uid, CancellationToken cancellationToken = default) =>
+        db.Events.AnyAsync(e => e.CalendarId == calendarId && e.Uid == uid && e.DeletedAt == null, cancellationToken);
+
+    /// <summary>
+    /// Events overlapping the window, as the actor sees them (permissions.md §8 listing): (1) the calendars the
+    /// actor sees with their ACLs, (2) one SQL query per window over the GiST index <c>(calendar_id, occurs_range)</c>
+    /// for those calendars (<see cref="WindowSql"/>), unioned with the events whose overrides name the actor
     /// ("Shared with me"), (3) overrides only for events with <c>has_overrides</c> and exceptions only for series,
     /// (4) untraced resolution in memory — once per series — dropping <c>none</c> and transparent events (or
     /// occurrences) seen at <c>free_busy</c>, (5) series expanded in the window (<see cref="Event.Occurrences"/>):
@@ -148,34 +156,45 @@ public sealed class EventQueryService(
             : await db.Events.FromSql(WindowSql([.. calendarsById.Keys], query.From, query.To, MaxWindowEvents + 1)).AsNoTracking()
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
         (Instant Start, Guid Id)? cutoff = null;
+        var truncatedShared = false;
         if (rows.Count > MaxWindowEvents)
         {
             cutoff = (RangeStart(rows[^1]), rows[^1].Id); // rows left out (and their occurrences) start at or after it
             rows.RemoveAt(rows.Count - 1);
         }
 
-        // "Shared with me": events whose overrides name the actor, also in calendars they cannot see (rule 7).
-        var named = await overrides.EventsNamingAsync(principal, cancellationToken).ConfigureAwait(false);
-        if (named.Count > 0)
+        // "Shared with me": events whose overrides name the actor (or one of their groups) above none, also in
+        // calendars they cannot see (rule 7) — one query with the window's bounds (index event_overrides(principal_type,
+        // principal_id)); events of visible calendars are in the rows already (or left out by the cutoff).
+        var userId = principal.UserId!.Value;
+        var groupIds = principal.Groups.Keys.ToList();
+        var visibleIds = calendarsById.Keys.ToList();
+        var (from, to) = (query.From, query.To);
+        var named = db.Events.AsNoTracking()
+            .Where(e => e.DeletedAt == null
+                && !visibleIds.Contains(e.CalendarId)
+                && (e.StartUtc < to || (e.Rrule != null && e.SeriesStartUtc < to))
+                && (e.Rrule == null ? e.EndUtc >= from : e.SeriesUntilUtc == null || e.SeriesUntilUtc >= from)
+                && db.EventOverrides.Any(o => o.EventId == e.Id && o.Level > EventLevel.None
+                    && ((o.PrincipalType == PrincipalType.User && o.PrincipalId == userId)
+                        || (o.PrincipalType == PrincipalType.Group && groupIds.Contains(o.PrincipalId!.Value)))));
+        if (query.CalendarIds is { } only)
         {
-            var known = rows.Select(r => r.Id).ToHashSet();
-            var ids = named.Where(id => !known.Contains(id)).ToList();
-            var (from, to) = (query.From, query.To);
-            var shared = await db.Events.AsNoTracking()
-                .Where(e => ids.Contains(e.Id) && e.DeletedAt == null
-                    && (e.StartUtc < to || (e.Rrule != null && e.SeriesStartUtc < to))
-                    && (e.Rrule == null ? e.EndUtc >= from : e.SeriesUntilUtc == null || e.SeriesUntilUtc > from))
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-            rows.AddRange(query.CalendarIds is null ? shared : shared.Where(e => query.CalendarIds.Contains(e.CalendarId)));
-            var missing = rows.Select(r => r.CalendarId).Where(id => !calendarsById.ContainsKey(id)).Distinct().ToList();
-            if (missing.Count > 0)
+            var onlyIds = only.ToList();
+            named = named.Where(e => onlyIds.Contains(e.CalendarId));
+        }
+
+        var sharedRows = await named.OrderBy(e => e.StartUtc).ThenBy(e => e.Id).Take(MaxWindowEvents + 1).ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (sharedRows.Count > 0)
+        {
+            truncatedShared = sharedRows.Count > MaxWindowEvents;
+            rows.AddRange(sharedRows.Take(MaxWindowEvents));
+            var missing = sharedRows.Select(r => r.CalendarId).Distinct().ToList();
+            var extra = await db.Calendars.AsNoTracking().Where(c => missing.Contains(c.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+            var extraAcls = await calendars.AclsAsync(extra, cancellationToken).ConfigureAwait(false);
+            foreach (var calendar in extra)
             {
-                var extra = await db.Calendars.AsNoTracking().Where(c => missing.Contains(c.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
-                var extraAcls = await calendars.AclsAsync(extra, cancellationToken).ConfigureAwait(false);
-                foreach (var calendar in extra)
-                {
-                    calendarsById[calendar.Id] = (calendar, extraAcls[calendar.Id]);
-                }
+                calendarsById[calendar.Id] = (calendar, extraAcls[calendar.Id]);
             }
         }
 
@@ -183,7 +202,7 @@ public sealed class EventQueryService(
         var eventOverrides = await OverridesAsync(rows, cancellationToken).ConfigureAwait(false);
         var calendarLevels = calendarsById.ToDictionary(c => c.Key, c => PermissionEngine.ResolveCalendarLevel(principal, c.Value.Acl));
         var views = new List<EventView>(rows.Count);
-        var truncated = cutoff is not null;
+        var truncated = cutoff is not null || truncatedShared;
         var budget = new ExpansionBudget(ExpansionBudget.PerWindowQuery); // all series of the request together
         foreach (var ev in rows)
         {

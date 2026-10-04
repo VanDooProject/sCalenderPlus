@@ -122,7 +122,7 @@ public sealed class EventShareRevocation(
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         if (rows.Count > 0)
         {
-            var events = await queries.ForLifecycleAsync([.. rows.Select(r => r.EventId).Distinct()], cancellationToken).ConfigureAwait(false);
+            var events = await queries.ForLifecycleAsync([.. rows.Select(r => r.EventId).Distinct()], cancellationToken: cancellationToken).ConfigureAwait(false);
             await RemoveAsync(rows, events, EventAuditActions.OverridesRemovedWithGroup, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -161,7 +161,9 @@ public sealed class EventShareRevocation(
             return;
         }
 
-        var events = await queries.ForLifecycleAsync([.. candidates.Select(r => r.EventId).Distinct()], cancellationToken).ConfigureAwait(false);
+        // Only events of the calendars where someone lost level (their shares elsewhere are untouched).
+        var lossCalendars = losses.Values.SelectMany(l => l.Calendars.Keys).ToHashSet();
+        var events = await queries.ForLifecycleAsync([.. candidates.Select(r => r.EventId).Distinct()], lossCalendars, cancellationToken).ConfigureAwait(false);
         var byId = events.ToDictionary(e => e.Id);
         var eventIds = byId.Keys.ToList();
         var rowsByEvent = (await db.EventOverrides.Where(o => eventIds.Contains(o.EventId)).ToListAsync(cancellationToken).ConfigureAwait(false))
@@ -206,12 +208,7 @@ public sealed class EventShareRevocation(
             .Where(Live)
             .ToLookup(o => o.EventId);
         var calendarIds = eventIds.Select(id => byId[id].CalendarId).Distinct().ToList();
-        var calendarRows = await db.Calendars.AsNoTracking().Where(c => calendarIds.Contains(c.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var subjects = new Dictionary<Guid, Guid>();
-        foreach (var calendar in calendarRows)
-        {
-            subjects[calendar.Id] = await CalendarAudit.BillingSubjectAsync(db, calendar, cancellationToken).ConfigureAwait(false);
-        }
+        var subjects = await CalendarAudit.BillingSubjectsAsync(db, calendarIds, cancellationToken).ConfigureAwait(false);
 
         foreach (var eventId in eventIds)
         {
@@ -234,10 +231,7 @@ public sealed class EventShareRevocation(
                 subjects.GetValueOrDefault(ev.CalendarId));
         }
 
-        foreach (var calendarId in calendarIds)
-        {
-            await aclVersions.BumpCalendarAsync(calendarId, cancellationToken).ConfigureAwait(false);
-        }
+        await aclVersions.BumpCalendarsAsync(calendarIds, cancellationToken).ConfigureAwait(false);
 
         // Named users only: a deleted group's row goes with it (bumping it would fail the group's own concurrency check).
         await aclVersions.BumpPrincipalsAsync([.. doomed.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.Principal).Distinct()], cancellationToken).ConfigureAwait(false);
