@@ -311,10 +311,12 @@ jobs:
     timeout-minutes: 20
     env:
       COMPOSE_FILE: deploy/docker-compose.yml
-      COMPOSE_PROFILES: with-db
+      # Mailpit: the worker's default SMTP target; the suite reads confirmation emails from its API.
+      COMPOSE_PROFILES: with-db,with-mailpit
       IMAGE_TAG: ci # tag of the images built by the docker job
       APP_ENVIRONMENT: ci
       E2E_FULLSTACK_BASE_URL: http://localhost:8080
+      E2E_MAILPIT_URL: http://localhost:8025
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -323,7 +325,7 @@ jobs:
           merge-multiple: true
       - name: Load images
         run: for f in image-*.tar.gz; do gunzip -c "$f" | docker load; done
-      - name: Start stack (migrate, api, worker, web, postgres)
+      - name: Start stack (migrate, api, worker, web, postgres, mailpit)
         run: docker compose up --detach --no-build --wait --wait-timeout 180
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
