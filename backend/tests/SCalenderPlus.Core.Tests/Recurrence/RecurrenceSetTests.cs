@@ -44,6 +44,25 @@ public sealed class RecurrenceSetTests
     }
 
     [Fact]
+    public void A_shared_expansion_budget_bounds_the_days_all_expansions_of_a_request_examine()
+    {
+        // COUNT rules cannot jump to the window: a window in 2030 scans the daily series from 2026 (≈ 1,500 days).
+        var set = Timed("2026-01-01T09:00", "2026-01-01T10:00", "FREQ=DAILY;COUNT=5000");
+        var (from, to) = (Instant.FromUtc(2030, 1, 1, 0, 0), Instant.FromUtc(2030, 1, 8, 0, 0));
+        Assert.Equal(7, set.Between(from, to).Items.Count);
+
+        var budget = new ExpansionBudget(2000);
+        var first = set.Between(from, to, budget: budget);
+        Assert.Equal(7, first.Items.Count);
+        Assert.False(first.Truncated);
+
+        var second = set.Between(from, to, budget: budget); // the budget is spent: the scan stops early
+        Assert.True(budget.IsExhausted);
+        Assert.True(second.Truncated);
+        Assert.Empty(second.Items);
+    }
+
+    [Fact]
     public void All_day_series_repeat_dates_with_their_length()
     {
         var first = EventTimes.AllDayEvent(new LocalDate(2026, 12, 24), new LocalDate(2026, 12, 26))!;

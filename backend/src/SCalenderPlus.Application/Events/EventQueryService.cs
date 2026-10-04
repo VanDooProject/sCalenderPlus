@@ -6,6 +6,7 @@ using SCalenderPlus.Application.Users;
 using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Events;
 using SCalenderPlus.Core.Permissions;
+using SCalenderPlus.Core.Recurrence;
 
 namespace SCalenderPlus.Application.Events;
 
@@ -168,6 +169,7 @@ public sealed class EventQueryService(
         var calendarLevels = calendarsById.ToDictionary(c => c.Key, c => PermissionEngine.ResolveCalendarLevel(principal, c.Value.Acl));
         var views = new List<EventView>(rows.Count);
         var truncated = cutoff is not null;
+        var budget = new ExpansionBudget(ExpansionBudget.PerWindowQuery); // all series of the request together
         foreach (var ev in rows)
         {
             if (!calendarsById.TryGetValue(ev.CalendarId, out var calendar))
@@ -193,7 +195,7 @@ public sealed class EventQueryService(
             }
 
             // Series: expanded once, resolved once (occurrences share the series' level; transparency may differ).
-            var occurrences = ev.Occurrences(query.From, query.To);
+            var occurrences = ev.Occurrences(query.From, query.To, budget: budget);
             truncated |= occurrences.Truncated;
             var seen = occurrences.Items.Where(o => o.Times.Overlaps(query.From, query.To, query.ViewerZone) && EventVisibility.Effective(level, o.Transparency) != EventLevel.None);
             if (query.ExpandOccurrences)

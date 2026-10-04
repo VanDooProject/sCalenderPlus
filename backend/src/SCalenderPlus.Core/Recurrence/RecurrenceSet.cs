@@ -71,14 +71,15 @@ public sealed class RecurrenceSet
 
     /// <summary>
     /// The occurrences whose times overlap <c>[from, to)</c> by their instants (all-day: padded bounds, see
-    /// <see cref="EventTimes.Overlaps"/> without a viewer zone), by start, at most <paramref name="max"/>.
+    /// <see cref="EventTimes.Overlaps"/> without a viewer zone), by start, at most <paramref name="max"/>. With a
+    /// <paramref name="budget"/> the rule stops when it is used up (truncated: occurrences may be missing).
     /// </summary>
-    public OccurrenceWindow Between(Instant from, Instant to, int max = MaxPerWindow)
+    public OccurrenceWindow Between(Instant from, Instant to, int max = MaxPerWindow, ExpansionBudget? budget = null)
     {
         var items = new List<Occurrence>();
         var slack = First.AllDay ? Duration.FromDays(_days + 2) : _duration + Duration.FromDays(2);
         var scanFrom = (from - slack).InUtc().Date;
-        foreach (var occurrence in RuleOccurrences(Rule.Count is null ? scanFrom : null, (to + Duration.FromDays(2)).InUtc().Date))
+        foreach (var occurrence in RuleOccurrences(Rule.Count is null ? scanFrom : null, (to + Duration.FromDays(2)).InUtc().Date, budget))
         {
             if (occurrence.Times.StartUtc >= to)
             {
@@ -103,7 +104,7 @@ public sealed class RecurrenceSet
         }
 
         items.Sort((a, b) => a.Times.StartUtc.CompareTo(b.Times.StartUtc));
-        return items.Count > max ? new OccurrenceWindow([.. items.Take(max)], true) : new OccurrenceWindow(items, false);
+        return items.Count > max ? new OccurrenceWindow([.. items.Take(max)], true) : new OccurrenceWindow(items, budget?.IsExhausted == true);
     }
 
     /// <summary>The occurrence with nominal start <paramref name="recurrenceId"/>, or null when the set has none (excluded included).</summary>
@@ -242,12 +243,12 @@ public sealed class RecurrenceSet
     }
 
     /// <summary>The rule's occurrences in order, with <c>COUNT</c> and <c>UNTIL</c> applied (EXDATE not applied).</summary>
-    private IEnumerable<Occurrence> RuleOccurrences(LocalDate? scanFrom, LocalDate? scanTo)
+    private IEnumerable<Occurrence> RuleOccurrences(LocalDate? scanFrom, LocalDate? scanTo, ExpansionBudget? budget = null)
     {
         var firstDate = FirstRecurrenceId.Date;
         var time = FirstRecurrenceId.TimeOfDay;
         var count = 0;
-        foreach (var date in RuleDates.Enumerate(Rule, firstDate, scanFrom, scanTo))
+        foreach (var date in RuleDates.Enumerate(Rule, firstDate, scanFrom, scanTo, budget))
         {
             if (Rule.UntilDate is { } untilDate && date > untilDate)
             {

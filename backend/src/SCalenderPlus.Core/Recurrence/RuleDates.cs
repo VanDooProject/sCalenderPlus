@@ -27,7 +27,8 @@ internal static class RuleDates
     /// <c>COUNT</c> and <c>UNTIL</c> are applied by the caller (UNTIL compares instants). Periods starting after
     /// <paramref name="scanTo"/> are not examined (so rules that rarely match stop at the end of a window).
     /// </summary>
-    public static IEnumerable<LocalDate> Enumerate(RecurrenceRule rule, LocalDate first, LocalDate? scanFrom = null, LocalDate? scanTo = null)
+    /// <param name="budget">Shared by the expansions of one request: the enumeration also stops when it is used up.</param>
+    public static IEnumerable<LocalDate> Enumerate(RecurrenceRule rule, LocalDate first, LocalDate? scanFrom = null, LocalDate? scanTo = null, ExpansionBudget? budget = null)
     {
         ArgumentNullException.ThrowIfNull(rule);
         var period = scanFrom is { } target && target > first ? FirstPeriod(rule, first, target) : 0;
@@ -47,7 +48,13 @@ internal static class RuleDates
             }
 
             candidates.Clear();
-            examined += filter.Collect(start, candidates);
+            var days = filter.Collect(start, candidates);
+            examined += days;
+            if (budget is not null && !budget.Spend(days))
+            {
+                yield break;
+            }
+
             foreach (var date in filter.SetPositions(candidates))
             {
                 if (date > first)

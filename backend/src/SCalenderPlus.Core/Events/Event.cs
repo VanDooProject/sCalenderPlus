@@ -174,12 +174,12 @@ public sealed partial class Event
     /// <summary>
     /// The occurrences of a series overlapping <c>[from, to)</c> by their instants (all-day: padded bounds), with
     /// <see cref="Exceptions"/> applied — cancelled ones left out, moved ones where they moved to — by start, at most
-    /// <paramref name="max"/> (<see cref="OccurrenceList.Truncated"/> beyond).
+    /// <paramref name="max"/> (<see cref="OccurrenceList.Truncated"/> beyond, and when <paramref name="budget"/> ran out).
     /// </summary>
-    public OccurrenceList Occurrences(Instant from, Instant to, int max = RecurrenceSet.MaxPerWindow)
+    public OccurrenceList Occurrences(Instant from, Instant to, int max = RecurrenceSet.MaxPerWindow, ExpansionBudget? budget = null)
     {
         var set = Recurrence() ?? throw new InvalidOperationException("Only series have occurrences.");
-        var window = set.Between(from, to, max);
+        var window = set.Between(from, to, max, budget);
         var exceptions = Exceptions.ToDictionary(x => x.RecurrenceId);
         var items = new List<EventOccurrence>(window.Items.Count);
         foreach (var occurrence in window.Items)
