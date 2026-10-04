@@ -22,6 +22,8 @@ const formRef = ref<HTMLFormElement>()
 const sentTo = ref<string | null>(null)
 
 const next = computed(() => safeNext(route.query.next))
+/** Signing up from an invitation: say how joining continues after confirming. */
+const fromInvite = computed(() => next.value?.startsWith('/invite') ?? false)
 const loginLink = computed(() => ({ name: 'login', query: next.value ? { next: next.value } : {} }))
 
 const form = useForm(
@@ -66,6 +68,7 @@ async function submit() {
           <strong class="font-semibold break-all text-on-surface">{{ sentTo }}</strong>
         </template>
       </i18n-t>
+      <p v-if="fromInvite" data-testid="register-invite-hint">{{ t('invite.afterSignUp') }}</p>
       <p>{{ t('auth.register.doneHint') }}</p>
     </div>
     <UiButton as-child size="lg" block class="mt-6">

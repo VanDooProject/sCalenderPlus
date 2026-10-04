@@ -14,6 +14,8 @@ export interface FormOptions<T extends object> {
   validate?: (values: T) => FieldErrors<T>
   /** Form element; the first invalid control gets the focus after a failed submit. */
   formRef?: Ref<HTMLFormElement | undefined>
+  /** The form-level sentence for an error (default: the message of its code). */
+  errorMessage?: (error: unknown) => string
 }
 
 /**
@@ -27,6 +29,7 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
   const clientErrors = ref<Record<string, string>>({})
   const serverErrors = ref<Record<string, string[]>>({})
   const formError = ref<string | null>(null)
+  const describe = options.errorMessage ?? ((error: unknown) => errorMessage(t, error))
   const pending = ref(false)
   const submitted = ref(false)
 
@@ -95,11 +98,11 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
       const hasFieldErrors = Object.keys(serverErrors.value).length > 0
       formError.value = hasFieldErrors
         ? [t('errors.checkFields'), ...unknown].join(' ')
-        : [errorMessage(t, error), ...unknown].join(' ')
+        : [describe(error), ...unknown].join(' ')
       if (hasFieldErrors) void focusFirstInvalid()
       return
     }
-    formError.value = errorMessage(t, error)
+    formError.value = describe(error)
   }
 
   function reset(next: T = initial) {

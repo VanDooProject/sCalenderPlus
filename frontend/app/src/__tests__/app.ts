@@ -45,6 +45,16 @@ export async function settle(rounds = 8) {
   }
 }
 
+/** Settles until `condition` holds (lazy route chunks can take a while in a cold run). */
+export async function until(condition: () => boolean, timeout = 5000) {
+  const start = Date.now()
+  while (!condition()) {
+    if (Date.now() - start > timeout) throw new Error('Condition not met in time')
+    await settle(1)
+  }
+  await settle()
+}
+
 export function byTestId(id: string): HTMLElement {
   const element = document.querySelector<HTMLElement>(`[data-testid="${id}"]`)
   if (!element) throw new Error(`No element with data-testid="${id}"`)

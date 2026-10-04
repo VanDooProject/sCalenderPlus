@@ -128,7 +128,10 @@ function knownTimeZone(zone: string): boolean {
  */
 export const sessionGuard = mswHttp.all('*/api/v1/*', ({ request }) => {
   const path = new URL(request.url).pathname
-  if (mockAuth.signedIn || path.startsWith('/api/v1/auth/')) return undefined
+  // Anonymous endpoints: the auth flows and the invite preview (the token is the credential).
+  if (mockAuth.signedIn || path.startsWith('/api/v1/auth/') || path === '/api/v1/invites/preview') {
+    return undefined
+  }
   return HttpResponse.json(
     mockProblem('unauthenticated', 401, path, { detail: 'Sign in first.' }),
     { status: 401, headers: { 'Content-Type': 'application/problem+json' } },

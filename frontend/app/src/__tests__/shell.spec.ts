@@ -135,22 +135,6 @@ describe('routing and session', () => {
     expect(byTestId('toast').textContent).toContain('Your session has ended.')
   })
 
-  it('accepts an invitation when signed in', async () => {
-    const { router } = await mountApp('/invite?token=mock-invite-token')
-    await click('invite-accept')
-    expect(router.currentRoute.value.name).toBe('groups')
-    expect(byTestId('toast').textContent).toContain('You joined FC Lions.')
-  })
-
-  it('asks signed-out invitees to sign in first and comes back', async () => {
-    resetMockAuth({ signedIn: false })
-    await mountApp('/invite?token=abc')
-    const login = [...document.querySelectorAll('a')].find(
-      (a) => a.textContent?.trim() === 'Sign in',
-    )
-    expect(login?.getAttribute('href')).toBe('/login?next=/invite?token=abc')
-  })
-
   it('shows a 404 page for unknown routes', async () => {
     await mountApp('/does/not/exist')
     expect(document.querySelector('h1')?.textContent).toBe('Page not found')

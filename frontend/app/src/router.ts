@@ -50,6 +50,35 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
             meta: { title: 'nav.groups' },
           },
           {
+            path: 'groups/:groupId',
+            component: () => import('./views/groups/GroupView.vue'),
+            children: [
+              {
+                path: '',
+                name: 'group',
+                redirect: (to) => ({ name: 'group-members', params: to.params }),
+              },
+              {
+                path: 'members',
+                name: 'group-members',
+                component: () => import('./views/groups/GroupMembersView.vue'),
+                meta: { title: 'groups.tabs.members' },
+              },
+              {
+                path: 'invites',
+                name: 'group-invites',
+                component: () => import('./views/groups/GroupInvitesView.vue'),
+                meta: { title: 'groups.tabs.invites' },
+              },
+              {
+                path: 'settings',
+                name: 'group-settings',
+                component: () => import('./views/groups/GroupSettingsView.vue'),
+                meta: { title: 'groups.tabs.settings' },
+              },
+            ],
+          },
+          {
             path: 'settings',
             component: () => import('./layouts/SettingsLayout.vue'),
             children: [
