@@ -1,6 +1,11 @@
 import { http, HttpResponse } from 'msw'
 import { setupWorker } from 'msw/browser'
-import { handlers, resetMockAuth, resetMockGroups } from '@scalenderplus/api-client/mocks'
+import {
+  handlers,
+  resetMockAuth,
+  resetMockCalendars,
+  resetMockGroups,
+} from '@scalenderplus/api-client/mocks'
 import type { AppConfig } from '@/config'
 
 /** `/config.json` is served by `web` (not part of the API); in mock mode the badge shows "mock". */
@@ -26,5 +31,6 @@ export const worker = setupWorker(
 export async function startMockWorker() {
   resetMockAuth({ signedIn: !initialSession() })
   resetMockGroups()
+  resetMockCalendars()
   await worker.start({ onUnhandledFrame: 'bypass', quiet: true })
 }

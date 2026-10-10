@@ -7,7 +7,17 @@ import {
   resetMockAuth,
 } from '@scalenderplus/api-client/mocks'
 import { sessionQueryKey, type Session } from '@/composables/session'
-import { byTestId, click, mountApp, queryTestId, resetDom, settle, submit, type } from './app'
+import {
+  byTestId,
+  click,
+  mountApp,
+  queryTestId,
+  resetDom,
+  settle,
+  submit,
+  type,
+  until,
+} from './app'
 import { useMockApi } from './msw'
 
 const server = useMockApi()
@@ -92,7 +102,8 @@ describe('login', () => {
 
     await type('two-factor-code', mockCredentials.totpCode)
     await submit('two-factor-form')
-    expect(router.currentRoute.value.name).toBe('calendar')
+    // The calendar chunk (FullCalendar) can take a moment in a cold run.
+    await until(() => router.currentRoute.value.name === 'calendar')
   })
 
   it('accepts a recovery code instead', async () => {
@@ -129,7 +140,8 @@ describe('login', () => {
     await type('login-password', mockCredentials.password)
     await submit('login-form')
 
-    expect(document.querySelector('main h1')?.textContent).toBe('Kalender')
+    await until(() => document.querySelector('main h1') !== null)
+    expect(document.querySelector('main h1')?.textContent).toMatch(/^Kalender: /)
   })
 })
 

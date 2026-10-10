@@ -52,9 +52,56 @@
   },
   "calendar": {
     "title": "Calendar",
-    "greeting": "Welcome back, {name}.",
-    "comingTitle": "Calendar views are on their way",
-    "comingText": "Month, week, day and agenda views arrive with the next update. Your calendars are already listed in the sidebar."
+    "today": "Today",
+    "previous": "Previous",
+    "next": "Next",
+    "viewLabel": "View",
+    "views": {
+      "month": "Month",
+      "week": "Week",
+      "day": "Day",
+      "agenda": "Agenda"
+    },
+    "allDay": "All day",
+    "busy": "Busy",
+    "readOnly": "read-only",
+    "sharedWithMe": "Shared with me",
+    "emptyRange": "No events in this period.",
+    "allHidden": "All calendars are hidden. Turn one on in the sidebar.",
+    "noCalendarsTitle": "No calendars yet",
+    "noCalendarsText": "Calendars you create or that are shared with you appear here.",
+    "truncated": "This period has too many events; only the first ones are shown.",
+    "showSmaller": "Show {view}",
+    "loadError": "Events could not be loaded.",
+    "prefsChanged": "Your calendar settings were changed elsewhere. We loaded the latest ones; please try again.",
+    "colorOf": "Color of {name}",
+    "colors": {
+      "default": "Calendar color",
+      "indigo": "Indigo",
+      "blue": "Blue",
+      "teal": "Teal",
+      "green": "Green",
+      "amber": "Amber",
+      "orange": "Orange",
+      "red": "Red",
+      "pink": "Pink",
+      "purple": "Purple",
+      "slate": "Slate"
+    },
+    "level": {
+      "read": "You can view this event",
+      "edit": "You can edit this event"
+    },
+    "details": {
+      "when": "When",
+      "calendar": "Calendar",
+      "location": "Location",
+      "createdBy": "Created by",
+      "createdByName": "Created by {name}",
+      "access": "Your access",
+      "description": "Description",
+      "recurring": "Repeats"
+    }
   },
   "groups": {
     "title": "Groups",

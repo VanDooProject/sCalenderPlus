@@ -61,3 +61,9 @@ export type CalendarResponse = components['schemas']['CalendarResponse']
 
 /** What an invite token leads to (`POST /api/v1/invites/preview`, anonymous): group, inviter, role, expiry. */
 export type InvitePreviewResponse = components['schemas']['InvitePreviewResponse']
+
+/** An event, occurrence or busy block (`title: null`, times only) as the api returns it. */
+export type EventResponse = components['schemas']['EventResponse']
+
+/** My personal overlay of a calendar (`hidden`, `color`; `etag` is the `If-Match` of changing it). */
+export type CalendarPrefsResponse = components['schemas']['CalendarPrefsResponse']

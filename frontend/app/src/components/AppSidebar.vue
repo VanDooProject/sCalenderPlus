@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
 import { CalendarDays, Settings, Users } from '@lucide/vue'
-import { api } from '@/api'
 import { useGroups } from '@/composables/groups'
-import { call } from '@/lib/apiError'
 import BrandMark from './BrandMark.vue'
+import CalendarLayerList from './calendar/CalendarLayerList.vue'
 
 defineEmits<{ navigate: [] }>()
 
@@ -21,12 +19,6 @@ const nav = [
 
 /** A section is current on its own pages and below (`/settings/security` → Settings). */
 const isCurrent = (prefix: string) => route.path === prefix || route.path.startsWith(`${prefix}/`)
-
-/** Visible calendars (toggling and colors per user follow with the calendar views). */
-const calendars = useQuery({
-  queryKey: ['calendars'],
-  queryFn: async () => (await call(api.GET('/api/v1/calendars'))).data.items,
-})
 
 /** The user's groups (links to their pages). */
 const groups = useGroups()
@@ -77,37 +69,7 @@ const isCurrentGroup = (id: string) => route.path.startsWith(`/groups/${id}`)
         >
           {{ t('sidebar.calendars') }}
         </h2>
-        <ul v-if="calendars.isPending.value" class="flex flex-col gap-2 px-3" aria-hidden="true">
-          <li v-for="i in 3" :key="i" class="h-5 animate-pulse rounded bg-surface-hover" />
-        </ul>
-        <p v-else-if="calendars.isError.value" class="px-3 text-sm text-on-surface-muted">
-          {{ t('sidebar.calendarsError') }}
-          <button
-            type="button"
-            class="font-medium text-primary underline-offset-2 hover:underline"
-            @click="calendars.refetch()"
-          >
-            {{ t('common.retry') }}
-          </button>
-        </p>
-        <p
-          v-else-if="calendars.data.value?.length === 0"
-          class="px-3 text-sm text-on-surface-muted"
-        >
-          {{ t('sidebar.noCalendars') }}
-        </p>
-        <ul v-else class="flex flex-col gap-0.5" data-testid="sidebar-calendars">
-          <li
-            v-for="calendar in calendars.data.value"
-            :key="calendar.id"
-            class="flex h-9 items-center gap-3 rounded-lg px-3 text-sm"
-          >
-            <svg viewBox="0 0 12 12" class="size-3 shrink-0" aria-hidden="true">
-              <rect width="12" height="12" rx="3.5" :fill="calendar.color ?? 'currentColor'" />
-            </svg>
-            <span class="truncate">{{ calendar.name }}</span>
-          </li>
-        </ul>
+        <CalendarLayerList />
       </section>
 
       <section aria-labelledby="sidebar-groups">

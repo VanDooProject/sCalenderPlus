@@ -1,6 +1,11 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
-import { handlers, resetMockAuth, resetMockGroups } from '@scalenderplus/api-client/mocks'
+import {
+  handlers,
+  resetMockAuth,
+  resetMockCalendars,
+  resetMockGroups,
+} from '@scalenderplus/api-client/mocks'
 
 /**
  * MSW for Vitest with the shared API handlers; call in a spec file's top level. The stateful auth
@@ -13,6 +18,7 @@ export function useMockApi() {
     server.resetHandlers()
     resetMockAuth()
     resetMockGroups()
+    resetMockCalendars()
   })
   afterAll(() => server.close())
   return server

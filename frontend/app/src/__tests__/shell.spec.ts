@@ -28,7 +28,7 @@ describe('routing and session', () => {
   it('opens the calendar for signed-in users and keeps them away from the login page', async () => {
     const { router } = await mountApp('/')
     expect(router.currentRoute.value.name).toBe('calendar')
-    expect(byTestId('calendar-placeholder')).toBeTruthy()
+    expect(byTestId('calendar-page')).toBeTruthy()
 
     await router.push('/login?next=/settings/profile')
     await settle()
@@ -89,8 +89,9 @@ describe('routing and session', () => {
   })
 
   it('renders German and switches the language from the menu', async () => {
-    await mountApp('/calendar', { locale: 'de' })
-    expect(document.querySelector('main h1')?.textContent).toBe('Kalender')
+    await mountApp('/calendar?view=month&date=2026-11-04', { locale: 'de' })
+    // The heading names the page and the shown range (FullCalendar's localized title).
+    expect(document.querySelector('main h1')?.textContent).toBe('Kalender: November 2026')
 
     byTestId('locale-switcher').dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
@@ -98,7 +99,7 @@ describe('routing and session', () => {
     await settle()
     await click('locale-option-en')
 
-    expect(document.querySelector('main h1')?.textContent).toBe('Calendar')
+    expect(document.querySelector('main h1')?.textContent).toBe('Calendar: November 2026')
     expect(localStorage.getItem('scal.locale')).toBe('en')
     expect(document.documentElement.lang).toBe('en')
   })

@@ -52,9 +52,56 @@
   },
   "calendar": {
     "title": "Kalender",
-    "greeting": "Willkommen zurück, {name}.",
-    "comingTitle": "Die Kalenderansichten sind unterwegs",
-    "comingText": "Monats-, Wochen-, Tages- und Listenansicht kommen mit dem nächsten Update. Deine Kalender stehen schon in der Seitenleiste."
+    "today": "Heute",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "viewLabel": "Ansicht",
+    "views": {
+      "month": "Monat",
+      "week": "Woche",
+      "day": "Tag",
+      "agenda": "Agenda"
+    },
+    "allDay": "Ganztägig",
+    "busy": "Belegt",
+    "readOnly": "nur lesen",
+    "sharedWithMe": "Mit mir geteilt",
+    "emptyRange": "Keine Termine in diesem Zeitraum.",
+    "allHidden": "Alle Kalender sind ausgeblendet. Blende einen in der Seitenleiste ein.",
+    "noCalendarsTitle": "Noch keine Kalender",
+    "noCalendarsText": "Kalender, die du anlegst oder die mit dir geteilt werden, erscheinen hier.",
+    "truncated": "In diesem Zeitraum gibt es zu viele Termine; nur die ersten werden angezeigt.",
+    "showSmaller": "{view} anzeigen",
+    "loadError": "Termine konnten nicht geladen werden.",
+    "prefsChanged": "Deine Kalendereinstellungen wurden anderswo geändert. Wir haben den aktuellen Stand geladen; bitte versuche es erneut.",
+    "colorOf": "Farbe von {name}",
+    "colors": {
+      "default": "Kalenderfarbe",
+      "indigo": "Indigo",
+      "blue": "Blau",
+      "teal": "Petrol",
+      "green": "Grün",
+      "amber": "Bernstein",
+      "orange": "Orange",
+      "red": "Rot",
+      "pink": "Pink",
+      "purple": "Lila",
+      "slate": "Schiefer"
+    },
+    "level": {
+      "read": "Du kannst diesen Termin ansehen",
+      "edit": "Du kannst diesen Termin bearbeiten"
+    },
+    "details": {
+      "when": "Wann",
+      "calendar": "Kalender",
+      "location": "Ort",
+      "createdBy": "Erstellt von",
+      "createdByName": "Erstellt von {name}",
+      "access": "Dein Zugriff",
+      "description": "Beschreibung",
+      "recurring": "Wiederholt sich"
+    }
   },
   "groups": {
     "title": "Gruppen",

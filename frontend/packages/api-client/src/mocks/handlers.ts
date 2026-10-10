@@ -1,6 +1,14 @@
 import { createOpenApiHttp } from 'openapi-msw'
 import type { components, paths } from '../schema'
 import { authHandlers, mockUser, sessionGuard } from './auth'
+import {
+  calendarHandlers,
+  mockCalendar,
+  mockCalendars,
+  mockEvent,
+  mockOccurrences,
+  mockSeries,
+} from './calendars'
 import { groupHandlers, mockGroup } from './groups'
 
 export {
@@ -11,6 +19,19 @@ export {
   resetMockAuth,
   type MockAuthState,
 } from './auth'
+export {
+  mockBusyCalendar,
+  mockBusyEvent,
+  mockCalendar,
+  mockCalendars,
+  mockEvent,
+  mockHiddenCalendarId,
+  mockPersonalCalendar,
+  mockReadOnlyCalendar,
+  mockSeries,
+  resetMockCalendars,
+  type MockCalendarsState,
+} from './calendars'
 export {
   mockGroup,
   mockGroups,
@@ -29,130 +50,6 @@ export {
  * Playwright `mocked` project.
  */
 export const http = createOpenApiHttp<paths>()
-
-type Calendar = components['schemas']['CalendarResponse']
-
-/** A calendar of {@link mockGroup} (default role defaults); the mock user is its owner. */
-export const mockCalendar: Calendar = {
-  id: '0192f2c4-0000-7000-8000-000000000301',
-  name: 'FC Lions – Club',
-  description: 'Trainings and matches',
-  color: '#4f46e5',
-  defaultTimeZone: 'Europe/Berlin',
-  owner: { type: 'group', id: mockGroup.id },
-  myLevel: 'owner',
-  groupRoleDefaults: { admin: 'manage', member: 'contribute', viewer: 'read' },
-  creatorsManageOwnEvents: true,
-  creatorsMayShareExternally: false,
-  frozen: false,
-  createdAt: '2026-10-01T08:00:00Z',
-  updatedAt: '2026-10-01T08:00:00Z',
-}
-
-/** A personal calendar of the mock user. */
-export const mockPersonalCalendar: Calendar = {
-  ...mockCalendar,
-  id: '0192f2c4-0000-7000-8000-000000000302',
-  name: 'Mia',
-  description: null,
-  color: '#16a34a',
-  owner: { type: 'user', id: mockUser.id },
-  groupRoleDefaults: null,
-}
-
-const mockCalendars = [mockCalendar, mockPersonalCalendar]
-
-type CalendarEvent = components['schemas']['EventResponse']
-
-/** A timed event in {@link mockCalendar}, created by the mock user (creator floor: manage). */
-export const mockEvent: CalendarEvent = {
-  id: '0192f2c4-0000-7000-8000-000000000401',
-  calendarId: mockCalendar.id,
-  uid: '0192f2c4-0000-7000-8000-000000000401@scalenderplus',
-  title: 'Training',
-  description: 'Bring shoes',
-  location: 'Pitch 2',
-  status: 'confirmed',
-  categories: ['sport'],
-  start: {
-    dateTime: '2026-11-02T18:00:00',
-    timeZone: 'Europe/Berlin',
-    utc: '2026-11-02T17:00:00Z',
-  },
-  end: { dateTime: '2026-11-02T20:00:00', timeZone: 'Europe/Berlin', utc: '2026-11-02T19:00:00Z' },
-  allDay: false,
-  transparency: 'opaque',
-  hasOverrides: false,
-  sequence: 0,
-  createdBy: { id: mockUser.id, displayName: 'Mia' },
-  createdAt: '2026-10-01T08:00:00Z',
-  updatedAt: '2026-10-01T08:00:00Z',
-  myLevel: 'manage',
-}
-
-/** An all-day event the mock user only sees as busy (free_busy projection: times only, title null). */
-export const mockBusyEvent: CalendarEvent = {
-  id: '0192f2c4-0000-7000-8000-000000000402',
-  calendarId: mockPersonalCalendar.id,
-  title: null,
-  start: { date: '2026-11-04' },
-  end: { date: '2026-11-05' },
-  allDay: true,
-  transparency: 'opaque',
-  myLevel: 'free_busy',
-}
-
-/** A weekly series of the mock user in {@link mockCalendar} (Tuesdays 18:00–19:30 Berlin, 8 occurrences). */
-export const mockSeries: CalendarEvent = {
-  ...mockEvent,
-  id: '0192f2c4-0000-7000-8000-000000000403',
-  uid: '0192f2c4-0000-7000-8000-000000000403@scalenderplus',
-  title: 'Weekly practice',
-  categories: [],
-  start: {
-    dateTime: '2026-11-03T18:00:00',
-    timeZone: 'Europe/Berlin',
-    utc: '2026-11-03T17:00:00Z',
-  },
-  end: { dateTime: '2026-11-03T19:30:00', timeZone: 'Europe/Berlin', utc: '2026-11-03T18:30:00Z' },
-  recurrence: { rrule: 'FREQ=WEEKLY;COUNT=8' },
-}
-
-const mockEvents = [mockEvent, mockBusyEvent, mockSeries]
-
-const week = 7 * 24 * 60 * 60 * 1000
-
-/** Shifts a time value by whole weeks (the mock series stays in winter time: no DST handling). */
-function plusWeeks(
-  value: components['schemas']['EventTimeResponse'],
-  weeks: number,
-): components['schemas']['EventTimeResponse'] {
-  const utc = value.utc ? new Date(Date.parse(value.utc) + weeks * week) : undefined
-  const local = value.dateTime
-    ? new Date(Date.parse(`${value.dateTime}Z`) + weeks * week)
-    : undefined
-  return {
-    ...value,
-    dateTime: local?.toISOString().slice(0, 19),
-    utc: utc?.toISOString().replace('.000Z', 'Z'),
-  }
-}
-
-/** The occurrences of {@link mockSeries} (the api expands any rule; the mock knows this one). */
-function mockOccurrences(): CalendarEvent[] {
-  return Array.from({ length: 8 }, (_, i) => {
-    const start = plusWeeks(mockSeries.start, i)
-    const recurrenceId = start.utc ?? ''
-    return {
-      ...mockSeries,
-      start,
-      end: plusWeeks(mockSeries.end, i),
-      occurrenceId: `${mockSeries.id}:${recurrenceId}`,
-      recurrenceId,
-      etag: '"series-0403"',
-    }
-  })
-}
 
 /** A time value of a request as the api answers it (no zone conversion: utc is left out). */
 function eventTime(
@@ -208,39 +105,16 @@ export const handlers = [
 
   ...groupHandlers(http),
 
-  http.get('/api/v1/calendars', ({ response }) =>
-    response(200).json({ items: mockCalendars, nextCursor: null }),
-  ),
-  http.post('/api/v1/calendars', async ({ request, response }) => {
-    const body = await request.json()
-    const groupId = body.groupId ?? null
-    return response(201).json({
-      ...mockCalendar,
-      id: crypto.randomUUID(),
-      name: body.name,
-      description: body.description ?? null,
-      color: body.color?.toLowerCase() ?? '#4f46e5',
-      defaultTimeZone: body.defaultTimeZone,
-      owner: groupId ? { type: 'group', id: groupId } : { type: 'user', id: mockUser.id },
-      groupRoleDefaults: groupId
-        ? {
-            admin: body.groupRoleDefaults?.admin ?? 'manage',
-            member: body.groupRoleDefaults?.member ?? 'contribute',
-            viewer: body.groupRoleDefaults?.viewer ?? 'read',
-          }
-        : null,
-      creatorsManageOwnEvents: body.creatorsManageOwnEvents ?? true,
-      creatorsMayShareExternally: body.creatorsMayShareExternally ?? false,
-    })
-  }),
+  ...calendarHandlers(http),
+
   http.get('/api/v1/calendars/{id}', ({ params, response }) => {
-    const calendar = mockCalendars.find((c) => c.id === params.id)
+    const calendar = mockCalendars.calendars.find((c) => c.id === params.id)
     return calendar
       ? response(200).json(calendar)
       : response('default').json(notFound(`/api/v1/calendars/${params.id}`), { status: 404 })
   }),
   http.patch('/api/v1/calendars/{id}', async ({ params, request, response }) => {
-    const calendar = mockCalendars.find((c) => c.id === params.id)
+    const calendar = mockCalendars.calendars.find((c) => c.id === params.id)
     if (!calendar) {
       return response('default').json(notFound(`/api/v1/calendars/${params.id}`), { status: 404 })
     }
@@ -293,24 +167,6 @@ export const handlers = [
   }),
   http.delete('/api/v1/calendars/{id}/grants/{grantId}', ({ response }) => response(204).empty()),
 
-  http.get('/api/v1/events', ({ query, response }) => {
-    const from = query.get('from') ?? ''
-    const to = query.get('to') ?? ''
-    const calendarIds = query.getAll('calendarIds')
-    // Series as their occurrences (expand=occurrences) or their master; the real api expands any rule.
-    const candidates =
-      query.get('expand') === 'occurrences'
-        ? [...mockEvents.filter((e) => !e.recurrence), ...mockOccurrences()]
-        : mockEvents
-    // Rough overlap on the UTC (timed) or date (all-day) bounds; the real api places all-day events per zone.
-    const items = candidates.filter(
-      (e) =>
-        (calendarIds.length === 0 || calendarIds.includes(e.calendarId)) &&
-        (e.start.utc ?? e.start.date ?? '') < to &&
-        (e.end.utc ?? e.end.date ?? '') > from,
-    )
-    return response(200).json({ items, truncated: false })
-  }),
   http.post('/api/v1/events', async ({ request, response }) => {
     const body = await request.json()
     const zone = body.start?.timeZone ?? mockCalendar.defaultTimeZone
@@ -334,13 +190,13 @@ export const handlers = [
     })
   }),
   http.get('/api/v1/events/{id}', ({ params, response }) => {
-    const event = mockEvents.find((e) => e.id === params.id)
+    const event = mockCalendars.events.find((e) => e.id === params.id)
     return event
       ? response(200).json(event)
       : response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
   }),
   http.patch('/api/v1/events/{id}', async ({ params, request, response }) => {
-    const event = mockEvents.find((e) => e.id === params.id)
+    const event = mockCalendars.events.find((e) => e.id === params.id)
     if (!event) {
       return response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
     }
@@ -362,7 +218,7 @@ export const handlers = [
     async ({ params, request, response }) => {
       const occurrence =
         params.id === mockSeries.id
-          ? mockOccurrences().find((o) => o.recurrenceId === params.recurrenceId)
+          ? seriesOccurrences().find((o) => o.recurrenceId === params.recurrenceId)
           : undefined
       if (!occurrence) {
         return response('default').json(
@@ -385,7 +241,7 @@ export const handlers = [
   ),
   http.delete('/api/v1/events/{id}/occurrences/{recurrenceId}', ({ params, response }) =>
     params.id === mockSeries.id &&
-    mockOccurrences().some((o) => o.recurrenceId === params.recurrenceId)
+    seriesOccurrences().some((o) => o.recurrenceId === params.recurrenceId)
       ? response(204).empty()
       : response('default').json(
           notFound(`/api/v1/events/${params.id}/occurrences/${params.recurrenceId}`),
@@ -396,7 +252,7 @@ export const handlers = [
     const body = await request.json()
     const occurrence =
       params.id === mockSeries.id
-        ? mockOccurrences().find((o) => o.recurrenceId === body.recurrenceId)
+        ? seriesOccurrences().find((o) => o.recurrenceId === body.recurrenceId)
         : undefined
     if (!occurrence) {
       return response('default').json(notFound(`/api/v1/events/${params.id}/split`), {
@@ -417,7 +273,7 @@ export const handlers = [
     })
   }),
   http.post('/api/v1/events/{id}/move', async ({ params, request, response }) => {
-    const event = mockEvents.find((e) => e.id === params.id)
+    const event = mockCalendars.events.find((e) => e.id === params.id)
     if (!event) {
       return response('default').json(notFound(`/api/v1/events/${params.id}`), { status: 404 })
     }
@@ -482,6 +338,12 @@ export const handlers = [
     })
   }),
 ]
+
+/** The occurrences of {@link mockSeries} (the series the occurrence endpoints know). */
+function seriesOccurrences() {
+  const series = mockCalendars.series.find((s) => s.master.id === mockSeries.id)
+  return series ? mockOccurrences(series) : []
+}
 
 function notFound(instance: string): components['schemas']['ProblemDetails'] {
   return {
