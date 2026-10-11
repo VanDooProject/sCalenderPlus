@@ -261,6 +261,12 @@ function seed(): MockCalendarsState {
     }),
     busy(mockBusyCalendar.id, at(d(2), '09:00'), at(d(2), '11:30')),
     event({
+      title: 'Quick call with the coach',
+      calendarId: mockPersonalCalendar.id,
+      start: at(d(1), '15:00'),
+      end: at(d(1), '15:30'),
+    }),
+    event({
       title: 'Dentist',
       calendarId: mockPersonalCalendar.id,
       location: 'Dr. Weber, Hauptstraße 12',

@@ -127,3 +127,20 @@ test.describe('on a phone', () => {
     expect(overflow).toBeLessThanOrEqual(0)
   })
 })
+
+// #56 polish: a short event keeps time and title on one line in the week grid (title not clipped).
+test('short events show time and title on one line', async ({ page }) => {
+  await page.goto('/calendar?view=week')
+  const short = event(page, 'Quick call with the coach')
+  await expect(short).toBeVisible()
+  const content = short.locator('.scal-event-content')
+  await expect(content).toHaveClass(/scal-event-short/)
+  const [time, title] = await Promise.all([
+    content.locator('.scal-event-time').boundingBox(),
+    content.locator('.scal-event-title').boundingBox(),
+  ])
+  expect(Math.abs((time?.y ?? 0) - (title?.y ?? 100))).toBeLessThan(4)
+  await expect(event(page, 'Lunch with Max').locator('.scal-event-content')).not.toHaveClass(
+    /scal-event-short/,
+  )
+})
