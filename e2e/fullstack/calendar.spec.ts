@@ -162,3 +162,35 @@ test('create a calendar and share it through the settings page', async ({ browse
   expect(alice.errors).toEqual([])
   expect(bob.errors).toEqual([])
 })
+
+// #58: an event created through the dialog is stored by the api and still there after a reload.
+test('create an event through the dialog and see it after a reload', async ({ browser }) => {
+  const alice = await account(browser, 'Alice')
+  const when = nextWednesday()
+  const title = `Planning ${Date.now()}`
+  await post(alice.page, '/api/v1/calendars', {
+    name: 'Alice work',
+    color: '#4f46e5',
+    defaultTimeZone: 'Europe/Berlin',
+  })
+
+  await alice.page.goto(`/calendar?view=week&date=${when.date}`)
+  await alice.page.getByTestId('calendar-new-event').click()
+  const dialog = alice.page.getByTestId('event-dialog')
+  await expect(dialog).toBeVisible()
+  await alice.page.getByTestId('event-title').fill(title)
+  await alice.page.getByTestId('event-start-date').fill(when.date)
+  await alice.page.getByTestId('event-start-time').fill('10:00')
+  await alice.page.getByTestId('event-end-date').fill(when.date)
+  await alice.page.getByTestId('event-end-time').fill('11:30')
+  await alice.page.getByTestId('event-location').fill('Room 1')
+  await alice.page.getByTestId('event-save').click()
+  await expect(dialog).toBeHidden()
+
+  await alice.page.reload()
+  const event = alice.page.getByTestId('calendar-event').filter({ hasText: title })
+  await expect(event).toContainText('10:00')
+  await event.click()
+  await expect(alice.page.getByTestId('event-details')).toContainText('Room 1')
+  expect(alice.errors).toEqual([])
+})

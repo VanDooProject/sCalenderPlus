@@ -138,6 +138,16 @@ test('event details dialog', async ({ page }) => {
   await expect(details).toBeVisible()
 })
 
+test('event edit dialog', async ({ page }) => {
+  await prepare(page)
+  await openWeek(page)
+  await event(page, 'League match').click()
+  await page.getByTestId('event-details-edit').click()
+  await expect(page.getByTestId('event-title')).toHaveValue('League match vs. SV Nord')
+  await page.getByTestId('event-more').click()
+  await shot(page, 'event-edit')
+})
+
 test('calendar sharing (grants)', async ({ page }) => {
   await prepare(page)
   await page.goto(`/calendars/${calendars.lions}/settings`)

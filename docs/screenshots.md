@@ -16,6 +16,10 @@ The month view keeps the same per-event permissions: busy-only entries stay anon
 
 Event details say where an event comes from, who created it and exactly what you may do with it, here an event shared with you for viewing only.
 
+![Event edit dialog with title, calendar, all-day toggle, dates, times and the time zone](screenshots/event-edit.png)
+
+Events you may edit open in the same dialog that creates them: dates and times in your zone by default, the event's own time zone under "More options", and every save guarded against concurrent changes.
+
 ## Permissions & sharing
 
 ![Busy-only blocks next to titled and read-only events in the week grid](screenshots/calendar-busy-blocks.png)
