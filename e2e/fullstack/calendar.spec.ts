@@ -194,3 +194,90 @@ test('create an event through the dialog and see it after a reload', async ({ br
   await expect(alice.page.getByTestId('event-details')).toContainText('Room 1')
   expect(alice.errors).toEqual([])
 })
+
+// #61: the creator (contribute, creator floor → manage) applies "Busy only for everyone" in the
+// Permissions tab. A member with calendar read then sees only a "Busy" block (the title nowhere in
+// the page) and the explainer says busy only; the calendar's manager keeps the full event, the
+// Permissions tab and can explain the member's access.
+test('busy-only preset hides the title from readers but not from the manager', async ({
+  browser,
+}) => {
+  const adam = await account(browser, 'Adam')
+  const mia = await account(browser, 'Mia')
+  const vic = await account(browser, 'Vic')
+  const when = nextWednesday()
+  const title = `Salary talks ${Date.now()}`
+
+  // One group, so all three are selectable principals for each other.
+  const group = await post(adam.page, '/api/v1/groups', { name: `E2E Busy ${Date.now()}` })
+  for (const member of [mia, vic]) {
+    const invite = await post(adam.page, `/api/v1/groups/${group.id}/invites`, { role: 'member' })
+    const token = new URL(invite.url).searchParams.get('token')
+    await post(member.page, '/api/v1/invites/accept', { token })
+  }
+
+  const calendar = await post(adam.page, '/api/v1/calendars', {
+    name: 'Adam team',
+    color: '#0d9488',
+    defaultTimeZone: 'Europe/Berlin',
+    creatorsManageOwnEvents: true,
+  })
+  await post(adam.page, `/api/v1/calendars/${calendar.id}/grants`, {
+    principal: { type: 'user', id: mia.id },
+    level: 'contribute',
+  })
+  await post(adam.page, `/api/v1/calendars/${calendar.id}/grants`, {
+    principal: { type: 'user', id: vic.id },
+    level: 'read',
+  })
+  const created = await post(mia.page, '/api/v1/events', {
+    calendarId: calendar.id,
+    title,
+    start: { dateTime: when.start, timeZone: 'Europe/Berlin' },
+    end: { dateTime: when.end, timeZone: 'Europe/Berlin' },
+  })
+  const week = `/calendar?view=week&date=${when.date}`
+
+  // Before: Vic (calendar read) sees the title.
+  await vic.page.goto(week)
+  await expect(vic.page.getByTestId('calendar-event').filter({ hasText: title })).toBeVisible()
+
+  // Mia opens her event, applies the preset in the Permissions tab and saves.
+  await mia.page.goto(week)
+  await mia.page.getByTestId('calendar-event').filter({ hasText: title }).click()
+  await mia.page.getByTestId('event-tab-permissions').click()
+  const permissions = mia.page.getByTestId('event-permissions')
+  await expect(permissions.getByTestId('overrides-empty')).toBeVisible()
+  await permissions.getByTestId('preset-busy').click()
+  await expect(permissions.getByTestId('override-everyone')).toBeVisible()
+  await permissions.getByTestId('overrides-save').click()
+  await expect(mia.page.getByText('Permissions saved.')).toBeVisible()
+  await expect(permissions.getByTestId('overrides-save')).toBeDisabled()
+
+  // Vic: a busy block, the title nowhere in the page; the explainer says busy only.
+  await vic.page.goto(week)
+  const busy = vic.page.getByTestId('busy-event')
+  await expect(busy).toHaveCount(1)
+  await expect(busy).toHaveText('Busy')
+  await expect(vic.page.getByTestId('calendar-event').filter({ hasText: title })).toHaveCount(0)
+  expect(await vic.page.content()).not.toContain(title)
+  const explained = await vic.page.request.get(`/api/v1/events/${created.id}/access/explain`)
+  expect(explained.ok()).toBeTruthy()
+  expect((await explained.json()).level).toBe('free_busy')
+
+  // Adam (owner → manage): the full title, the Permissions tab with Mia's entry, and "Who sees
+  // what" for Vic says busy only.
+  await adam.page.goto(week)
+  await adam.page.getByTestId('calendar-event').filter({ hasText: title }).click()
+  await expect(adam.page.getByTestId('event-details')).toContainText(title)
+  await adam.page.getByTestId('event-tab-permissions').click()
+  await expect(adam.page.getByTestId('override-everyone')).toBeVisible()
+  await adam.page.getByTestId('event-tab-access').click()
+  await adam.page.getByTestId('explain-person').click()
+  await adam.page.getByRole('option', { name: 'Vic', exact: true }).click()
+  await expect(adam.page.getByTestId('explain-result')).toHaveText('Vic: Busy only')
+
+  expect(adam.errors).toEqual([])
+  expect(mia.errors).toEqual([])
+  expect(vic.errors).toEqual([])
+})
