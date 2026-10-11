@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Clock, Lock, MapPin, Pencil, Repeat, Share2, ShieldCheck, UserRound } from '@lucide/vue'
+import {
+  Clock,
+  Lock,
+  MapPin,
+  Pencil,
+  Repeat,
+  FolderInput,
+  Share2,
+  ShieldCheck,
+  UserRound,
+} from '@lucide/vue'
 import type { EventResponse } from '@scalenderplus/api-client'
 import { UiButton, UiDialog } from '@scalenderplus/ui'
 import EventAccessExplain from '@/components/calendar/EventAccessExplain.vue'
@@ -20,7 +30,7 @@ const props = defineProps<{
   calendarLevel?: string
 }>()
 const open = defineModel<boolean>('open', { default: false })
-const emit = defineEmits<{ edit: [] }>()
+const emit = defineEmits<{ edit: []; move: [] }>()
 
 const { t, locale } = useI18n()
 
@@ -248,6 +258,14 @@ function onTabKey(event: KeyboardEvent) {
     <template v-if="event && isEditable(event) && tab === 'details'" #footer>
       <UiButton variant="secondary" data-testid="event-details-edit" @click="emit('edit')">
         <Pencil class="size-4" aria-hidden="true" />{{ t('event.edit') }}
+      </UiButton>
+      <UiButton
+        v-if="canManage"
+        variant="secondary"
+        data-testid="event-details-move"
+        @click="emit('move')"
+      >
+        <FolderInput class="size-4" aria-hidden="true" />{{ t('event.move.open') }}
       </UiButton>
     </template>
   </UiDialog>

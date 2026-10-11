@@ -28,6 +28,7 @@ import type { EventResponse } from '@scalenderplus/api-client'
 import { UiAlert, UiButton, UiSpinner, useToast } from '@scalenderplus/ui'
 import EmptyState from '@/components/EmptyState.vue'
 import EventDetailsDialog from '@/components/calendar/EventDetailsDialog.vue'
+import EventMoveDialog from '@/components/calendar/EventMoveDialog.vue'
 import EventEditDialog from '@/components/calendar/EventEditDialog.vue'
 import { useCalendarLayers, useSharedWithMe } from '@/composables/calendars'
 import { useSession } from '@/composables/session'
@@ -194,6 +195,14 @@ function openEdit() {
   editInitial.value = null
   detailsOpen.value = false
   editOpen.value = true
+}
+
+const moveOpen = ref(false)
+const moveEvent = ref<EventResponse | null>(null)
+function openMove() {
+  moveEvent.value = selected.value
+  detailsOpen.value = false
+  moveOpen.value = true
 }
 
 /** Drag and resize: both times as wall times in the event's zone; failures put it back. */
@@ -532,6 +541,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :time-zone="timeZone"
       :calendar-level="layers.find((l) => l.calendar.id === selected?.calendarId)?.calendar.myLevel"
       @edit="openEdit"
+      @move="openMove"
+    />
+    <EventMoveDialog
+      v-model:open="moveOpen"
+      :event="moveEvent"
+      :calendars="layers.map((l) => l.calendar)"
     />
     <EventEditDialog
       v-model:open="editOpen"

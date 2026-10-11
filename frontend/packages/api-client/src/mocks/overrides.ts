@@ -2,7 +2,7 @@ import type { createOpenApiHttp } from 'openapi-msw'
 import type { components, paths } from '../schema'
 import type { ErrorCode } from '../index'
 import { mockProblem, mockUser } from './auth'
-import { mockCalendar, mockCalendars, mockEvent } from './calendars'
+import { mockCalendar, mockCalendars, mockEvent, mockPersonalCalendar } from './calendars'
 import { mockGroup, mockGroups } from './groups'
 
 type CalendarEvent = components['schemas']['EventResponse']
@@ -318,6 +318,49 @@ export function overrideHandlers(http: ReturnType<typeof createOpenApiHttp<paths
       event.hasOverrides = items.length > 0
       const etag = etagOf(event.id)
       return json({ eventId: event.id, items, etag }, etag)
+    }),
+    // Move (api.md "Events"): shares with people (user entries above `none`) cannot move into the
+    // personal calendar "Mia" in the mock → 409 override_invalid_in_target listing them.
+    http.post('/api/v1/events/{id}/move', async ({ params, request }) => {
+      const instance = `/api/v1/events/${params.id}/move`
+      const index = mockCalendars.events.findIndex((e) => e.id === params.id)
+      const event = mockCalendars.events[index]
+      if (!event || event.myLevel === 'none') return problem('not_found', 404, instance)
+      if (event.myLevel !== 'manage') return problem('insufficient_permission', 403, instance)
+      const ifMatch = request.headers.get('If-Match')
+      if (!ifMatch) return problem('precondition_required', 428, instance)
+      if (ifMatch !== '*' && ifMatch !== event.etag) {
+        return problem('precondition_failed', 412, instance)
+      }
+      const { targetCalendarId } = await request.json()
+      const target = mockCalendars.calendars.find((c) => c.id === targetCalendarId)
+      if (!target) return problem('not_found', 404, instance)
+      if (target.id === event.calendarId) return problem('bad_request', 400, instance)
+      if (!atLeast(target.myLevel, 'contribute')) {
+        return problem('insufficient_permission', 403, instance)
+      }
+      if (target.frozen) return problem('calendar_frozen', 409, instance)
+      const blocking =
+        target.id === mockPersonalCalendar.id
+          ? (mockCalendars.overrides[event.id]?.items ?? [])
+              .filter((o) => o.principal.type === 'user' && o.level !== 'none')
+              .map((o) => ({
+                principal: o.principal,
+                principalName: o.principalName,
+                level: o.level,
+                reason: 'external_sharing',
+              }))
+          : []
+      if (blocking.length) {
+        return problem('override_invalid_in_target', 409, instance, { violations: blocking })
+      }
+      const moved = {
+        ...event,
+        calendarId: target.id,
+        etag: `"${event.id.slice(-4)}-m${Date.now() % 1000}"`,
+      }
+      mockCalendars.events[index] = moved
+      return json(moved, moved.etag)
     }),
     http.get('/api/v1/events/{id}/access/explain', ({ params, query }) => {
       const instance = `/api/v1/events/${params.id}/access/explain`

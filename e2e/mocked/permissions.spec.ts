@@ -101,3 +101,26 @@ test('readers see no editor, only their own level and why', async ({ page }) => 
   await expect(panel.getByTestId('explain-result')).toHaveText('Your access: Can view')
   await expect(panel.getByTestId('explain-decisive')).toContainText('From the calendar: Can view.')
 })
+
+test('moving lists the custom permissions that block the target calendar', async ({ page }) => {
+  await page.goto('/calendar?view=week')
+  await event(page, 'League match').first().click()
+  await page.getByTestId('event-details-move').click()
+  const dialog = page.getByTestId('event-move-dialog')
+  await dialog.getByTestId('event-move-target').click()
+  await page.getByRole('option', { name: 'Mia' }).click()
+  await dialog.getByTestId('event-move-submit').click()
+  await expect(dialog.getByTestId('form-error')).toContainText("can't move into that calendar")
+  await expect(dialog.getByTestId('event-move-blocking')).toContainText('Max (Can edit)')
+  await expectAccessible(page, 'move dialog with blocking permissions')
+  await page.keyboard.press('Escape')
+
+  // "Dentist" (private, no shares) moves into the club calendar.
+  await event(page, 'Dentist').first().click()
+  await page.getByTestId('event-details-move').click()
+  await dialog.getByTestId('event-move-target').click()
+  await page.getByRole('option', { name: 'FC Lions – Club' }).click()
+  await dialog.getByTestId('event-move-submit').click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('toast').getByText('Event moved.')).toBeVisible()
+})

@@ -660,7 +660,18 @@
       "count": "{rule}, {n}-mal",
       "until": "{rule}, bis {date}"
     },
-    "noWritableCalendar": "Du hast keinen Kalender, in dem du Termine anlegen kannst."
+    "noWritableCalendar": "Du hast keinen Kalender, in dem du Termine anlegen kannst.",
+    "move": {
+      "title": "„{title}“ verschieben",
+      "description": "Wähle einen Kalender, in dem du Termine anlegen darfst. Eigene Berechtigungen ziehen mit um.",
+      "target": "Verschieben nach",
+      "targetPlaceholder": "Kalender wählen",
+      "pick": "Wähle zuerst einen Kalender.",
+      "submit": "Verschieben",
+      "open": "Verschieben",
+      "blocked": "Diese eigenen Berechtigungen können nicht in diesen Kalender mitziehen. Entferne sie zuerst oder frag einen Verwalter des Zielkalenders.",
+      "changed": "Der Termin wurde inzwischen geändert. Prüfe ihn und versuche es erneut."
+    }
   },
   "permissions": {
     "tabs": {

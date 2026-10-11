@@ -110,6 +110,7 @@ export function applyPreset(rows: OverrideRow[], preset: Preset): OverrideRow[] 
 /** One entry of `violations` (422 `override_invalid`, 403 `external_sharing_not_allowed`, 409). */
 export interface Violation {
   principal: Principal
+  principalName?: string | null
   level?: string | null
   reason: string
 }

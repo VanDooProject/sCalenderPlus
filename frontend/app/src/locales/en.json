@@ -660,7 +660,18 @@
       "count": "{rule}, {n} times",
       "until": "{rule}, until {date}"
     },
-    "noWritableCalendar": "You have no calendar you can add events to."
+    "noWritableCalendar": "You have no calendar you can add events to.",
+    "move": {
+      "title": "Move “{title}”",
+      "description": "Choose a calendar where you may add events. Custom permissions move with the event.",
+      "target": "Move to",
+      "targetPlaceholder": "Choose a calendar",
+      "pick": "Choose a calendar first.",
+      "submit": "Move",
+      "open": "Move",
+      "blocked": "These custom permissions can't move into that calendar. Remove them first, or ask a manager of the target calendar.",
+      "changed": "The event changed in the meantime. Check it and try again."
+    }
   },
   "permissions": {
     "tabs": {
