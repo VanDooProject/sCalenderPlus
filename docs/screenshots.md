@@ -22,6 +22,14 @@ Events you may edit open in the same dialog that creates them: dates and times i
 
 ## Permissions & sharing
 
+![Event permissions: Max can edit, everyone else in the calendar sees the event as busy only, with presets and "Add a person or group"](screenshots/event-permissions.png)
+
+Different permissions for different events in the same calendar: hide an event, show it as busy only or share it with one person or group, with presets for "Private" and "Busy only for everyone". Calendar owners, managers and the event's creator always keep access.
+
+![Who sees what: the steps that give Max "Can edit" on the league match, with the deciding custom permission marked](screenshots/event-explain.png)
+
+"Why can X see this?" shows how a level comes about, step by step from the calendar to the most specific custom permission, and marks the step that decides. Everyone can ask about themselves; calendar managers about anyone in the calendar.
+
 ![Busy-only blocks next to titled and read-only events in the week grid](screenshots/calendar-busy-blocks.png)
 
 Busy-only blocks show that a colleague is unavailable without revealing title or details, right next to events you may see in full; the lock marks events you can only read.

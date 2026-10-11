@@ -10,7 +10,9 @@ A shared calendar SaaS whose core idea is **different permissions for different 
 
 ![The same week view in dark mode](docs/screenshots/calendar-week-dark.png)
 
-More in the [screenshot gallery](docs/screenshots.md): sharing levels, role defaults, groups, mobile and German.
+![Event permissions: one event shared with Max to edit and busy-only for everyone else in the calendar](docs/screenshots/event-permissions.png)
+
+More in the [screenshot gallery](docs/screenshots.md): the access explainer, sharing levels, role defaults, groups, mobile and German.
 
 ## Repository layout
 

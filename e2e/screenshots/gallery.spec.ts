@@ -148,6 +148,31 @@ test('event edit dialog', async ({ page }) => {
   await shot(page, 'event-edit')
 })
 
+test('event permissions editor', async ({ page }) => {
+  await prepare(page)
+  await openWeek(page)
+  await event(page, 'League match').click()
+  await page.getByTestId('event-tab-permissions').click()
+  const editor = page.getByTestId('event-permissions')
+  await expect(editor.getByTestId('overrides')).toContainText('Max')
+  // Unsaved: busy-only for everyone else next to the seeded share with Max (Can edit).
+  await editor.getByTestId('preset-busy').click()
+  await expect(editor.getByTestId('override-level-everyone')).toContainText('Busy only')
+  await shot(page, 'event-permissions')
+})
+
+test('event access explainer', async ({ page }) => {
+  await prepare(page)
+  await openWeek(page)
+  await event(page, 'League match').click()
+  await page.getByTestId('event-tab-access').click()
+  const panel = page.getByTestId('event-explain')
+  await expect(panel.getByTestId('explain-result')).toContainText('Your access')
+  await pick(page, panel.getByTestId('explain-person'), 'Max')
+  await expect(panel.getByTestId('explain-result')).toHaveText('Max: Can edit')
+  await shot(page, 'event-explain')
+})
+
 test('calendar sharing (grants)', async ({ page }) => {
   await prepare(page)
   await page.goto(`/calendars/${calendars.lions}/settings`)
