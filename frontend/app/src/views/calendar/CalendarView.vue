@@ -169,6 +169,13 @@ const options = computed<CalendarOptions>(() => ({
   },
   eventDidMount: (info: MountInfo<EventDisplayInfo>) => {
     const props = info.event.extendedProps as MappedEvent['extendedProps']
+    // FullCalendar 7.1's list view puts `role="button"` events directly into a `role="list"`
+    // (no list items: an ARIA error); the day heading groups them anyway.
+    const parent = info.el.parentElement
+    if (parent?.getAttribute('role') === 'list' && info.el.getAttribute('role') !== 'listitem') {
+      parent.removeAttribute('role')
+      parent.removeAttribute('aria-label')
+    }
     if (props.busy) {
       // Not interactive and nothing to open: keep it out of the tab order and name it "Busy".
       info.el.removeAttribute('tabindex')

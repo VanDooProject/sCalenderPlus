@@ -130,3 +130,9 @@
   outline: 2px solid var(--scal-focus);
   outline-offset: 1px;
 }
+
+/* Month cells: events and "+n more" links are at least 24 px tall (WCAG 2.2 target size). */
+.scal-calendar[data-view='month'] [role='button'] {
+  min-height: 24px;
+  align-items: center;
+}

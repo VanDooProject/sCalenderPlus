@@ -21,6 +21,8 @@ const signedOutPages = [
 
 const signedInPages = [
   ['calendar', '/calendar', 'Calendar'],
+  ['calendar month', '/calendar?view=month', 'Calendar'],
+  ['calendar agenda', '/calendar?view=agenda', 'Calendar'],
   ['groups', '/groups', 'Groups'],
   ['profile', '/settings/profile', 'Settings'],
   ['security', '/settings/security', 'Settings'],

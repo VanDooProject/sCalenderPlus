@@ -143,9 +143,9 @@ function at(date: string, time: string): EventTime {
 
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
-/** Monday of the current week (UTC date), the anchor of the seed so mock mode always looks alive. */
+/** Monday of the current week in {@link zone}, the anchor of the seed so mock mode always looks alive. */
 function currentMonday(now = Date.now()): number {
-  const today = Date.parse(isoDate(now))
+  const today = Date.parse(new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(now))
   const weekday = (new Date(today).getUTCDay() + 6) % 7
   return today - weekday * day
 }

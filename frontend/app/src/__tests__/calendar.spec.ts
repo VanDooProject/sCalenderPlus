@@ -3,6 +3,7 @@ import { Temporal } from 'temporal-polyfill'
 import type { EventResponse } from '@scalenderplus/api-client'
 import { mockCalendar, mockCalendars, mockPersonalCalendar } from '@scalenderplus/api-client/mocks'
 import {
+  contrastText,
   eventsQueryKey,
   eventsQueryParams,
   firstDayOf,
@@ -159,6 +160,13 @@ describe('event mapping', () => {
     // A "free" exception comes without its times.
     const noTimes = { ...timed, title: null, myLevel: 'free_busy', start: {}, end: {} }
     expect(toCalendarEvent(noTimes, colorOf)).toBeNull()
+  })
+
+  it('picks readable text for the calendar color', () => {
+    expect(contrastText('#4f46e5')).toBe('#ffffff')
+    expect(contrastText('#16a34a')).toBe('#111827')
+    expect(contrastText('#d97706')).toBe('#111827')
+    expect(toCalendarEvent(timed, () => '#16a34a')?.contrastColor).toBe('#111827')
   })
 
   it('keeps shown calendars and, when enabled, events shared with me', () => {

@@ -9,7 +9,7 @@ test('app shell renders with the mocked API', async ({ page }) => {
   // `/config.json`, `/api/v1/me` and `/api/v1/calendars` come from MSW (no backend running).
   await expect(page.getByTestId('environment-badge')).toHaveText('Environment: mock')
   await expect(page.getByTestId('sidebar-calendars')).toContainText('FC Lions – Club')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Calendar')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Calendar: /)
 })
 
 test.describe('with a German browser', () => {

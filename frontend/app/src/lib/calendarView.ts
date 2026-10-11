@@ -167,6 +167,21 @@ export const isBusyOnly = (event: EventResponse) =>
 
 export const isEditable = (event: EventResponse) => editableLevels.has(event.myLevel)
 
+/** Relative luminance of a `#rrggbb` color (WCAG 2). */
+function luminance(hex: string): number {
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)
+}
+
+/** White or near-black text, whichever contrasts more with `background` (`#rrggbb`). */
+export function contrastText(background: string): string {
+  if (!/^#[0-9a-f]{6}$/i.test(background)) return '#ffffff'
+  const l = luminance(background)
+  const dark = luminance('#111827')
+  return 1.05 / (l + 0.05) >= (l + 0.05) / (dark + 0.05) ? '#ffffff' : '#111827'
+}
+
 export interface MappedEvent {
   id: string
   title: string
@@ -174,6 +189,7 @@ export interface MappedEvent {
   end: string
   allDay: boolean
   color: string
+  contrastColor: string
   className: string
   interactive: boolean
   extendedProps: { source: EventResponse; busy: boolean; editable: boolean }
@@ -194,13 +210,15 @@ export function toCalendarEvent(
   const end = event.allDay ? event.end?.date : event.end?.utc
   if (!start || !end) return null
   const editable = !busy && isEditable(event)
+  const color = event.sharedWithMe ? sharedColor : colorOf(event.calendarId)
   return {
     id: event.occurrenceId ?? event.id,
     title: busy ? '' : (event.title ?? ''),
     start,
     end,
     allDay: event.allDay,
-    color: event.sharedWithMe ? sharedColor : colorOf(event.calendarId),
+    color,
+    contrastColor: contrastText(color),
     className: busy ? 'scal-busy' : editable ? 'scal-editable' : 'scal-readonly',
     interactive: !busy,
     extendedProps: { source: event, busy, editable },

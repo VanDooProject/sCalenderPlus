@@ -28,12 +28,12 @@ test('language switch translates the app and is remembered', async ({ page }) =>
   await page.getByTestId('locale-switcher').click()
   await page.getByRole('menuitemradio', { name: 'Deutsch' }).click()
 
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kalender')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Kalender: /)
   await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   await expect(page).toHaveTitle('Kalender · sCalenderPlus')
 
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kalender')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Kalender: /)
 })
 
 test('sign out from the user menu', async ({ page }) => {
