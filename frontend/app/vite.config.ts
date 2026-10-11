@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, searchForWorkspaceRoot } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import vueI18n from '@intlify/unplugin-vue-i18n/vite'
@@ -43,6 +43,17 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     strictPort: true,
     proxy: Object.fromEntries(proxiedPaths.map((path) => [path, { target: apiTarget }])),
+    // Vitest also reads the Caddyfile (the CSP test checks its style hashes against reka-ui).
+    ...(process.env.VITEST
+      ? {
+          fs: {
+            allow: [
+              searchForWorkspaceRoot(process.cwd()),
+              fileURLToPath(new URL('../../deploy/caddy', import.meta.url)),
+            ],
+          },
+        }
+      : {}),
   },
   test: {
     environment: 'jsdom',
