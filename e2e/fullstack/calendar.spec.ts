@@ -251,7 +251,7 @@ test('busy-only preset hides the title from readers but not from the manager', a
   await permissions.getByTestId('preset-busy').click()
   await expect(permissions.getByTestId('override-everyone')).toBeVisible()
   await permissions.getByTestId('overrides-save').click()
-  await expect(mia.page.getByText('Permissions saved.')).toBeVisible()
+  await expect(mia.page.getByTestId('toast').getByText('Permissions saved.')).toBeVisible()
   await expect(permissions.getByTestId('overrides-save')).toBeDisabled()
 
   // Vic: a busy block, the title nowhere in the page; the explainer says busy only.
