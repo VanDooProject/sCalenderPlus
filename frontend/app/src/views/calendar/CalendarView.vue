@@ -191,6 +191,15 @@ const options = computed<CalendarOptions>(() => ({
   },
 }))
 
+/**
+ * Events shorter than 45 minutes are too low in the week and day grids for a second line: time and
+ * title share one line there (#56 polish), so the title is never clipped under the time.
+ */
+function isShort(start: Date | null, end: Date | null): boolean {
+  if (!start || !end) return false
+  return end.getTime() - start.getTime() < 45 * 60_000
+}
+
 /** Follows view and date of the URL (the options above only set the initial ones). */
 watch([view, date], ([v, d]) => {
   calendarRef.value?.getApi().changeView(fullCalendarViews[v], d.toString())
@@ -350,7 +359,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-if="arg.event.extendedProps.busy" class="scal-event-busy">
               {{ busyLabel }}
             </span>
-            <span v-else class="scal-event-content">
+            <span
+              v-else
+              class="scal-event-content"
+              :class="{ 'scal-event-short': isShort(arg.event.start, arg.event.end) }"
+            >
               <span v-if="arg.timeText && !arg.event.allDay" class="scal-event-time">{{
                 arg.timeText
               }}</span>

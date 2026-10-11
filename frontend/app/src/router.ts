@@ -44,6 +44,12 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
             meta: { title: 'nav.calendar' },
           },
           {
+            path: 'calendars/:calendarId/settings',
+            name: 'calendar-settings',
+            component: () => import('./views/calendar/CalendarSettingsView.vue'),
+            meta: { title: 'calendar.settings' },
+          },
+          {
             path: 'groups',
             name: 'groups',
             component: () => import('./views/groups/GroupsView.vue'),

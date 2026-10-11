@@ -89,6 +89,17 @@
   white-space: normal;
 }
 
+/* Short events (< 45 min): one line, the title truncates instead of wrapping out of sight. */
+[data-view='week'] .scal-event-short,
+[data-view='day'] .scal-event-short {
+  flex-wrap: nowrap;
+}
+
+[data-view='week'] .scal-event-short .scal-event-title,
+[data-view='day'] .scal-event-short .scal-event-title {
+  white-space: nowrap;
+}
+
 .scal-event-lock {
   flex-shrink: 0;
   align-self: center;

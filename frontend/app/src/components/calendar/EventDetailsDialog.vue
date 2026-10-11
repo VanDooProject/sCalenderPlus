@@ -85,7 +85,15 @@ const level = computed(() => {
             class="size-3.5 text-on-surface-muted"
             aria-hidden="true"
           />
-          {{ calendarName }}
+          <RouterLink
+            v-if="!event.sharedWithMe && calendarName"
+            :to="{ name: 'calendar-settings', params: { calendarId: event.calendarId } }"
+            class="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            :aria-label="t('calendar.settingsOf', { name: calendarName })"
+            data-testid="event-calendar-settings"
+            >{{ calendarName }}</RouterLink
+          >
+          <template v-else>{{ calendarName }}</template>
         </dd>
       </div>
       <div v-if="event.location" class="flex items-start gap-3">

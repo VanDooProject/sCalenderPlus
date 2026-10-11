@@ -43,7 +43,8 @@
     "calendarsError": "Kalender konnten nicht geladen werden.",
     "groups": "Meine Gruppen",
     "noGroups": "Noch keine Gruppen.",
-    "groupsError": "Gruppen konnten nicht geladen werden."
+    "groupsError": "Gruppen konnten nicht geladen werden.",
+    "newCalendar": "Neuer Kalender"
   },
   "verifyBanner": {
     "text": "Bitte bestätige deine E-Mail-Adresse {email}, um andere einzuladen und Einladungen anzunehmen.",
@@ -74,7 +75,7 @@
     "showSmaller": "{view} anzeigen",
     "loadError": "Termine konnten nicht geladen werden.",
     "prefsChanged": "Deine Kalendereinstellungen wurden anderswo geändert. Wir haben den aktuellen Stand geladen; bitte versuche es erneut.",
-    "colorOf": "Farbe von {name}",
+    "colorOf": "Optionen für {name}",
     "colors": {
       "default": "Kalenderfarbe",
       "indigo": "Indigo",
@@ -101,6 +102,132 @@
       "access": "Dein Zugriff",
       "description": "Beschreibung",
       "recurring": "Wiederholt sich"
+    },
+    "settings": "Kalendereinstellungen",
+    "settingsOf": "Einstellungen von {name}"
+  },
+  "calendarSettings": {
+    "title": "{name}: Einstellungen",
+    "back": "Zurück zum Kalender",
+    "settingsOf": "Einstellungen von {name}",
+    "yourLevel": "Dein Zugriff: {level}",
+    "readOnly": "Du kannst diese Einstellungen sehen, aber nicht ändern. Das können nur Personen, die den Kalender verwalten.",
+    "frozen": "Dieser Kalender ist eingefroren, weil der Tarif seiner Eigentümer weniger Kalender erlaubt als genutzt werden. Löschen, Termine herausverschieben sowie Zugriffe verringern oder entfernen geht weiterhin; alles andere erst nach einem Upgrade oder wenn andere Kalender entfernt werden.",
+    "saved": "Einstellungen gespeichert.",
+    "notFoundTitle": "Kalender nicht gefunden",
+    "notFoundText": "Er existiert nicht oder du hast keinen Zugriff mehr.",
+    "create": {
+      "open": "Neuer Kalender",
+      "title": "Neuer Kalender",
+      "description": "Ein eigener Kalender oder einer einer Gruppe, die du verwaltest.",
+      "owner": "Gehört zu",
+      "ownerHint": "Gruppenkalender können Admins und Eigentümer der Gruppe anlegen.",
+      "personal": "Mir (persönlicher Kalender)",
+      "inGroup": "Gruppe {group}",
+      "submit": "Kalender anlegen",
+      "created": "Kalender {name} angelegt."
+    },
+    "general": {
+      "title": "Allgemein",
+      "description": "Name, Farbe und Standard-Zeitzone, gleich für alle, die den Kalender sehen.",
+      "name": "Name",
+      "descriptionLabel": "Beschreibung",
+      "color": "Farbe",
+      "timeZone": "Standard-Zeitzone",
+      "timeZoneHint": "Neue Termine nutzen diese Zone, wenn keine gewählt wird."
+    },
+    "permissions": {
+      "title": "Berechtigungen",
+      "description": "Was Personen mit eigenen Terminen dürfen und was Gruppenmitglieder standardmäßig bekommen.",
+      "creatorsManage": "Wer Termine anlegt, verwaltet die eigenen Termine",
+      "creatorsManageHint": "Sie können festlegen, wer ihre Termine sieht, auch wenn sie fremde Termine nicht bearbeiten dürfen.",
+      "creatorsShare": "Sie dürfen ihre Termine auch mit Personen außerhalb des Kalenders teilen",
+      "creatorsShareHint": "Sonst können nur Personen, die den Kalender verwalten, Außenstehenden Zugriff auf einzelne Termine geben.",
+      "roleDefaults": "Zugriff nach Gruppenrolle",
+      "roleDefaultsHint": "Was Mitglieder der besitzenden Gruppe je nach ihrer Rolle bekommen."
+    },
+    "levels": {
+      "explain": "Was bedeuten die Zugriffsstufen?",
+      "none": {
+        "label": "Kein Zugriff",
+        "hint": "Sieht den Kalender nicht."
+      },
+      "free_busy": {
+        "label": "Frei/belegt",
+        "hint": "Sieht nur, wann jemand belegt ist, ohne Titel oder Details."
+      },
+      "read": {
+        "label": "Ansehen",
+        "hint": "Sieht alle Termine mit Details."
+      },
+      "contribute": {
+        "label": "Termine hinzufügen",
+        "hint": "Sieht alles und legt eigene Termine an; fremde Termine bleiben unverändert."
+      },
+      "edit": {
+        "label": "Bearbeiten",
+        "hint": "Legt Termine an und ändert alle Termine."
+      },
+      "manage": {
+        "label": "Verwalten",
+        "hint": "Bearbeitet Termine und ändert Einstellungen und Freigaben."
+      },
+      "owner": {
+        "label": "Eigentümer",
+        "hint": "Verwaltet den Kalender und darf ihn löschen."
+      }
+    },
+    "sharing": {
+      "title": "Freigaben",
+      "description": "Personen und Gruppen, die über die Standards hinaus Zugriff bekommen.",
+      "empty": "Noch mit niemandem geteilt.",
+      "groupAll": "{group} (alle Mitglieder)",
+      "groupMinRole": "{group} ({role} und höher)",
+      "groupOption": "Gruppe: {group}",
+      "levelOf": "Zugriff von {name}",
+      "remove": "Zugriff von {name} entfernen",
+      "add": "Teilen",
+      "addTitle": "Kalender teilen",
+      "addDescription": "Mit jemandem aus einer deiner Gruppen oder mit einer ganzen Gruppe, in der du bist.",
+      "who": "Mit",
+      "whoPlaceholder": "Person oder Gruppe wählen",
+      "pickSomeone": "Wähle zuerst eine Person oder Gruppe.",
+      "minRole": "Gruppenmitglieder",
+      "minRoleHint": "Nur Mitglieder mit dieser oder einer höheren Rolle bekommen Zugriff.",
+      "minRoleAll": "Alle Mitglieder",
+      "minRoleAtLeast": "{role} und höher",
+      "level": "Zugriff",
+      "addSubmit": "Teilen",
+      "added": "Mit {name} geteilt.",
+      "changed": "Zugriff von {name} geändert.",
+      "removed": "Zugriff von {name} entfernt.",
+      "removeTitle": "Zugriff von {name} entfernen?",
+      "removeSubmit": "Zugriff entfernen",
+      "lowerTitle": "Zugriff von {name} auf {level} verringern?",
+      "lowerSubmit": "Zugriff verringern",
+      "frozenHint": "Eingefroren: Zugriffe können verringert oder entfernt, aber nicht hinzugefügt werden."
+    },
+    "revokeShares": {
+      "label": "Auch persönliche Terminfreigaben entziehen",
+      "grantHint": "Entfernt Terminberechtigungen, die Personen persönlich bekommen haben, die über {name} Zugriff verlieren. Abwählen, um sie zu behalten.",
+      "roleDefaultsHint": "Entfernt Terminberechtigungen, die Mitglieder persönlich bekommen haben, die Zugriff verlieren. Abwählen, um sie zu behalten."
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "description": "Das Löschen entfernt alle Termine und Freigaben des Kalenders für alle. Das lässt sich nicht rückgängig machen.",
+      "delete": "Kalender löschen",
+      "deleteTitle": "{name} löschen?",
+      "deleteConfirm": "Alle Termine dieses Kalenders werden für alle gelöscht.",
+      "deleteConfirmLabel": "Zur Bestätigung den Namen des Kalenders eingeben",
+      "deleted": "Kalender {name} gelöscht."
+    },
+    "errors": {
+      "selfLockout": "Diese Änderung würde dir selbst das Recht nehmen, den Kalender zu verwalten. Frag einen Eigentümer oder behalte deinen Zugriff.",
+      "frozen": "Der Kalender ist eingefroren (über dem Tariflimit): Nur Löschen, Termine herausverschieben und Zugriffe verringern sind möglich.",
+      "planLimit": "Dein Tarif erlaubt keine weiteren Kalender. Siehe Tarife (bald verfügbar) oder lösche einen Kalender, den du nicht mehr brauchst.",
+      "changed": "Jemand anderes hat diesen Kalender geändert. Die aktuelle Version wurde geladen; deine Eingaben bleiben erhalten, bitte prüfen und erneut speichern.",
+      "forbidden": "Das darfst du in diesem Kalender nicht.",
+      "grantExists": "Diese Person oder Gruppe hat bereits Zugriff. Ändere die Stufe stattdessen in der Liste."
     }
   },
   "groups": {

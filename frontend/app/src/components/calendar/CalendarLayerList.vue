@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Check, Palette } from '@lucide/vue'
+import { useRouter } from 'vue-router'
+import { Check, Palette, Settings } from '@lucide/vue'
 import { UiMenu, UiMenuItem, UiMenuSeparator } from '@scalenderplus/ui'
 import {
   useCalendarLayers,
@@ -8,26 +9,21 @@ import {
   useUpdateCalendarPrefs,
   type CalendarLayer,
 } from '@/composables/calendars'
-import { sharedColor } from '@/lib/calendarColors'
+import { calendarPalette, sharedColor } from '@/lib/calendarColors'
 
 const { t } = useI18n()
+const router = useRouter()
+const emit = defineEmits<{ navigate: [] }>()
+
+function openSettings(layer: CalendarLayer) {
+  emit('navigate')
+  void router.push({ name: 'calendar-settings', params: { calendarId: layer.calendar.id } })
+}
 const { calendars, layers } = useCalendarLayers()
 const update = useUpdateCalendarPrefs()
 const sharedWithMe = useSharedWithMe()
 
-/** Colors offered for the personal overlay (the calendar's own color stays available). */
-const palette = [
-  { name: 'indigo', value: '#4f46e5' },
-  { name: 'blue', value: '#0284c7' },
-  { name: 'teal', value: '#0d9488' },
-  { name: 'green', value: '#16a34a' },
-  { name: 'amber', value: '#d97706' },
-  { name: 'orange', value: '#ea580c' },
-  { name: 'red', value: '#dc2626' },
-  { name: 'pink', value: '#db2777' },
-  { name: 'purple', value: '#9333ea' },
-  { name: 'slate', value: '#64748b' },
-] as const
+const palette = calendarPalette
 
 /** The stored overlay color (null = the calendar's color). */
 function overlayColor(layer: CalendarLayer): string | null {
@@ -119,6 +115,14 @@ function setColor(layer: CalendarLayer, color: string | null) {
               <Palette class="size-4" aria-hidden="true" />
             </button>
           </template>
+          <UiMenuItem
+            :data-testid="`calendar-settings-${layer.calendar.id}`"
+            @select="openSettings(layer)"
+          >
+            <Settings class="size-3" aria-hidden="true" />
+            <span class="flex-1">{{ t('calendar.settings') }}</span>
+          </UiMenuItem>
+          <UiMenuSeparator />
           <UiMenuItem @select="setColor(layer, null)">
             <svg viewBox="0 0 12 12" class="size-3" aria-hidden="true">
               <rect width="12" height="12" rx="3.5" :fill="layer.calendar.color ?? sharedColor" />

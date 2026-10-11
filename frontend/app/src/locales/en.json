@@ -43,7 +43,8 @@
     "calendarsError": "Calendars could not be loaded.",
     "groups": "My groups",
     "noGroups": "No groups yet.",
-    "groupsError": "Groups could not be loaded."
+    "groupsError": "Groups could not be loaded.",
+    "newCalendar": "New calendar"
   },
   "verifyBanner": {
     "text": "Please confirm your email address {email} to invite others and accept invitations.",
@@ -74,7 +75,7 @@
     "showSmaller": "Show {view}",
     "loadError": "Events could not be loaded.",
     "prefsChanged": "Your calendar settings were changed elsewhere. We loaded the latest ones; please try again.",
-    "colorOf": "Color of {name}",
+    "colorOf": "Options for {name}",
     "colors": {
       "default": "Calendar color",
       "indigo": "Indigo",
@@ -101,6 +102,132 @@
       "access": "Your access",
       "description": "Description",
       "recurring": "Repeats"
+    },
+    "settings": "Calendar settings",
+    "settingsOf": "Settings of {name}"
+  },
+  "calendarSettings": {
+    "title": "{name}: settings",
+    "back": "Back to the calendar",
+    "settingsOf": "Settings of {name}",
+    "yourLevel": "Your access: {level}",
+    "readOnly": "You can see these settings but not change them. Only people who manage this calendar can.",
+    "frozen": "This calendar is frozen because its owner's plan has fewer calendars than they use. You can still delete it, move events out, and lower or remove access; everything else waits until the plan is upgraded or other calendars are removed.",
+    "saved": "Settings saved.",
+    "notFoundTitle": "Calendar not found",
+    "notFoundText": "It does not exist or you no longer have access to it.",
+    "create": {
+      "open": "New calendar",
+      "title": "New calendar",
+      "description": "A calendar of your own, or one of a group you manage.",
+      "owner": "Belongs to",
+      "ownerHint": "Group calendars can be created by admins and owners of the group.",
+      "personal": "Me (personal calendar)",
+      "inGroup": "Group {group}",
+      "submit": "Create calendar",
+      "created": "Calendar {name} created."
+    },
+    "general": {
+      "title": "General",
+      "description": "Name, color and default time zone, the same for everyone who sees the calendar.",
+      "name": "Name",
+      "descriptionLabel": "Description",
+      "color": "Color",
+      "timeZone": "Default time zone",
+      "timeZoneHint": "New events use this zone unless one is picked."
+    },
+    "permissions": {
+      "title": "Permissions",
+      "description": "What people may do with their own events and what group members get by default.",
+      "creatorsManage": "People who add events manage their own events",
+      "creatorsManageHint": "They can change who sees their events, even if they cannot edit others' events.",
+      "creatorsShare": "They may also share their events with people outside the calendar",
+      "creatorsShareHint": "Otherwise only people who manage the calendar can give outsiders access to single events.",
+      "roleDefaults": "Access by group role",
+      "roleDefaultsHint": "What members of the owning group get, by their role in the group."
+    },
+    "levels": {
+      "explain": "What do the access levels mean?",
+      "none": {
+        "label": "No access",
+        "hint": "Does not see the calendar."
+      },
+      "free_busy": {
+        "label": "Free/busy",
+        "hint": "Sees only when someone is busy, no titles or details."
+      },
+      "read": {
+        "label": "View",
+        "hint": "Sees all events with their details."
+      },
+      "contribute": {
+        "label": "Add events",
+        "hint": "Views everything and adds own events; cannot change others' events."
+      },
+      "edit": {
+        "label": "Edit",
+        "hint": "Adds and changes every event."
+      },
+      "manage": {
+        "label": "Manage",
+        "hint": "Edits events and changes settings and sharing."
+      },
+      "owner": {
+        "label": "Owner",
+        "hint": "Manages and may delete the calendar."
+      }
+    },
+    "sharing": {
+      "title": "Sharing",
+      "description": "People and groups who get access beyond the defaults.",
+      "empty": "Not shared with anyone yet.",
+      "groupAll": "{group} (all members)",
+      "groupMinRole": "{group} ({role} and above)",
+      "groupOption": "Group: {group}",
+      "levelOf": "Access of {name}",
+      "remove": "Remove access of {name}",
+      "add": "Share",
+      "addTitle": "Share the calendar",
+      "addDescription": "With someone from one of your groups, or with a whole group you are in.",
+      "who": "With",
+      "whoPlaceholder": "Pick a person or group",
+      "pickSomeone": "Pick a person or group first.",
+      "minRole": "Group members",
+      "minRoleHint": "Only members with this role or higher get access.",
+      "minRoleAll": "All members",
+      "minRoleAtLeast": "{role} and above",
+      "level": "Access",
+      "addSubmit": "Share",
+      "added": "Shared with {name}.",
+      "changed": "Access of {name} changed.",
+      "removed": "Access of {name} removed.",
+      "removeTitle": "Remove access of {name}?",
+      "removeSubmit": "Remove access",
+      "lowerTitle": "Lower access of {name} to {level}?",
+      "lowerSubmit": "Lower access",
+      "frozenHint": "Frozen: access can be lowered or removed, not added."
+    },
+    "revokeShares": {
+      "label": "Also revoke individual event shares",
+      "grantHint": "Removes event permissions given personally to people who lose access through {name}. Uncheck to keep them.",
+      "roleDefaultsHint": "Removes event permissions given personally to members who lose access. Uncheck to keep them."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting the calendar removes all its events and sharing for everyone. This cannot be undone.",
+      "delete": "Delete calendar",
+      "deleteTitle": "Delete {name}?",
+      "deleteConfirm": "All events of this calendar are deleted for everyone.",
+      "deleteConfirmLabel": "Type the calendar's name to confirm",
+      "deleted": "Calendar {name} deleted."
+    },
+    "errors": {
+      "selfLockout": "This change would take away your own right to manage the calendar. Ask an owner, or keep your access.",
+      "frozen": "The calendar is frozen (over the plan limit): only deleting, moving events out and lowering access are possible.",
+      "planLimit": "Your plan does not allow more calendars. See plans (coming soon) or delete a calendar you no longer need.",
+      "changed": "Someone else changed this calendar. The current version was loaded; your edits are kept, please check and save again.",
+      "forbidden": "You are not allowed to do that in this calendar.",
+      "grantExists": "This person or group already has access. Change their level in the list instead."
     }
   },
   "groups": {

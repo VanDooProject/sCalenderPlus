@@ -67,3 +67,6 @@ export type EventResponse = components['schemas']['EventResponse']
 
 /** My personal overlay of a calendar (`hidden`, `color`; `etag` is the `If-Match` of changing it). */
 export type CalendarPrefsResponse = components['schemas']['CalendarPrefsResponse']
+
+/** A grant on a calendar (`GET /api/v1/calendars/{id}/grants`; `etag` is the `If-Match` of changing it). */
+export type GrantResponse = components['schemas']['GrantResponse']

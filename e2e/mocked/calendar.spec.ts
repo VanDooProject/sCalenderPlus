@@ -109,7 +109,7 @@ test('toggling a calendar hides its events and survives a reload of the prefs', 
 
 test('changes the color of a calendar', async ({ page }) => {
   await page.goto('/calendar?view=week')
-  await page.getByRole('button', { name: 'Color of FC Lions – Club' }).click()
+  await page.getByRole('button', { name: 'Options for FC Lions – Club' }).click()
   await page.getByRole('menuitem', { name: 'Red' }).click()
   await expect(event(page, 'League match')).toHaveCSS('background-color', 'rgb(220, 38, 38)')
 })

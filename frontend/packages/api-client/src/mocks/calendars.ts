@@ -1,11 +1,13 @@
 import type { createOpenApiHttp } from 'openapi-msw'
 import type { components, paths } from '../schema'
+import type { ErrorCode, ProblemDetails } from '../index'
 import { mockProblem, mockUser } from './auth'
-import { mockGroup, mockMemberGroup } from './groups'
+import { mockGroup, mockGroups, mockMemberGroup } from './groups'
 
 type Calendar = components['schemas']['CalendarResponse']
 type CalendarEvent = components['schemas']['EventResponse']
 type EventTime = components['schemas']['EventTimeResponse']
+type Grant = components['schemas']['GrantResponse']
 
 /** A calendar of {@link mockGroup} (default role defaults); the mock user is its owner. */
 export const mockCalendar: Calendar = {
@@ -58,6 +60,31 @@ export const mockBusyCalendar: Calendar = {
   myLevel: 'free_busy',
   groupRoleDefaults: null,
 }
+
+/** A personal calendar of the mock user over the plan limit (frozen), shared with Adam. */
+export const mockFrozenCalendar: Calendar = {
+  ...mockPersonalCalendar,
+  id: '0192f2c4-0000-7000-8000-000000000305',
+  name: 'Old team',
+  color: '#64748b',
+  frozen: true,
+}
+
+/** A grant on {@link mockCalendar}: a user outside the group may edit it. */
+export const mockGrant: Grant = {
+  id: '0192f2c4-0000-7000-8000-000000000601',
+  calendarId: mockCalendar.id,
+  principal: { type: 'user', id: '0192f2c4-0000-7000-8000-000000000005', minRole: null },
+  principalName: 'Eve',
+  level: 'edit',
+  createdBy: mockUser.id,
+  createdAt: '2026-10-01T08:00:00Z',
+  updatedAt: '2026-10-01T08:00:00Z',
+  etag: '"grant-0601-1"',
+}
+
+/** Creating a calendar with this name answers `402 plan_limit_reached`. */
+export const mockPlanLimitName = 'Over the limit'
 
 /** A calendar the mock user cannot see; one of its events is shared with them ("Shared with me"). */
 export const mockHiddenCalendarId = '0192f2c4-0000-7000-8000-000000000399'
@@ -167,6 +194,12 @@ export interface MockCalendarsState {
   series: SeriesRecord[]
   /** Window responses are cut after this many items with `truncated: true` (the api: 5,000). */
   truncateAt: number
+  /** Grants of every calendar (`etag` changes with each update). */
+  grants: Grant[]
+  /** Versions of the calendars (their `ETag`). */
+  versions: Record<string, number>
+  /** `revokeEventShares` of the last grant or role-default change (default true). */
+  lastRevokeEventShares: boolean | null
 }
 
 function seed(): MockCalendarsState {
@@ -288,7 +321,27 @@ function seed(): MockCalendarsState {
   ]
 
   return {
-    calendars: [mockCalendar, mockPersonalCalendar, mockReadOnlyCalendar, mockBusyCalendar],
+    calendars: [
+      mockCalendar,
+      mockPersonalCalendar,
+      mockReadOnlyCalendar,
+      mockBusyCalendar,
+      mockFrozenCalendar,
+    ],
+    grants: [
+      { ...mockGrant },
+      {
+        ...mockGrant,
+        id: '0192f2c4-0000-7000-8000-000000000602',
+        calendarId: mockFrozenCalendar.id,
+        principal: { type: 'user', id: '0192f2c4-0000-7000-8000-000000000002', minRole: null },
+        principalName: 'Adam',
+        level: 'edit',
+        etag: '"grant-0602-1"',
+      },
+    ],
+    versions: {},
+    lastRevokeEventShares: null,
     prefs: {},
     events,
     series: [
@@ -335,12 +388,48 @@ export function mockOccurrences(series: SeriesRecord): CalendarEvent[] {
   }).filter((o) => !series.cancelled.includes(o.recurrenceId))
 }
 
+const rank = ['none', 'free_busy', 'read', 'contribute', 'edit', 'manage', 'owner']
+const levelRank = (level: string) => rank.indexOf(level)
+
+/** The `ETag` of a calendar (changes with every update). */
+export function mockCalendarEtag(id: string): string {
+  return `"cal-${id.slice(-4)}-${mockCalendars.versions[id] ?? 1}"`
+}
+
+/** Display name of a user or group the mocks know (members of the mock groups, the groups). */
+function principalName(type: string, id: string): string | null {
+  if (type === 'group') return mockGroups.groups.find((g) => g.id === id)?.name ?? null
+  for (const group of mockGroups.groups) {
+    const member = group.members.find((m) => m.userId === id)
+    if (member) return member.displayName
+  }
+  return mockCalendars.grants.find((g) => g.principal.id === id)?.principalName ?? null
+}
+
 const prefsEtag = (calendarId: string, version: number) =>
   `"prefs-${calendarId.slice(-4)}-${version}"`
 
 /** Stateful handlers for `/calendars` (list, create), `/events` (window) and the personal overlay. */
 export function calendarHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>) {
   const visible = (id: string) => mockCalendars.calendars.find((c) => c.id === id)
+  /** A problem response (a plain `Response`: valid for every route of the typed handlers). */
+  const problem = (
+    code: ErrorCode,
+    status: number,
+    instance: string,
+    extras: Partial<ProblemDetails> = {},
+  ): Response =>
+    new Response(JSON.stringify(mockProblem(code, status, instance, extras)), {
+      status,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })
+  /** `If-Match` of a guarded change: missing → 428, stale → 412, else null. */
+  const checkIfMatch = (request: Request, etag: string, instance: string) => {
+    const ifMatch = request.headers.get('If-Match')
+    if (!ifMatch) return problem('precondition_required', 428, instance)
+    if (ifMatch !== '*' && ifMatch !== etag) return problem('precondition_failed', 412, instance)
+    return null
+  }
   const prefsOf = (calendarId: string) => {
     const p = mockCalendars.prefs[calendarId]
     return {
@@ -358,6 +447,9 @@ export function calendarHandlers(http: ReturnType<typeof createOpenApiHttp<paths
     http.post('/api/v1/calendars', async ({ request, response }) => {
       const body = await request.json()
       const groupId = body.groupId ?? null
+      if (body.name.trim() === mockPlanLimitName) {
+        return problem('plan_limit_reached', 402, '/api/v1/calendars')
+      }
       const calendar: Calendar = {
         ...mockCalendar,
         id: crypto.randomUUID(),
@@ -375,10 +467,168 @@ export function calendarHandlers(http: ReturnType<typeof createOpenApiHttp<paths
           : null,
         creatorsManageOwnEvents: body.creatorsManageOwnEvents ?? true,
         creatorsMayShareExternally: body.creatorsMayShareExternally ?? false,
+        frozen: false,
       }
       mockCalendars.calendars.push(calendar)
-      return response(201).json(calendar)
+      return response(201).json(calendar, { headers: { ETag: mockCalendarEtag(calendar.id) } })
     }),
+
+    http.get('/api/v1/calendars/{id}', ({ params, response }) => {
+      const calendar = visible(params.id)
+      if (!calendar) return problem('not_found', 404, `/api/v1/calendars/${params.id}`)
+      return response(200).json(calendar, { headers: { ETag: mockCalendarEtag(calendar.id) } })
+    }),
+    http.patch('/api/v1/calendars/{id}', async ({ params, query, request, response }) => {
+      const instance = `/api/v1/calendars/${params.id}`
+      const calendar = visible(params.id)
+      if (!calendar) return problem('not_found', 404, instance)
+      if (levelRank(calendar.myLevel) < levelRank('manage')) {
+        return problem('insufficient_permission', 403, instance)
+      }
+      const precondition = checkIfMatch(request, mockCalendarEtag(calendar.id), instance)
+      if (precondition) return precondition
+      if (calendar.frozen) return problem('calendar_frozen', 409, instance)
+      const patch = (await request.json()) as components['schemas']['UpdateCalendarRequest']
+      const defaults = calendar.groupRoleDefaults
+      if (
+        patch.groupRoleDefaults?.admin &&
+        calendar.myLevel === 'manage' &&
+        levelRank(patch.groupRoleDefaults.admin) < levelRank('manage')
+      ) {
+        return problem('permission_self_lockout', 409, instance)
+      }
+      const updated: Calendar = {
+        ...calendar,
+        name: patch.name ?? calendar.name,
+        description: patch.description === '' ? null : (patch.description ?? calendar.description),
+        color: patch.color?.toLowerCase() ?? calendar.color,
+        defaultTimeZone: patch.defaultTimeZone ?? calendar.defaultTimeZone,
+        creatorsManageOwnEvents: patch.creatorsManageOwnEvents ?? calendar.creatorsManageOwnEvents,
+        creatorsMayShareExternally:
+          patch.creatorsMayShareExternally ?? calendar.creatorsMayShareExternally,
+        groupRoleDefaults: defaults && {
+          admin: patch.groupRoleDefaults?.admin ?? defaults.admin,
+          member: patch.groupRoleDefaults?.member ?? defaults.member,
+          viewer: patch.groupRoleDefaults?.viewer ?? defaults.viewer,
+        },
+        updatedAt: new Date().toISOString(),
+      }
+      mockCalendars.calendars = mockCalendars.calendars.map((c) =>
+        c.id === calendar.id ? updated : c,
+      )
+      mockCalendars.versions[calendar.id] = (mockCalendars.versions[calendar.id] ?? 1) + 1
+      mockCalendars.lastRevokeEventShares = query.get('revokeEventShares') !== 'false'
+      return response(200).json(updated, { headers: { ETag: mockCalendarEtag(calendar.id) } })
+    }),
+    http.delete('/api/v1/calendars/{id}', ({ params, request, response }) => {
+      const instance = `/api/v1/calendars/${params.id}`
+      const calendar = visible(params.id)
+      if (!calendar) return problem('not_found', 404, instance)
+      if (calendar.myLevel !== 'owner') return problem('insufficient_permission', 403, instance)
+      const precondition = checkIfMatch(request, mockCalendarEtag(calendar.id), instance)
+      if (precondition) return precondition
+      mockCalendars.calendars = mockCalendars.calendars.filter((c) => c.id !== calendar.id)
+      mockCalendars.grants = mockCalendars.grants.filter((g) => g.calendarId !== calendar.id)
+      mockCalendars.events = mockCalendars.events.filter((e) => e.calendarId !== calendar.id)
+      mockCalendars.series = mockCalendars.series.filter((r) => r.master.calendarId !== calendar.id)
+      return response(204).empty()
+    }),
+
+    http.get('/api/v1/calendars/{id}/grants', ({ params, response }) => {
+      const instance = `/api/v1/calendars/${params.id}/grants`
+      const calendar = visible(params.id)
+      if (!calendar) return problem('not_found', 404, instance)
+      if (levelRank(calendar.myLevel) < levelRank('manage')) {
+        return problem('insufficient_permission', 403, instance)
+      }
+      return response(200).json({
+        items: mockCalendars.grants.filter((g) => g.calendarId === calendar.id),
+        nextCursor: null,
+      })
+    }),
+    http.post('/api/v1/calendars/{id}/grants', async ({ params, request, response }) => {
+      const instance = `/api/v1/calendars/${params.id}/grants`
+      const calendar = visible(params.id)
+      if (!calendar) return problem('not_found', 404, instance)
+      if (levelRank(calendar.myLevel) < levelRank('manage')) {
+        return problem('insufficient_permission', 403, instance)
+      }
+      if (calendar.frozen) return problem('calendar_frozen', 409, instance)
+      const body = await request.json()
+      const name = principalName(body.principal.type, body.principal.id)
+      if (!name) {
+        return problem('validation_failed', 400, instance, {
+          errors: { principal: ['Not selectable.'] },
+        })
+      }
+      if (
+        mockCalendars.grants.some(
+          (g) => g.calendarId === calendar.id && g.principal.id === body.principal.id,
+        )
+      ) {
+        return problem('conflict', 409, instance)
+      }
+      const id = crypto.randomUUID()
+      const grant: Grant = {
+        id,
+        calendarId: calendar.id,
+        principal: {
+          type: body.principal.type,
+          id: body.principal.id,
+          minRole: body.principal.type === 'group' ? (body.principal.minRole ?? 'viewer') : null,
+        },
+        principalName: name,
+        level: body.level,
+        createdBy: mockUser.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        etag: `"grant-${id.slice(-4)}-1"`,
+      }
+      mockCalendars.grants.push(grant)
+      return response(201).json(grant, { headers: { ETag: grant.etag } })
+    }),
+    http.patch(
+      '/api/v1/calendars/{id}/grants/{grantId}',
+      async ({ params, query, request, response }) => {
+        const instance = `/api/v1/calendars/${params.id}/grants/${params.grantId}`
+        const calendar = visible(params.id)
+        const grant = mockCalendars.grants.find(
+          (g) => g.id === params.grantId && g.calendarId === params.id,
+        )
+        if (!calendar || !grant) return problem('not_found', 404, instance)
+        const precondition = checkIfMatch(request, grant.etag, instance)
+        if (precondition) return precondition
+        const level = (await request.json()).level ?? grant.level
+        if (calendar.frozen && levelRank(level) > levelRank(grant.level)) {
+          return problem('calendar_frozen', 409, instance)
+        }
+        const version = Number(/-(\d+)"$/.exec(grant.etag)?.[1] ?? '1') + 1
+        const updated: Grant = {
+          ...grant,
+          level,
+          updatedAt: new Date().toISOString(),
+          etag: `"grant-${grant.id.slice(-4)}-${version}"`,
+        }
+        mockCalendars.grants = mockCalendars.grants.map((g) => (g.id === grant.id ? updated : g))
+        mockCalendars.lastRevokeEventShares = query.get('revokeEventShares') !== 'false'
+        return response(200).json(updated, { headers: { ETag: updated.etag } })
+      },
+    ),
+    http.delete(
+      '/api/v1/calendars/{id}/grants/{grantId}',
+      ({ params, query, request, response }) => {
+        const instance = `/api/v1/calendars/${params.id}/grants/${params.grantId}`
+        const grant = mockCalendars.grants.find(
+          (g) => g.id === params.grantId && g.calendarId === params.id,
+        )
+        if (!visible(params.id) || !grant) return problem('not_found', 404, instance)
+        const precondition = checkIfMatch(request, grant.etag, instance)
+        if (precondition) return precondition
+        mockCalendars.grants = mockCalendars.grants.filter((g) => g.id !== grant.id)
+        mockCalendars.lastRevokeEventShares = query.get('revokeEventShares') !== 'false'
+        return response(204).empty()
+      },
+    ),
 
     http.get('/api/v1/me/calendar-prefs', ({ response }) =>
       response(200).json({

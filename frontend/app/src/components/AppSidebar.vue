@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { CalendarDays, Settings, Users } from '@lucide/vue'
+import { ref } from 'vue'
+import { CalendarDays, Plus, Settings, Users } from '@lucide/vue'
 import { useGroups } from '@/composables/groups'
 import BrandMark from './BrandMark.vue'
 import CalendarLayerList from './calendar/CalendarLayerList.vue'
+import CreateCalendarDialog from './calendar/CreateCalendarDialog.vue'
 
 defineEmits<{ navigate: [] }>()
 
 const { t } = useI18n()
+const createOpen = ref(false)
 const route = useRoute()
 
 const nav = [
@@ -63,13 +66,26 @@ const isCurrentGroup = (id: string) => route.path.startsWith(`/groups/${id}`)
 
     <div class="mt-8 flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto px-3 pb-6">
       <section aria-labelledby="sidebar-calendars">
-        <h2
-          id="sidebar-calendars"
-          class="px-3 pb-2 text-xs font-semibold tracking-wider text-on-surface-muted uppercase"
-        >
-          {{ t('sidebar.calendars') }}
-        </h2>
-        <CalendarLayerList />
+        <div class="flex items-center justify-between pr-1 pb-2 pl-3">
+          <h2
+            id="sidebar-calendars"
+            class="text-xs font-semibold tracking-wider text-on-surface-muted uppercase"
+          >
+            {{ t('sidebar.calendars') }}
+          </h2>
+          <button
+            type="button"
+            class="inline-flex size-7 items-center justify-center rounded-md text-on-surface-muted hover:bg-surface-hover hover:text-on-surface focus-visible:outline-2 focus-visible:outline-focus"
+            :aria-label="t('sidebar.newCalendar')"
+            :title="t('sidebar.newCalendar')"
+            data-testid="sidebar-new-calendar"
+            @click="createOpen = true"
+          >
+            <Plus class="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <CalendarLayerList @navigate="$emit('navigate')" />
+        <CreateCalendarDialog v-model:open="createOpen" />
       </section>
 
       <section aria-labelledby="sidebar-groups">
