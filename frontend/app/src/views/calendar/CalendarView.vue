@@ -153,6 +153,18 @@ const writableCalendars = computed(() =>
     .map((l) => ({ value: l.calendar.id, label: l.calendar.name })),
 )
 
+/** The calendar select of the dialog: an edited event's own calendar is always listed (disabled). */
+const dialogCalendars = computed(() => {
+  const e = editEvent.value
+  if (!e || writableCalendars.value.some((c) => c.value === e.calendarId)) {
+    return writableCalendars.value
+  }
+  const name = e.sharedWithMe
+    ? t('calendar.sharedWithMe')
+    : (layers.value.find((l) => l.calendar.id === e.calendarId)?.calendar.name ?? '')
+  return [{ value: e.calendarId, label: name }, ...writableCalendars.value]
+})
+
 const editOpen = ref(false)
 const editEvent = shallowRef<EventResponse | null>(null)
 const editInitial = shallowRef<EventFormValues | null>(null)
@@ -513,7 +525,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       v-model:open="editOpen"
       :event="editEvent"
       :initial="editInitial"
-      :calendars="writableCalendars"
+      :calendars="dialogCalendars"
       :time-zone="timeZone"
     />
   </div>
