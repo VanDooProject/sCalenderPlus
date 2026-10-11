@@ -12,7 +12,8 @@
     "test:mocked": "playwright test --project=mocked",
     "test:fullstack": "playwright test --project=fullstack",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "screenshots": "playwright test -c playwright.screenshots.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
