@@ -34,3 +34,17 @@ export const groups = {
 export async function startSignedOut(page: Page) {
   await page.addInitScript(() => localStorage.setItem('scal.mock.session', 'signed-out'))
 }
+
+/**
+ * Calendars of the stateful MSW calendar mocks (frontend/packages/api-client/src/mocks/calendars.ts):
+ * the mock user owns "FC Lions – Club" (group calendar, a grant to Eve: edit), "Mia" (personal),
+ * reads "Book club" and owns the frozen "Old team" (a grant to Adam: edit).
+ */
+export const calendars = {
+  lions: '0192f2c4-0000-7000-8000-000000000301',
+  mia: '0192f2c4-0000-7000-8000-000000000302',
+  bookClub: '0192f2c4-0000-7000-8000-000000000303',
+  frozen: '0192f2c4-0000-7000-8000-000000000305',
+  eve: '0192f2c4-0000-7000-8000-000000000005',
+  planLimitName: 'Over the limit',
+} as const

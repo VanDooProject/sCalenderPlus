@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { expectAccessible } from '../support/a11y'
-import { groups, mock, startSignedOut } from './fixtures'
+import { calendars, groups, mock, startSignedOut } from './fixtures'
 
 const signedOutPages = [
   ['login', '/login', 'Sign in'],
@@ -30,6 +30,8 @@ const signedInPages = [
   ['group invites', `/groups/${groups.lions}/invites`, 'FC Lions'],
   ['group settings', `/groups/${groups.lions}/settings`, 'FC Lions'],
   ['invite (signed in)', `/invite?token=${groups.inviteToken}`, 'Join Choir'],
+  ['calendar settings', `/calendars/${calendars.lions}/settings`, 'FC Lions – Club: settings'],
+  ['frozen calendar settings', `/calendars/${calendars.frozen}/settings`, 'Old team: settings'],
 ] as const
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -81,6 +83,17 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('menuitem', { name: 'Remove from group' }).click()
       await expect(page.getByRole('dialog', { name: 'Remove Max?' })).toBeVisible()
       await expectAccessible(page, 'remove member dialog')
+    })
+
+    test('calendar dialogs have no serious a11y violations', async ({ page }) => {
+      await page.goto(`/calendars/${calendars.lions}/settings`)
+      await page.getByRole('button', { name: 'Share', exact: true }).click()
+      await expect(page.getByRole('dialog', { name: 'Share the calendar' })).toBeVisible()
+      await expectAccessible(page, 'add grant dialog')
+      await page.keyboard.press('Escape')
+      await page.getByTestId('sidebar-new-calendar').click()
+      await expect(page.getByRole('dialog', { name: 'New calendar' })).toBeVisible()
+      await expectAccessible(page, 'create calendar dialog')
     })
 
     test('2FA setup and open menus have no serious a11y violations', async ({ page }) => {

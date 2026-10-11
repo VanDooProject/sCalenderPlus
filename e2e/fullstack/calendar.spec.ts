@@ -111,3 +111,54 @@ test('week view shows own events and only busy blocks of a free_busy calendar', 
   expect(alice.errors).toEqual([])
   expect(bob.errors).toEqual([])
 })
+
+// #57: a calendar created through the UI, shared through the UI with a user who shares a group
+// (selectable principal) — the second user sees it, and a level change reflects in their `myLevel`.
+test('create a calendar and share it through the settings page', async ({ browser }) => {
+  const alice = await account(browser, 'Alice')
+  const bob = await account(browser, 'Bob')
+  const name = `Team plans ${Date.now()}`
+
+  const group = await post(alice.page, '/api/v1/groups', { name: `E2E Share ${Date.now()}` })
+  const invite = await post(alice.page, `/api/v1/groups/${group.id}/invites`, { role: 'member' })
+  const token = new URL(invite.url).searchParams.get('token')
+  await post(bob.page, '/api/v1/invites/accept', { token })
+
+  // Alice: create a personal calendar from the sidebar.
+  await alice.page.goto('/calendar')
+  await alice.page.getByRole('button', { name: 'New calendar' }).click()
+  const create = alice.page.getByRole('dialog', { name: 'New calendar' })
+  await create.getByLabel('Name').fill(name)
+  await create.getByRole('button', { name: 'Create calendar' }).click()
+  await expect(
+    alice.page.getByRole('heading', { level: 1, name: `${name}: settings` }),
+  ).toBeVisible()
+
+  // Share it with Bob (View).
+  await alice.page.getByRole('button', { name: 'Share', exact: true }).click()
+  const share = alice.page.getByRole('dialog', { name: 'Share the calendar' })
+  await share.getByTestId('grant-principal').click()
+  await alice.page.getByRole('option', { name: 'Bob' }).click()
+  await share.getByTestId('grant-level').click()
+  await alice.page.getByRole('option', { name: 'View' }).click()
+  await share.getByRole('button', { name: 'Share' }).click()
+  await expect(alice.page.getByTestId(`grant-${bob.id}`)).toContainText('Bob')
+
+  // Bob sees the calendar with myLevel read.
+  await bob.page.goto('/calendar')
+  await expect(bob.page.getByTestId('sidebar-calendars')).toContainText(name)
+  const levelOf = async () => {
+    const list = await (await bob.page.request.get('/api/v1/calendars?limit=200')).json()
+    return list.items.find((c: { name: string }) => c.name === name)?.myLevel
+  }
+  expect(await levelOf()).toBe('read')
+
+  // Raising to Edit reflects in Bob's myLevel.
+  await alice.page.getByTestId(`grant-level-${bob.id}`).click()
+  await alice.page.getByRole('option', { name: 'Edit', exact: true }).click()
+  await expect(alice.page.getByTestId(`grant-level-${bob.id}`)).toHaveText(/Edit/)
+  await expect.poll(levelOf).toBe('edit')
+
+  expect(alice.errors).toEqual([])
+  expect(bob.errors).toEqual([])
+})
