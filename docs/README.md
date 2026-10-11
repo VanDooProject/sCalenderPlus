@@ -8,6 +8,7 @@ sCalenderPlus is a shared calendar SaaS whose core idea is **different permissio
 
 | Document | Contents |
 |---|---|
+| [screenshots.md](screenshots.md) | Screenshot gallery of the app (calendar views, sharing and permissions, groups, account, mobile, dark mode, German) |
 | [product/vision.md](product/vision.md) | Vision, personas, positioning vs. Google Calendar / Outlook / Teamup / Calendly, principles, success metrics |
 | [product/features.md](product/features.md) | Full feature list by area with priority (MVP / v1 / later) and rationale |
 | [product/plans.md](product/plans.md) | Plan tiers, concrete limits, upgrade triggers, downgrade rules, pricing, self-host stance |

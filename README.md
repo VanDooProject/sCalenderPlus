@@ -4,6 +4,14 @@ A shared calendar SaaS whose core idea is **different permissions for different 
 
 > Status: early development (milestone M0 — scaffolding). The specification in [`docs/`](docs/README.md) is the source of truth.
 
+## Screenshots
+
+![Week view: events from several calendars, busy-only blocks and read-only events with a lock](docs/screenshots/calendar-week.png)
+
+![The same week view in dark mode](docs/screenshots/calendar-week-dark.png)
+
+More in the [screenshot gallery](docs/screenshots.md): sharing levels, role defaults, groups, mobile and German.
+
 ## Repository layout
 
 | Path | Contents |
