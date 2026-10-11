@@ -35,10 +35,10 @@ test('switches views and navigates with the toolbar and the keyboard', async ({ 
   await page.getByTestId('calendar-view-day').click()
   await expect(page).toHaveURL(/view=day/)
 
-  // Shortcuts: a = agenda, n/p = next/previous, t = today.
+  // Shortcuts: a = agenda, →/p = next/previous, t = today (n opens a new event: events.spec.ts).
   await page.keyboard.press('a')
   await expect(page.getByTestId('calendar-view-agenda')).toHaveAttribute('aria-checked', 'true')
-  await page.keyboard.press('n')
+  await page.keyboard.press('ArrowRight')
   await expect(title).not.toHaveText(month ?? '')
   await page.keyboard.press('t')
   await expect(title).toHaveText(month ?? '')

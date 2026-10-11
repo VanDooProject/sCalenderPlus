@@ -603,5 +603,63 @@
     "title": "Page not found",
     "text": "The page you're looking for doesn't exist or was moved.",
     "back": "Go to your calendar"
+  },
+  "event": {
+    "newTitle": "New event",
+    "editTitle": "Edit event",
+    "new": "New event",
+    "save": "Save",
+    "saveScope": "Save changes",
+    "back": "Back",
+    "delete": "Delete",
+    "created": "“{title}” was created.",
+    "saved": "Changes saved.",
+    "deleted": "Event deleted.",
+    "deleteConfirm": "Delete “{title}”? It disappears from every calendar view.",
+    "edit": "Edit",
+    "moved": "Event moved.",
+    "readOnlyReason": "You can only view this event: changing it needs the edit level on the event or calendar.",
+    "form": {
+      "title": "Title",
+      "calendar": "Calendar",
+      "allDay": "All day",
+      "startDate": "Start date",
+      "startTime": "Start time",
+      "endDate": "End date",
+      "endTime": "End time",
+      "location": "Location",
+      "description": "Description",
+      "more": "More options",
+      "timeZone": "Time zone",
+      "timeZoneHint": "The event keeps this zone's wall-clock time.",
+      "endBeforeStart": "The end must be after the start."
+    },
+    "scope": {
+      "label": "Apply the change to",
+      "this": "This event",
+      "following": "This and following events",
+      "all": "All events",
+      "deleteThis": "Delete this event only",
+      "deleteAll": "Delete all events of the series"
+    },
+    "warnings": {
+      "shifted": "{requested} does not exist on that day (clocks change); the event was saved at {resolved}.",
+      "ambiguous": "{requested} occurs twice on that day (clocks change); the first one was used."
+    },
+    "rule": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "every": {
+        "daily": "Every {n} days",
+        "weekly": "Every {n} weeks",
+        "monthly": "Every {n} months",
+        "yearly": "Every {n} years"
+      },
+      "count": "{rule}, {n} times",
+      "until": "{rule}, until {date}"
+    },
+    "noWritableCalendar": "You have no calendar you can add events to."
   }
 }

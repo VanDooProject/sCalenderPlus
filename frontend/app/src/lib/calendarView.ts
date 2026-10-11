@@ -192,6 +192,8 @@ export interface MappedEvent {
   contrastColor: string
   className: string
   interactive: boolean
+  /** Drag and resize (FullCalendar per event): only events the user may change. */
+  editable: boolean
   extendedProps: { source: EventResponse; busy: boolean; editable: boolean }
 }
 
@@ -221,6 +223,7 @@ export function toCalendarEvent(
     contrastColor: contrastText(color),
     className: busy ? 'scal-busy' : editable ? 'scal-editable' : 'scal-readonly',
     interactive: !busy,
+    editable,
     extendedProps: { source: event, busy, editable },
   }
 }

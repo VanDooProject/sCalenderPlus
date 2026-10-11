@@ -29,6 +29,8 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
   const clientErrors = ref<Record<string, string>>({})
   const serverErrors = ref<Record<string, string[]>>({})
   const formError = ref<string | null>(null)
+  /** The error of the last failed submit (null after a success). */
+  const lastError = ref<unknown>(null)
   const describe = options.errorMessage ?? ((error: unknown) => errorMessage(t, error))
   const pending = ref(false)
   const submitted = ref(false)
@@ -64,6 +66,7 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
   async function submit(action: (values: T) => Promise<void>): Promise<boolean> {
     submitted.value = true
     formError.value = null
+    lastError.value = null
     serverErrors.value = {}
     const found = Object.fromEntries(
       Object.entries(options.validate?.(values) ?? {}).filter(([, message]) => !!message),
@@ -86,6 +89,7 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
   }
 
   function handleError(error: unknown) {
+    lastError.value = error
     if (error instanceof ApiError) {
       const fields = error.fieldErrors
       const known = Object.keys(initial)
@@ -113,7 +117,7 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
     submitted.value = false
   }
 
-  return { values, errors, formError, pending, submitted, submit, handleError, reset }
+  return { values, errors, formError, lastError, pending, submitted, submit, handleError, reset }
 }
 
 /** Shared client-side rules (messages from `validation.*`). */

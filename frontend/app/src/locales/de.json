@@ -603,5 +603,63 @@
     "title": "Seite nicht gefunden",
     "text": "Die gesuchte Seite gibt es nicht oder sie wurde verschoben.",
     "back": "Zu deinem Kalender"
+  },
+  "event": {
+    "newTitle": "Neuer Termin",
+    "editTitle": "Termin bearbeiten",
+    "new": "Neuer Termin",
+    "save": "Speichern",
+    "saveScope": "Änderungen speichern",
+    "back": "Zurück",
+    "delete": "Löschen",
+    "created": "„{title}“ wurde angelegt.",
+    "saved": "Änderungen gespeichert.",
+    "deleted": "Termin gelöscht.",
+    "deleteConfirm": "„{title}“ löschen? Der Termin verschwindet aus allen Kalenderansichten.",
+    "edit": "Bearbeiten",
+    "moved": "Termin verschoben.",
+    "readOnlyReason": "Du kannst diesen Termin nur ansehen: Zum Ändern brauchst du die Stufe „Bearbeiten“ am Termin oder Kalender.",
+    "form": {
+      "title": "Titel",
+      "calendar": "Kalender",
+      "allDay": "Ganztägig",
+      "startDate": "Startdatum",
+      "startTime": "Startzeit",
+      "endDate": "Enddatum",
+      "endTime": "Endzeit",
+      "location": "Ort",
+      "description": "Beschreibung",
+      "more": "Weitere Optionen",
+      "timeZone": "Zeitzone",
+      "timeZoneHint": "Der Termin behält die Uhrzeit dieser Zone.",
+      "endBeforeStart": "Das Ende muss nach dem Beginn liegen."
+    },
+    "scope": {
+      "label": "Änderung anwenden auf",
+      "this": "Diesen Termin",
+      "following": "Diesen und alle folgenden Termine",
+      "all": "Alle Termine",
+      "deleteThis": "Nur diesen Termin löschen",
+      "deleteAll": "Alle Termine der Serie löschen"
+    },
+    "warnings": {
+      "shifted": "{requested} gibt es an diesem Tag nicht (Zeitumstellung); der Termin wurde auf {resolved} gelegt.",
+      "ambiguous": "{requested} gibt es an diesem Tag zweimal (Zeitumstellung); die erste wurde verwendet."
+    },
+    "rule": {
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "every": {
+        "daily": "Alle {n} Tage",
+        "weekly": "Alle {n} Wochen",
+        "monthly": "Alle {n} Monate",
+        "yearly": "Alle {n} Jahre"
+      },
+      "count": "{rule}, {n}-mal",
+      "until": "{rule}, bis {date}"
+    },
+    "noWritableCalendar": "Du hast keinen Kalender, in dem du Termine anlegen kannst."
   }
 }

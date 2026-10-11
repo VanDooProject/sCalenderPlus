@@ -3,10 +3,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Clock, Lock, MapPin, Pencil, Repeat, Share2, UserRound } from '@lucide/vue'
 import type { EventResponse } from '@scalenderplus/api-client'
-import { UiDialog } from '@scalenderplus/ui'
+import { UiButton, UiDialog } from '@scalenderplus/ui'
 import { isEditable } from '@/lib/calendarView'
+import { describeRule } from '@/lib/recurrenceText'
 
-/** Read-only details of an event (editing follows with the event dialog). */
+/** Details of an event; `edit` opens the event dialog when the user may change it. */
 const props = defineProps<{
   event: EventResponse | null
   calendarName?: string
@@ -14,6 +15,7 @@ const props = defineProps<{
   timeZone: string
 }>()
 const open = defineModel<boolean>('open', { default: false })
+const emit = defineEmits<{ edit: [] }>()
 
 const { t, locale } = useI18n()
 
@@ -70,7 +72,11 @@ const level = computed(() => {
             v-if="event.recurrence"
             class="ml-1 inline-flex items-center gap-1 text-on-surface-muted"
           >
-            <Repeat class="size-3.5" aria-hidden="true" />{{ t('calendar.details.recurring') }}
+            <Repeat class="size-3.5" aria-hidden="true" />{{
+              event.recurrence.rrule
+                ? describeRule(t, event.recurrence.rrule)
+                : t('calendar.details.recurring')
+            }}
           </span>
         </dd>
       </div>
@@ -113,12 +119,26 @@ const level = computed(() => {
           class="mt-0.5 size-4 shrink-0 text-on-surface-muted"
           aria-hidden="true"
         />
-        <dd data-testid="event-details-level">{{ level }}</dd>
+        <div>
+          <dd data-testid="event-details-level">{{ level }}</dd>
+          <dd
+            v-if="!isEditable(event)"
+            class="mt-0.5 text-on-surface-muted"
+            data-testid="event-details-readonly"
+          >
+            {{ t('event.readOnlyReason') }}
+          </dd>
+        </div>
       </div>
       <div v-if="event.description" class="border-t border-border pt-3">
         <dt class="sr-only">{{ t('calendar.details.description') }}</dt>
         <dd class="whitespace-pre-line text-on-surface">{{ event.description }}</dd>
       </div>
     </dl>
+    <template v-if="event && isEditable(event)" #footer>
+      <UiButton variant="secondary" data-testid="event-details-edit" @click="emit('edit')">
+        <Pencil class="size-4" aria-hidden="true" />{{ t('event.edit') }}
+      </UiButton>
+    </template>
   </UiDialog>
 </template>

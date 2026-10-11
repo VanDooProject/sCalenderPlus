@@ -146,9 +146,9 @@ export const mockSeries: CalendarEvent = {
 const day = 24 * 60 * 60 * 1000
 const zone = 'Europe/Berlin'
 
-/** The UTC offset of {@link zone} at `utc` in milliseconds. */
-function offsetAt(utc: number): number {
-  const name = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' })
+/** The UTC offset of a zone (default {@link zone}) at `utc` in milliseconds. */
+function offsetAt(utc: number, timeZone = zone): number {
+  const name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
     .formatToParts(new Date(utc))
     .find((p) => p.type === 'timeZoneName')?.value
   const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name ?? '')
@@ -168,6 +168,27 @@ function at(date: string, time: string): EventTime {
   }
 }
 
+/**
+ * A wall-clock time (`YYYY-MM-DDTHH:MM:SS`) in `timeZone` as UTC, like the api resolves it: a time
+ * in a DST gap is shifted forward (`shifted` is then the resolved wall clock).
+ */
+export function mockResolveWallTime(
+  dateTime: string,
+  timeZone: string,
+): { utc: string; dateTime: string; shifted: boolean } {
+  const local = Date.parse(`${dateTime.slice(0, 19)}Z`)
+  let utc = local - offsetAt(local - offsetAt(local, timeZone), timeZone)
+  const wall = (ms: number) => new Date(ms + offsetAt(ms, timeZone)).toISOString().slice(0, 19)
+  let resolved = wall(utc)
+  const shifted = resolved !== dateTime.slice(0, 19)
+  if (shifted) {
+    // In a gap: the offset before the transition moves the time forward.
+    utc = local - offsetAt(local - day, timeZone)
+    resolved = wall(utc)
+  }
+  return { utc: new Date(utc).toISOString().replace('.000Z', 'Z'), dateTime: resolved, shifted }
+}
+
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
 /** Monday of the current week in {@link zone}, the anchor of the seed so mock mode always looks alive. */
@@ -177,8 +198,12 @@ function currentMonday(now = Date.now()): number {
   return today - weekday * day
 }
 
-interface SeriesRecord {
+export interface SeriesRecord {
   master: CalendarEvent
+  /** Changed occurrences by recurrence id (the members they override). */
+  exceptions?: Record<string, Partial<CalendarEvent>>
+  /** Bumped by every change of master or occurrences (the series' ETag). */
+  version?: number
   /** Days between occurrences and their count (the mock knows simple weekly rules only). */
   everyDays: number
   count: number
@@ -241,7 +266,7 @@ function seed(): MockCalendarsState {
   })
 
   const events: CalendarEvent[] = [
-    mockEvent,
+    { ...mockEvent, etag: '"0401-1"' },
     mockBusyEvent,
     event({
       title: 'Lunch with Max',
@@ -378,18 +403,26 @@ function plusDays(value: EventTime, days: number): EventTime {
   return at(date, (value.dateTime ?? '').slice(11, 16))
 }
 
+/** The ETag of a series (master and exceptions). */
+export function mockSeriesEtag(series: SeriesRecord): string {
+  return `"series-${series.master.id.slice(-4)}-${series.version ?? 1}"`
+}
+
 /** The occurrences of a series (cancelled ones left out), as `expand=occurrences` returns them. */
 export function mockOccurrences(series: SeriesRecord): CalendarEvent[] {
   return Array.from({ length: series.count }, (_, i) => {
     const start = plusDays(series.master.start, i * series.everyDays)
     const recurrenceId = start.utc ?? start.date ?? ''
+    const exception = series.exceptions?.[recurrenceId]
     return {
       ...series.master,
       start,
       end: plusDays(series.master.end, i * series.everyDays),
+      ...exception,
       occurrenceId: `${series.master.id}:${recurrenceId}`,
       recurrenceId,
-      etag: `"series-${series.master.id.slice(-4)}"`,
+      modified: exception !== undefined,
+      etag: mockSeriesEtag(series),
     }
   }).filter((o) => !series.cancelled.includes(o.recurrenceId))
 }

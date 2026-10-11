@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import { Temporal } from 'temporal-polyfill'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { keepPreviousData, useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/vue-query'
 import FullCalendar from '@fullcalendar/vue3'
 import type {
   CalendarOptions,
+  DateSelectInfo,
   EventClickInfo,
   EventDisplayInfo,
+  EventDropInfo,
+  EventResizeDoneInfo,
   MountInfo,
 } from '@fullcalendar/vue3'
 import classicTheme from '@fullcalendar/vue3/themes/classic'
@@ -19,17 +23,20 @@ import deLocale from '@fullcalendar/vue3/locales/de'
 import '@fullcalendar/vue3/skeleton.css'
 import '@fullcalendar/vue3/themes/classic/theme.css'
 import './calendar.css'
-import { CalendarDays, ChevronLeft, ChevronRight, Lock } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, Lock, Plus } from '@lucide/vue'
 import type { EventResponse } from '@scalenderplus/api-client'
-import { UiAlert, UiButton, UiSpinner } from '@scalenderplus/ui'
+import { UiAlert, UiButton, UiSpinner, useToast } from '@scalenderplus/ui'
 import EmptyState from '@/components/EmptyState.vue'
 import EventDetailsDialog from '@/components/calendar/EventDetailsDialog.vue'
+import EventEditDialog from '@/components/calendar/EventEditDialog.vue'
 import { useCalendarLayers, useSharedWithMe } from '@/composables/calendars'
 import { useSession } from '@/composables/session'
 import { api } from '@/api'
 import { call } from '@/lib/apiError'
 import { fallbackColor, sharedColor } from '@/lib/calendarColors'
-import { errorMessage } from '@/lib/errorMessages'
+import { errorMessage, isApiError } from '@/lib/errorMessages'
+import { levelAtLeast } from '@/lib/calendarLevels'
+import { droppedTimes, newEventValues, type EventFormValues } from '@/lib/eventForm'
 import {
   calendarViews,
   eventsQueryKey,
@@ -135,6 +142,96 @@ watch(detailsOpen, (open) => {
   if (!open) selected.value = null
 })
 
+const queryClient = useQueryClient()
+const toast = useToast()
+
+/** Calendars the user may add events to (`contribute` and up, not frozen), shown ones first. */
+const writableCalendars = computed(() =>
+  [...layers.value]
+    .filter((l) => levelAtLeast(l.calendar.myLevel, 'contribute') && !l.calendar.frozen)
+    .sort((a, b) => Number(a.hidden) - Number(b.hidden))
+    .map((l) => ({ value: l.calendar.id, label: l.calendar.name })),
+)
+
+const editOpen = ref(false)
+const editEvent = shallowRef<EventResponse | null>(null)
+const editInitial = shallowRef<EventFormValues | null>(null)
+
+/** Opens the event dialog for a new event (a selected range, or the next full hour today). */
+function openNew(range?: { start: string; end?: string; allDay: boolean }) {
+  const calendarId = writableCalendars.value[0]?.value
+  if (!calendarId) {
+    toast.show({ variant: 'error', title: t('event.noWritableCalendar') })
+    return
+  }
+  const now = Temporal.Now.zonedDateTimeISO(timeZone.value)
+  const day = isToday.value ? now.toPlainDate() : date.value
+  const hour = isToday.value ? Math.min(now.hour + 1, 23) : 9
+  const start = `${day.toString()}T${String(hour).padStart(2, '0')}:00`
+  editEvent.value = null
+  editInitial.value = newEventValues({
+    calendarId,
+    timeZone: timeZone.value,
+    ...(range ?? { start, allDay: false }),
+  })
+  editOpen.value = true
+}
+
+function openEdit() {
+  editEvent.value = selected.value
+  editInitial.value = null
+  detailsOpen.value = false
+  editOpen.value = true
+}
+
+/** Drag and resize: both times as wall times in the event's zone; failures put it back. */
+async function onEventChange(info: EventDropInfo | EventResizeDoneInfo) {
+  const props = info.event.extendedProps as MappedEvent['extendedProps']
+  const source = props.source
+  const allDay = info.event.allDay
+  const start = info.event.startStr
+  const fallbackEnd = allDay
+    ? Temporal.PlainDate.from(start.slice(0, 10)).add({ days: 1 }).toString()
+    : Temporal.PlainDateTime.from(start.slice(0, 19)).add({ hours: 1 }).toString()
+  const times = droppedTimes({
+    start,
+    end: info.event.endStr || fallbackEnd,
+    allDay,
+    viewZone: timeZone.value,
+    eventZone: source.start.timeZone ?? timeZone.value,
+  })
+  const header = { 'If-Match': source.etag ?? '*' }
+  try {
+    const { data } = source.recurrenceId
+      ? await call(
+          api.PATCH('/api/v1/events/{id}/occurrences/{recurrenceId}', {
+            params: { path: { id: source.id, recurrenceId: source.recurrenceId }, header },
+            body: times,
+          }),
+        )
+      : await call(
+          api.PATCH('/api/v1/events/{id}', {
+            params: { path: { id: source.id }, header },
+            body: times,
+          }),
+        )
+    const warning = data.warnings?.[0]
+    if (warning) {
+      toast.info(
+        t('event.warnings.shifted', {
+          requested: warning.requested.slice(11, 16),
+          resolved: warning.resolved.slice(11, 16),
+        }),
+      )
+    } else toast.success(t('event.moved'))
+  } catch (error) {
+    info.revert()
+    toast.show({ variant: 'error', title: errorMessage(t, error) })
+    if (!isApiError(error, 'precondition_failed')) return
+  }
+  await queryClient.invalidateQueries({ queryKey: ['events'] })
+}
+
 const timeFormat = { hour: 'numeric', minute: '2-digit' } as const
 const busyLabel = computed(() => t('calendar.busy'))
 
@@ -151,6 +248,15 @@ const options = computed<CalendarOptions>(() => ({
   height: view.value === 'agenda' ? 'auto' : '100%',
   events: mapped.value,
   eventInteractive: true,
+  // New events: select a range in week/day or click a day in the month (not in the agenda).
+  selectable: view.value !== 'agenda',
+  selectMirror: true,
+  select: (info: DateSelectInfo) => {
+    calendarRef.value?.getApi().unselect()
+    openNew({ start: info.startStr, end: info.endStr, allDay: info.allDay })
+  },
+  eventDrop: (info: EventDropInfo) => void onEventChange(info),
+  eventResize: (info: EventResizeDoneInfo) => void onEventChange(info),
   nowIndicator: true,
   dayMaxEvents: true,
   scrollTime: '07:30:00',
@@ -212,7 +318,7 @@ const viewLabels = computed(() => ({
   agenda: t('calendar.views.agenda'),
 }))
 
-/** Keyboard shortcuts: t today, ←/→ (or p/n) previous/next, m/w/d/a views. */
+/** Keyboard shortcuts: n new event, t today, ←/→ (or p) previous/next, m/w/d/a views. */
 function onKey(event: KeyboardEvent) {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
   const target = event.target as HTMLElement | null
@@ -222,8 +328,9 @@ function onKey(event: KeyboardEvent) {
     return
   }
   const views: Record<string, CalendarViewName> = { m: 'month', w: 'week', d: 'day', a: 'agenda' }
-  if (event.key === 't') goToday()
-  else if (event.key === 'n' || (event.key === 'ArrowRight' && !target?.closest('.fc'))) step(1)
+  if (event.key === 'n') openNew()
+  else if (event.key === 't') goToday()
+  else if (event.key === 'ArrowRight' && !target?.closest('.fc')) step(1)
   else if (event.key === 'p' || (event.key === 'ArrowLeft' && !target?.closest('.fc'))) step(-1)
   else if (views[event.key]) go({ view: views[event.key] })
   else return
@@ -262,7 +369,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             variant="ghost"
             size="icon"
             :aria-label="t('calendar.next')"
-            aria-keyshortcuts="n"
+            aria-keyshortcuts="ArrowRight"
             data-testid="calendar-next"
             @click="step(1)"
           >
@@ -282,30 +389,41 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           :label="t('common.loading')"
         />
       </div>
-      <div
-        role="radiogroup"
-        :aria-label="t('calendar.viewLabel')"
-        class="inline-flex self-start rounded-lg border border-border bg-surface-muted p-0.5 md:self-auto"
-        data-testid="calendar-views"
-      >
-        <button
-          v-for="v in calendarViews"
-          :key="v"
-          type="button"
-          role="radio"
-          :aria-checked="view === v"
-          :aria-keyshortcuts="v.charAt(0)"
-          :data-testid="`calendar-view-${v}`"
-          class="h-8 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-focus"
-          :class="
-            view === v
-              ? 'bg-surface-raised text-on-surface shadow-sm'
-              : 'text-on-surface-muted hover:text-on-surface'
-          "
-          @click="go({ view: v })"
+      <div class="flex flex-wrap items-center gap-2 self-start md:self-auto">
+        <UiButton
+          size="sm"
+          aria-keyshortcuts="n"
+          data-testid="calendar-new-event"
+          :disabled="writableCalendars.length === 0"
+          @click="openNew()"
         >
-          {{ viewLabels[v] }}
-        </button>
+          <Plus class="size-4" aria-hidden="true" />{{ t('event.new') }}
+        </UiButton>
+        <div
+          role="radiogroup"
+          :aria-label="t('calendar.viewLabel')"
+          class="inline-flex self-start rounded-lg border border-border bg-surface-muted p-0.5 md:self-auto"
+          data-testid="calendar-views"
+        >
+          <button
+            v-for="v in calendarViews"
+            :key="v"
+            type="button"
+            role="radio"
+            :aria-checked="view === v"
+            :aria-keyshortcuts="v.charAt(0)"
+            :data-testid="`calendar-view-${v}`"
+            class="h-8 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-focus"
+            :class="
+              view === v
+                ? 'bg-surface-raised text-on-surface shadow-sm'
+                : 'text-on-surface-muted hover:text-on-surface'
+            "
+            @click="go({ view: v })"
+          >
+            {{ viewLabels[v] }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -388,6 +506,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           : layers.find((l) => l.calendar.id === selected?.calendarId)?.calendar.name
       "
       :color="selected ? (selected.sharedWithMe ? sharedColor : colorOf(selected.calendarId)) : ''"
+      :time-zone="timeZone"
+      @edit="openEdit"
+    />
+    <EventEditDialog
+      v-model:open="editOpen"
+      :event="editEvent"
+      :initial="editInitial"
+      :calendars="writableCalendars"
       :time-zone="timeZone"
     />
   </div>
