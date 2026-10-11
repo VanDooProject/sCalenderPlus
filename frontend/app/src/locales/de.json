@@ -661,5 +661,97 @@
       "until": "{rule}, bis {date}"
     },
     "noWritableCalendar": "Du hast keinen Kalender, in dem du Termine anlegen kannst."
+  },
+  "permissions": {
+    "tabs": {
+      "label": "Bereiche des Termins",
+      "details": "Details",
+      "permissions": "Berechtigungen",
+      "access": "Warum sehe ich das?",
+      "accessManager": "Wer sieht was"
+    },
+    "why": "Warum?",
+    "customPermissions": "Eigene Berechtigungen",
+    "floorsHint": "Eigentümer und Verwalter des Kalenders behalten immer vollen Zugriff, ebenso die Person, die den Termin angelegt hat. Diese Einstellungen bestimmen, was alle anderen sehen.",
+    "levels": {
+      "none": "Verborgen",
+      "free_busy": "Nur belegt",
+      "read": "Darf ansehen",
+      "edit": "Darf bearbeiten",
+      "manage": "Volle Kontrolle"
+    },
+    "principal": {
+      "everyone": "Alle in diesem Kalender",
+      "anonymous": "Alle mit dem Link",
+      "groupMinRole": "{group} (ab {role})",
+      "unknownGroup": "Eine Gruppe",
+      "unknownUser": "Jemand"
+    },
+    "presets": {
+      "label": "Schnelleinstellungen",
+      "private": "Privat (nur ich und Verwalter)",
+      "busy": "Für alle nur „belegt“"
+    },
+    "empty": "Keine eigenen Berechtigungen: Alle sehen den Termin so, wie der Kalender es erlaubt.",
+    "levelOf": "Zugriff für {name}",
+    "remove": "{name} entfernen",
+    "add": {
+      "title": "Person oder Gruppe hinzufügen",
+      "who": "Wer",
+      "whoPlaceholder": "Person, Gruppe oder alle wählen",
+      "groupOption": "{group} (Gruppe)",
+      "level": "Zugriff",
+      "submit": "Hinzufügen"
+    },
+    "save": "Berechtigungen speichern",
+    "reset": "Änderungen verwerfen",
+    "saved": "Berechtigungen gespeichert.",
+    "errors": {
+      "invalid": "Einige Einträge können nicht gespeichert werden. Siehe die Hinweise darunter.",
+      "external": "Du darfst diesen Termin nicht mit Personen außerhalb des Kalenders teilen. Frag einen Verwalter des Kalenders oder entferne die markierten Einträge.",
+      "changed": "Jemand hat die Berechtigungen inzwischen geändert. Deine Änderungen bleiben erhalten: Prüfe sie und speichere erneut.",
+      "planLimit": "Dein Tarif erlaubt keine weiteren eigenen Berechtigungen. Entferne einen Eintrag oder erweitere den Tarif des Kalendereigentümers.",
+      "frozen": "Dieser Kalender liegt über dem Tariflimit: Berechtigungen können gerade nur entfernt oder gesenkt werden."
+    },
+    "violations": {
+      "level_too_high": "Eigene Berechtigungen geben höchstens „Darf bearbeiten“.",
+      "duplicate_principal": "Diese Person oder Gruppe steht doppelt in der Liste.",
+      "group_not_selectable": "Du kannst nur Gruppen wählen, in denen du bist oder die schon Zugriff auf den Kalender haben.",
+      "user_not_selectable": "Du kannst nur Personen wählen, die eine Gruppe oder diesen Kalender mit dir teilen.",
+      "external_sharing": "Diese Person ist außerhalb des Kalenders: Nur Verwalter des Kalenders dürfen mit ihr teilen.",
+      "removal_exposes_external_share": "Wird dieser Eintrag entfernt, wäre der Termin mit jemandem außerhalb des Kalenders geteilt.",
+      "no_override_rights_in_target": "Diese Berechtigung kannst du im Zielkalender nicht setzen.",
+      "unknown": "Dieser Eintrag kann nicht gespeichert werden."
+    },
+    "explain": {
+      "person": "Erklären für",
+      "me": "Mich",
+      "you": "Du",
+      "result": "{name}: {level}",
+      "resultMe": "Dein Zugriff: {level}",
+      "hiddenAsTransparent": "{name}: Verborgen (der Termin ist als frei markiert, darum sehen ihn „Nur belegt“-Leser nicht)",
+      "decisive": "Entscheidet"
+    },
+    "steps": {
+      "share_link": "Zugriff über einen Freigabelink: {calendarLevel}.",
+      "calendar_owner": "Besitzt den Kalender.",
+      "grant_matched": "Der Kalender ist mit {principal} geteilt: {calendarLevel}.",
+      "group_role_default": "Mitglied von {principal} als {role}: {calendarLevel} in diesem Kalender.",
+      "calendar_result": "Stufe im Kalender: {calendarLevel}.",
+      "inherited_from_series": "Dieser Einzeltermin folgt den Berechtigungen seiner Serie.",
+      "manager_floor": "Verwaltet den Kalender und behält darum immer volle Kontrolle.",
+      "creator_floor": "Hat den Termin angelegt und behält darum volle Kontrolle.",
+      "creator_floor_disabled": "Hat den Termin angelegt, aber dieser Kalender gibt Erstellern keine zusätzlichen Rechte.",
+      "creator_floor_lapsed": "Hat den Termin angelegt, darf aber keine Termine mehr im Kalender anlegen.",
+      "base_level": "Vom Kalender: {level}.",
+      "override_matched": "Eigene Berechtigung für {principal}: {level}.",
+      "no_matching_override": "Keine eigene Berechtigung trifft zu, also entscheidet der Kalender.",
+      "override_applied": "Die genaueste eigene Berechtigung ({principal}) gilt: {level}.",
+      "restrict_only": "Regeln für alle können nur einschränken, nie erweitern: {level}.",
+      "override_cap": "Eigene Berechtigungen geben höchstens „Darf bearbeiten“.",
+      "link_ceiling": "Ein Freigabelink gibt höchstens, was der Link erlaubt: {level}.",
+      "result": "Ergebnis: {level}.",
+      "unknown": "Schritt „{kind}“."
+    }
   }
 }

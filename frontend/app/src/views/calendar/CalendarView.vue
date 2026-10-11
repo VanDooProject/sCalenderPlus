@@ -23,7 +23,7 @@ import deLocale from '@fullcalendar/vue3/locales/de'
 import '@fullcalendar/vue3/skeleton.css'
 import '@fullcalendar/vue3/themes/classic/theme.css'
 import './calendar.css'
-import { CalendarDays, ChevronLeft, ChevronRight, Lock, Plus } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, Lock, Plus, ShieldCheck } from '@lucide/vue'
 import type { EventResponse } from '@scalenderplus/api-client'
 import { UiAlert, UiButton, UiSpinner, useToast } from '@scalenderplus/ui'
 import EmptyState from '@/components/EmptyState.vue'
@@ -303,8 +303,12 @@ const options = computed<CalendarOptions>(() => ({
       return
     }
     info.el.setAttribute('data-testid', 'calendar-event')
-    if (!props.editable) {
-      info.el.setAttribute('aria-label', `${info.event.title} (${t('calendar.readOnly')})`)
+    const notes = [
+      ...(props.editable ? [] : [t('calendar.readOnly')]),
+      ...(props.source?.hasOverrides ? [t('permissions.customPermissions')] : []),
+    ]
+    if (notes.length) {
+      info.el.setAttribute('aria-label', `${info.event.title} (${notes.join(', ')})`)
     }
   },
 }))
@@ -498,6 +502,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                 arg.timeText
               }}</span>
               <span class="scal-event-title">{{ arg.event.title }}</span>
+              <ShieldCheck
+                v-if="arg.event.extendedProps.source?.hasOverrides"
+                class="scal-event-lock"
+                role="img"
+                :aria-label="t('permissions.customPermissions')"
+                data-testid="event-custom-permissions"
+              />
               <Lock
                 v-if="!arg.event.extendedProps.editable"
                 class="scal-event-lock"
@@ -519,6 +530,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       "
       :color="selected ? (selected.sharedWithMe ? sharedColor : colorOf(selected.calendarId)) : ''"
       :time-zone="timeZone"
+      :calendar-level="layers.find((l) => l.calendar.id === selected?.calendarId)?.calendar.myLevel"
       @edit="openEdit"
     />
     <EventEditDialog

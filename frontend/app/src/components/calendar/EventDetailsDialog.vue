@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Clock, Lock, MapPin, Pencil, Repeat, Share2, UserRound } from '@lucide/vue'
+import { Clock, Lock, MapPin, Pencil, Repeat, Share2, ShieldCheck, UserRound } from '@lucide/vue'
 import type { EventResponse } from '@scalenderplus/api-client'
 import { UiButton, UiDialog } from '@scalenderplus/ui'
+import EventAccessExplain from '@/components/calendar/EventAccessExplain.vue'
+import EventPermissions from '@/components/calendar/EventPermissions.vue'
+import { levelAtLeast } from '@/lib/calendarLevels'
 import { isEditable } from '@/lib/calendarView'
 import { describeRule } from '@/lib/recurrenceText'
 
@@ -13,6 +16,8 @@ const props = defineProps<{
   calendarName?: string
   color: string
   timeZone: string
+  /** My level on the event's calendar: managers may explain other people's access. */
+  calendarLevel?: string
 }>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ edit: [] }>()
@@ -52,6 +57,42 @@ const level = computed(() => {
   if (!e) return ''
   return isEditable(e) ? t('calendar.level.edit') : t('calendar.level.read')
 })
+
+// Tabs: details, permissions (event level `manage`), access ("Why can I see this?").
+type Tab = 'details' | 'permissions' | 'access'
+const tab = ref<Tab>('details')
+watch([open, () => props.event?.id], () => (tab.value = 'details'))
+const canManage = computed(() => props.event?.myLevel === 'manage')
+const canExplainOthers = computed(() => levelAtLeast(props.calendarLevel ?? 'none', 'manage'))
+const tabs = computed<{ id: Tab; label: string }[]>(() => [
+  { id: 'details', label: t('permissions.tabs.details') },
+  ...(canManage.value
+    ? [{ id: 'permissions' as const, label: t('permissions.tabs.permissions') }]
+    : []),
+  {
+    id: 'access',
+    label: canExplainOthers.value
+      ? t('permissions.tabs.accessManager')
+      : t('permissions.tabs.access'),
+  },
+])
+const tabIds = (id: Tab) => ({ tab: `event-tab-${id}`, panel: `event-panel-${id}` })
+
+/** Arrow keys move between the tabs (WAI-ARIA tabs pattern, automatic activation). */
+function onTabKey(event: KeyboardEvent) {
+  const ids = tabs.value.map((x) => x.id)
+  const at = ids.indexOf(tab.value)
+  const next =
+    event.key === 'ArrowRight'
+      ? (at + 1) % ids.length
+      : event.key === 'ArrowLeft'
+        ? (at - 1 + ids.length) % ids.length
+        : -1
+  if (next < 0) return
+  event.preventDefault()
+  tab.value = ids[next]!
+  document.getElementById(tabIds(tab.value).tab)?.focus()
+}
 </script>
 
 <template>
@@ -59,10 +100,60 @@ const level = computed(() => {
     v-model:open="open"
     :title="event?.title ?? ''"
     :close-label="t('common.close')"
-    size="md"
+    :size="tab === 'details' ? 'md' : 'lg'"
     testid="event-details"
   >
-    <dl v-if="event" class="flex flex-col gap-3 text-sm">
+    <div
+      v-if="event"
+      role="tablist"
+      :aria-label="t('permissions.tabs.label')"
+      class="mb-4 flex gap-1 border-b border-border"
+      @keydown="onTabKey"
+    >
+      <button
+        v-for="item in tabs"
+        :id="tabIds(item.id).tab"
+        :key="item.id"
+        type="button"
+        role="tab"
+        :aria-selected="tab === item.id"
+        :aria-controls="tabIds(item.id).panel"
+        :tabindex="tab === item.id ? 0 : -1"
+        class="-mb-px border-b-2 px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-focus"
+        :class="
+          tab === item.id
+            ? 'border-primary text-on-surface'
+            : 'border-transparent text-on-surface-muted hover:text-on-surface'
+        "
+        :data-testid="`event-tab-${item.id}`"
+        @click="tab = item.id"
+      >
+        {{ item.label }}
+      </button>
+    </div>
+    <div
+      v-if="event && tab === 'permissions' && canManage"
+      :id="tabIds('permissions').panel"
+      role="tabpanel"
+      :aria-labelledby="tabIds('permissions').tab"
+    >
+      <EventPermissions :event="event" />
+    </div>
+    <div
+      v-else-if="event && tab === 'access'"
+      :id="tabIds('access').panel"
+      role="tabpanel"
+      :aria-labelledby="tabIds('access').tab"
+    >
+      <EventAccessExplain :event="event" :can-explain-others="canExplainOthers" />
+    </div>
+    <dl
+      v-else-if="event"
+      :id="tabIds('details').panel"
+      role="tabpanel"
+      :aria-labelledby="tabIds('details').tab"
+      class="flex flex-col gap-3 text-sm"
+    >
       <div class="flex items-start gap-3">
         <dt class="sr-only">{{ t('calendar.details.when') }}</dt>
         <Clock class="mt-0.5 size-4 shrink-0 text-on-surface-muted" aria-hidden="true" />
@@ -121,6 +212,25 @@ const level = computed(() => {
         />
         <div>
           <dd data-testid="event-details-level">{{ level }}</dd>
+          <dd>
+            <button
+              type="button"
+              class="rounded-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+              data-testid="event-details-why"
+              @click="tab = 'access'"
+            >
+              {{ t('permissions.why') }}
+            </button>
+          </dd>
+          <dd
+            v-if="event.hasOverrides"
+            class="mt-0.5 flex items-center gap-1 text-on-surface-muted"
+            data-testid="event-details-custom"
+          >
+            <ShieldCheck class="size-3.5" aria-hidden="true" />{{
+              t('permissions.customPermissions')
+            }}
+          </dd>
           <dd
             v-if="!isEditable(event)"
             class="mt-0.5 text-on-surface-muted"
@@ -135,7 +245,7 @@ const level = computed(() => {
         <dd class="whitespace-pre-line text-on-surface">{{ event.description }}</dd>
       </div>
     </dl>
-    <template v-if="event && isEditable(event)" #footer>
+    <template v-if="event && isEditable(event) && tab === 'details'" #footer>
       <UiButton variant="secondary" data-testid="event-details-edit" @click="emit('edit')">
         <Pencil class="size-4" aria-hidden="true" />{{ t('event.edit') }}
       </UiButton>

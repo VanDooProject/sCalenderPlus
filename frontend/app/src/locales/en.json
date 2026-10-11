@@ -661,5 +661,97 @@
       "until": "{rule}, until {date}"
     },
     "noWritableCalendar": "You have no calendar you can add events to."
+  },
+  "permissions": {
+    "tabs": {
+      "label": "Event sections",
+      "details": "Details",
+      "permissions": "Permissions",
+      "access": "Why can I see this?",
+      "accessManager": "Who sees what"
+    },
+    "why": "Why?",
+    "customPermissions": "Custom permissions",
+    "floorsHint": "Calendar owners and managers always keep full access, and so does the person who created the event. These settings decide what everyone else sees.",
+    "levels": {
+      "none": "Hidden",
+      "free_busy": "Busy only",
+      "read": "Can view",
+      "edit": "Can edit",
+      "manage": "Full control"
+    },
+    "principal": {
+      "everyone": "Everyone in this calendar",
+      "anonymous": "Anyone with the link",
+      "groupMinRole": "{group} ({role} and above)",
+      "unknownGroup": "A group",
+      "unknownUser": "Someone"
+    },
+    "presets": {
+      "label": "Quick settings",
+      "private": "Private (only me and managers)",
+      "busy": "Busy only for everyone"
+    },
+    "empty": "No custom permissions: everyone sees this event as the calendar allows.",
+    "levelOf": "Access for {name}",
+    "remove": "Remove {name}",
+    "add": {
+      "title": "Add a person or group",
+      "who": "Who",
+      "whoPlaceholder": "Choose a person, group or everyone",
+      "groupOption": "{group} (group)",
+      "level": "Access",
+      "submit": "Add"
+    },
+    "save": "Save permissions",
+    "reset": "Undo changes",
+    "saved": "Permissions saved.",
+    "errors": {
+      "invalid": "Some entries can't be saved. See the notes below them.",
+      "external": "You may not share this event with people outside the calendar. Ask a calendar manager, or remove the marked entries.",
+      "changed": "Someone changed these permissions in the meantime. Your changes are kept: check them and save again.",
+      "planLimit": "Your plan doesn't allow more custom permissions. Remove an entry or upgrade the plan of the calendar's owner.",
+      "frozen": "This calendar is over its plan limit: you can only remove or lower permissions right now."
+    },
+    "violations": {
+      "level_too_high": "Custom permissions can give at most “Can edit”.",
+      "duplicate_principal": "This person or group is listed twice.",
+      "group_not_selectable": "You can only choose groups you belong to or that already have access to the calendar.",
+      "user_not_selectable": "You can only choose people who share a group or this calendar with you.",
+      "external_sharing": "This person is outside the calendar: only calendar managers may share with them.",
+      "removal_exposes_external_share": "Removing this entry would share the event with someone outside the calendar.",
+      "no_override_rights_in_target": "You can't set this permission in the target calendar.",
+      "unknown": "This entry can't be saved."
+    },
+    "explain": {
+      "person": "Explain for",
+      "me": "Me",
+      "you": "You",
+      "result": "{name}: {level}",
+      "resultMe": "Your access: {level}",
+      "hiddenAsTransparent": "{name}: Hidden (the event is marked as free, so busy-only viewers don't see it)",
+      "decisive": "Decides"
+    },
+    "steps": {
+      "share_link": "Access through a share link: {calendarLevel}.",
+      "calendar_owner": "Owns the calendar.",
+      "grant_matched": "The calendar is shared with {principal}: {calendarLevel}.",
+      "group_role_default": "Member of {principal} as {role}: {calendarLevel} in this calendar.",
+      "calendar_result": "Level in the calendar: {calendarLevel}.",
+      "inherited_from_series": "This occurrence follows the permissions of its series.",
+      "manager_floor": "Manages the calendar, so always keeps full control.",
+      "creator_floor": "Created this event, so keeps full control.",
+      "creator_floor_disabled": "Created this event, but this calendar doesn't give creators extra rights.",
+      "creator_floor_lapsed": "Created this event, but no longer may add events to the calendar.",
+      "base_level": "From the calendar: {level}.",
+      "override_matched": "Custom permission for {principal}: {level}.",
+      "no_matching_override": "No custom permission applies, so the calendar decides.",
+      "override_applied": "The most specific custom permission ({principal}) applies: {level}.",
+      "restrict_only": "Rules for everyone can only restrict, never extend: {level}.",
+      "override_cap": "Custom permissions give at most “Can edit”.",
+      "link_ceiling": "A share link gives at most what the link allows: {level}.",
+      "result": "Result: {level}.",
+      "unknown": "Step “{kind}”."
+    }
   }
 }

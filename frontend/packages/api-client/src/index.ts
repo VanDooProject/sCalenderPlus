@@ -70,3 +70,15 @@ export type CalendarPrefsResponse = components['schemas']['CalendarPrefsResponse
 
 /** A grant on a calendar (`GET /api/v1/calendars/{id}/grants`; `etag` is the `If-Match` of changing it). */
 export type GrantResponse = components['schemas']['GrantResponse']
+
+/** An event permission override (`GET/PUT /events/{id}/overrides`). */
+export type OverrideResponse = components['schemas']['OverrideResponse']
+
+/** The overrides of an event with their `etag`. */
+export type EventOverridesResponse = components['schemas']['EventOverridesResponse']
+
+/** `GET /events/{id}/access/explain`: the effective level and the engine's steps. */
+export type AccessExplanationResponse = components['schemas']['AccessExplanationResponse']
+
+/** One step of the explainer (`kind` in snake case). */
+export type ExplainStepResponse = components['schemas']['ExplainStepResponse']

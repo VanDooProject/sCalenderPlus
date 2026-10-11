@@ -8,6 +8,7 @@ type Calendar = components['schemas']['CalendarResponse']
 type CalendarEvent = components['schemas']['EventResponse']
 type EventTime = components['schemas']['EventTimeResponse']
 type Grant = components['schemas']['GrantResponse']
+type Override = components['schemas']['OverrideResponse']
 
 /** A calendar of {@link mockGroup} (default role defaults); the mock user is its owner. */
 export const mockCalendar: Calendar = {
@@ -225,6 +226,8 @@ export interface MockCalendarsState {
   versions: Record<string, number>
   /** `revokeEventShares` of the last grant or role-default change (default true). */
   lastRevokeEventShares: boolean | null
+  /** Event permission overrides by event id (`version` makes their ETag). */
+  overrides: Record<string, { items: Override[]; version: number }>
 }
 
 function seed(): MockCalendarsState {
@@ -351,7 +354,50 @@ function seed(): MockCalendarsState {
     }),
   ]
 
+  // Overrides (permissions.md §5): "Training" hides from Vic and is busy-only for everyone else,
+  // "Dentist" is private, the league match is shared with Max to edit, "Parents' evening" names
+  // the mock user (shared with me), "Board meeting" is busy-only except for the group's admins.
+  const entry = (
+    principal: Override['principal'],
+    level: string,
+    principalName?: string,
+  ): Override => ({
+    principal,
+    ...(principalName ? { principalName } : {}),
+    level,
+    createdBy: mockUser.id,
+    createdAt: '2026-10-01T08:00:00Z',
+  })
+  const byTitle = (title: string) => events.find((e) => e.title === title)!
+  const overrides: MockCalendarsState['overrides'] = {
+    [mockEvent.id]: {
+      version: 1,
+      items: [
+        entry({ type: 'user', id: '0192f2c4-0000-7000-8000-000000000004' }, 'none', 'Vic'),
+        entry({ type: 'everyone' }, 'free_busy'),
+      ],
+    },
+    [byTitle('Dentist').id]: { version: 1, items: [entry({ type: 'everyone' }, 'none')] },
+    [byTitle('League match vs. SV Nord').id]: {
+      version: 1,
+      items: [entry({ type: 'user', id: '0192f2c4-0000-7000-8000-000000000003' }, 'edit', 'Max')],
+    },
+    [byTitle('Parents’ evening').id]: {
+      version: 1,
+      items: [entry({ type: 'user', id: mockUser.id }, 'read', 'Mia')],
+    },
+    [byTitle('Board meeting').id]: {
+      version: 1,
+      items: [
+        entry({ type: 'group', id: mockGroup.id, minRole: 'admin' }, 'read', mockGroup.name),
+        entry({ type: 'everyone' }, 'free_busy'),
+      ],
+    },
+  }
+  for (const e of events) if (overrides[e.id]) e.hasOverrides = true
+
   return {
+    overrides,
     calendars: [
       mockCalendar,
       mockPersonalCalendar,
