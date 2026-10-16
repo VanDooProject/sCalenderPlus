@@ -62,10 +62,23 @@ public sealed record EmailTemplate(BrandOptions Brand, string Subject, IReadOnly
         html.Append("<p style=\"margin:24px 0 0;color:#6b7280;font-size:12px\">").Append(E(Brand.ProductName));
         if (Brand.SupportEmail is { } support)
         {
-            html.Append(" · <a href=\"mailto:").Append(E(support)).Append("\" style=\"color:#6b7280\">").Append(E(support)).Append("</a>");
+            html.Append(" · <a href=\"").Append(E(MailtoUri(support))).Append("\" style=\"color:#6b7280\">").Append(E(support)).Append("</a>");
         }
 
         return html.Append("</p></div></body></html>").ToString();
+    }
+
+    /// <summary>
+    /// <c>mailto:</c> URI of an address (RFC 6068): local part and domain percent-encoded, so characters such as
+    /// <c>?</c>, <c>&amp;</c>, <c>#</c> or <c>%</c> (which <c>[EmailAddress]</c> lets through) cannot add headers
+    /// or a body; the <c>@</c> between them stays literal.
+    /// </summary>
+    internal static string MailtoUri(string address)
+    {
+        var at = address.LastIndexOf('@');
+        return at < 0
+            ? "mailto:" + Uri.EscapeDataString(address)
+            : "mailto:" + Uri.EscapeDataString(address[..at]) + "@" + Uri.EscapeDataString(address[(at + 1)..]);
     }
 }
 
