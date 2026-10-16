@@ -16,6 +16,9 @@ x-backend-env: &backend-env
   ConnectionStrings__Default: ${DATABASE_URL:-Host=postgres;Port=5432;Database=scal;Username=scal;Password=${POSTGRES_PASSWORD:-scal}}
   App__PublicBaseUrl: ${APP_URL:-http://localhost:8080}
   Logging__Console__FormatterName: json
+  # Product name and support address in emails and other server-rendered text (Brand__*).
+  Brand__ProductName: ${BRAND_PRODUCT_NAME:-sCalenderPlus}
+  Brand__SupportEmail: ${BRAND_SUPPORT_EMAIL:-}
 
 x-hardening: &hardening
   read_only: true
