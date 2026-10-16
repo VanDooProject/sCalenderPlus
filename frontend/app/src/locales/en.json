@@ -777,5 +777,10 @@
       "unknown": "Step “{kind}”."
     },
     "busyPreview": "People with “Busy only” see “{title}” instead of the title, and no details."
+  },
+  "trial": {
+    "daysLeft": "Pro trial: {n} day left | Pro trial: {n} days left",
+    "until": "Your account has the Pro plan's limits until {date}, then the Free plan's.",
+    "dismiss": "Hide the trial notice"
   }
 }

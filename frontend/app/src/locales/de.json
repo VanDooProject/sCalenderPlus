@@ -777,5 +777,10 @@
       "unknown": "Schritt „{kind}“."
     },
     "busyPreview": "Wer „Nur belegt“ hat, sieht „{title}“ statt des Titels und keine Details."
+  },
+  "trial": {
+    "daysLeft": "Pro-Testphase: noch {n} Tag | Pro-Testphase: noch {n} Tage",
+    "until": "Dein Konto hat bis {date} die Limits des Pro-Plans, danach die des Free-Plans.",
+    "dismiss": "Hinweis zur Testphase ausblenden"
   }
 }

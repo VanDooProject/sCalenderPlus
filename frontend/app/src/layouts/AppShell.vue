@@ -11,6 +11,7 @@ import EnvironmentBadge from '@/components/EnvironmentBadge.vue'
 import LocaleMenu from '@/components/LocaleMenu.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
+import TrialNotice from '@/components/TrialNotice.vue'
 import UserMenu from '@/components/UserMenu.vue'
 import { useSession } from '@/composables/session'
 import { useBrand } from '@/config'
@@ -61,7 +62,8 @@ const drawerOpen = ref(false)
         >
           <BrandMark :show-name="false" />
         </RouterLink>
-        <div class="ml-auto flex items-center gap-1 sm:gap-2">
+        <div class="ml-auto flex min-w-0 items-center gap-1 sm:gap-2">
+          <TrialNotice v-if="user" />
           <EnvironmentBadge />
           <LocaleMenu />
           <ThemeMenu />
