@@ -15,9 +15,11 @@
 
   /*
    * Brand palette (default indigo-blue). Prefer the semantic `primary` tokens in components. The hue
-   * comes from `--scal-brand-hue` (white-label: the app sets it on <html> from /config.json); lightness
-   * and chroma are fixed. Text on brand colors keeps WCAG AA (4.5:1) for hues of about 0–150 and
-   * 230–360; green to cyan hues (about 155–225) fall slightly below it for white on primary.
+   * comes from `--scal-brand-hue` (white-label: the app sets it on <html> from /config.json); chroma
+   * is fixed. At the same OKLCH lightness, green to cyan hues are brighter in WCAG terms, so the
+   * text-bearing steps 600–800 get darker by `--scal-brand-shade` for hues of about 95–265 (none for
+   * the default 268): text on brand colors keeps WCAG AA (4.5:1) for every hue
+   * (src/__tests__/contrast.spec.ts checks the token pairs in light and dark mode).
    */
   --color-brand-50: oklch(0.97 0.02 var(--scal-brand-hue));
   --color-brand-100: oklch(0.93 0.045 var(--scal-brand-hue));
@@ -25,9 +27,9 @@
   --color-brand-300: oklch(0.78 0.12 var(--scal-brand-hue));
   --color-brand-400: oklch(0.7 0.16 var(--scal-brand-hue));
   --color-brand-500: oklch(0.6 0.2 var(--scal-brand-hue));
-  --color-brand-600: oklch(0.52 0.21 var(--scal-brand-hue));
-  --color-brand-700: oklch(0.45 0.19 var(--scal-brand-hue));
-  --color-brand-800: oklch(0.38 0.15 var(--scal-brand-hue));
+  --color-brand-600: oklch(calc(0.52 - var(--scal-brand-shade)) 0.21 var(--scal-brand-hue));
+  --color-brand-700: oklch(calc(0.45 - var(--scal-brand-shade)) 0.19 var(--scal-brand-hue));
+  --color-brand-800: oklch(calc(0.38 - var(--scal-brand-shade)) 0.15 var(--scal-brand-hue));
   --color-brand-900: oklch(0.31 0.11 var(--scal-brand-hue));
 
   --color-surface: var(--scal-surface);
@@ -99,6 +101,11 @@
   color-scheme: light;
   /* OKLCH hue of the brand palette and the tinted neutrals; overridden per deployment. */
   --scal-brand-hue: 268;
+  /*
+   * Lightness taken off the brand steps 600–800: up to 0.074 at hue 180, none outside about 95–265
+   * (a raised cosine, so it changes smoothly with the hue).
+   */
+  --scal-brand-shade: max(0, 0.08 * cos((var(--scal-brand-hue) - 180) * 1deg) - 0.006);
   --scal-surface: oklch(0.985 0.003 var(--scal-brand-hue));
   --scal-surface-muted: oklch(0.965 0.006 var(--scal-brand-hue));
   --scal-surface-raised: oklch(1 0 0);
