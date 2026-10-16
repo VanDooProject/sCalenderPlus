@@ -13,17 +13,22 @@
   --font-sans:
     'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-  /* Brand palette (indigo-blue). Prefer the semantic `primary` tokens in components. */
-  --color-brand-50: oklch(0.97 0.02 268);
-  --color-brand-100: oklch(0.93 0.045 268);
-  --color-brand-200: oklch(0.87 0.08 268);
-  --color-brand-300: oklch(0.78 0.12 268);
-  --color-brand-400: oklch(0.7 0.16 268);
-  --color-brand-500: oklch(0.6 0.2 268);
-  --color-brand-600: oklch(0.52 0.21 268);
-  --color-brand-700: oklch(0.45 0.19 268);
-  --color-brand-800: oklch(0.38 0.15 268);
-  --color-brand-900: oklch(0.31 0.11 268);
+  /*
+   * Brand palette (default indigo-blue). Prefer the semantic `primary` tokens in components. The hue
+   * comes from `--scal-brand-hue` (white-label: the app sets it on <html> from /config.json); lightness
+   * and chroma are fixed. Text on brand colors keeps WCAG AA (4.5:1) for hues of about 0–150 and
+   * 230–360; green to cyan hues (about 155–225) fall slightly below it for white on primary.
+   */
+  --color-brand-50: oklch(0.97 0.02 var(--scal-brand-hue));
+  --color-brand-100: oklch(0.93 0.045 var(--scal-brand-hue));
+  --color-brand-200: oklch(0.87 0.08 var(--scal-brand-hue));
+  --color-brand-300: oklch(0.78 0.12 var(--scal-brand-hue));
+  --color-brand-400: oklch(0.7 0.16 var(--scal-brand-hue));
+  --color-brand-500: oklch(0.6 0.2 var(--scal-brand-hue));
+  --color-brand-600: oklch(0.52 0.21 var(--scal-brand-hue));
+  --color-brand-700: oklch(0.45 0.19 var(--scal-brand-hue));
+  --color-brand-800: oklch(0.38 0.15 var(--scal-brand-hue));
+  --color-brand-900: oklch(0.31 0.11 var(--scal-brand-hue));
 
   --color-surface: var(--scal-surface);
   --color-surface-muted: var(--scal-surface-muted);
@@ -92,14 +97,16 @@
 
 :root {
   color-scheme: light;
-  --scal-surface: oklch(0.985 0.003 268);
-  --scal-surface-muted: oklch(0.965 0.006 268);
+  /* OKLCH hue of the brand palette and the tinted neutrals; overridden per deployment. */
+  --scal-brand-hue: 268;
+  --scal-surface: oklch(0.985 0.003 var(--scal-brand-hue));
+  --scal-surface-muted: oklch(0.965 0.006 var(--scal-brand-hue));
   --scal-surface-raised: oklch(1 0 0);
-  --scal-surface-hover: oklch(0.94 0.01 268);
-  --scal-on-surface: oklch(0.22 0.02 268);
-  --scal-on-surface-muted: oklch(0.47 0.02 268);
-  --scal-border: oklch(0.9 0.01 268);
-  --scal-border-strong: oklch(0.78 0.015 268);
+  --scal-surface-hover: oklch(0.94 0.01 var(--scal-brand-hue));
+  --scal-on-surface: oklch(0.22 0.02 var(--scal-brand-hue));
+  --scal-on-surface-muted: oklch(0.47 0.02 var(--scal-brand-hue));
+  --scal-border: oklch(0.9 0.01 var(--scal-brand-hue));
+  --scal-border-strong: oklch(0.78 0.015 var(--scal-brand-hue));
 
   --scal-primary: var(--color-brand-600);
   --scal-primary-hover: var(--color-brand-700);
@@ -120,24 +127,24 @@
   --scal-on-info-soft: var(--color-brand-800);
 
   --scal-focus: var(--color-brand-500);
-  --scal-overlay: oklch(0.2 0.02 268 / 0.45);
+  --scal-overlay: oklch(0.2 0.02 var(--scal-brand-hue) / 0.45);
 }
 
 :root.dark {
   color-scheme: dark;
-  --scal-surface: oklch(0.17 0.012 268);
-  --scal-surface-muted: oklch(0.2 0.014 268);
-  --scal-surface-raised: oklch(0.225 0.016 268);
-  --scal-surface-hover: oklch(0.28 0.02 268);
-  --scal-on-surface: oklch(0.95 0.008 268);
-  --scal-on-surface-muted: oklch(0.73 0.02 268);
-  --scal-border: oklch(0.31 0.018 268);
-  --scal-border-strong: oklch(0.42 0.02 268);
+  --scal-surface: oklch(0.17 0.012 var(--scal-brand-hue));
+  --scal-surface-muted: oklch(0.2 0.014 var(--scal-brand-hue));
+  --scal-surface-raised: oklch(0.225 0.016 var(--scal-brand-hue));
+  --scal-surface-hover: oklch(0.28 0.02 var(--scal-brand-hue));
+  --scal-on-surface: oklch(0.95 0.008 var(--scal-brand-hue));
+  --scal-on-surface-muted: oklch(0.73 0.02 var(--scal-brand-hue));
+  --scal-border: oklch(0.31 0.018 var(--scal-brand-hue));
+  --scal-border-strong: oklch(0.42 0.02 var(--scal-brand-hue));
 
   --scal-primary: var(--color-brand-300);
   --scal-primary-hover: var(--color-brand-200);
-  --scal-on-primary: oklch(0.2 0.05 268);
-  --scal-primary-soft: oklch(0.3 0.06 268);
+  --scal-on-primary: oklch(0.2 0.05 var(--scal-brand-hue));
+  --scal-primary-soft: oklch(0.3 0.06 var(--scal-brand-hue));
   --scal-on-primary-soft: var(--color-brand-100);
 
   --scal-danger: oklch(0.72 0.15 25);
@@ -149,7 +156,7 @@
   --scal-on-success-soft: oklch(0.88 0.08 155);
   --scal-warning-soft: oklch(0.3 0.05 80);
   --scal-on-warning-soft: oklch(0.9 0.09 85);
-  --scal-info-soft: oklch(0.28 0.05 268);
+  --scal-info-soft: oklch(0.28 0.05 var(--scal-brand-hue));
   --scal-on-info-soft: var(--color-brand-100);
 
   --scal-focus: var(--color-brand-300);
