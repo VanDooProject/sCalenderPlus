@@ -77,6 +77,23 @@ describe('editions', () => {
     expect(lookup(mergeMessages(en, poly.messages.en), 'nav.groups')).toBe('Constellations')
     expect(lookup(mergeMessages(de, poly.messages.de), 'nav.groups')).toBe('Konstellationen')
   })
+
+  it('drops the club, team and family examples of groups in the poly edition', () => {
+    const poly = editions.find((e) => e.id === 'poly')!
+    // What the groups and invite pages render (navigation included); "chosen family" is poly wording.
+    const shown = (messages: object) =>
+      entries(messages).filter(([key]) => /^(groups|invite|nav|sidebar)\./.test(key))
+    const offending = (messages: object, pattern: RegExp) =>
+      shown(messages).filter(([, message]) => pattern.test(withoutPlaceholders(message)))
+
+    const enExamples = /\b(clubs?|teams?)\b|(?<!chosen )\bfamil(y|ies)\b/i
+    const deExamples = /verein|\bteams?\b|(?<!wahl)famili/i
+    // The base wording is what the overlay replaces (else this test checks nothing).
+    expect(offending(en, enExamples).map(([key]) => key)).toContain('groups.description')
+    expect(offending(de, deExamples).map(([key]) => key)).toContain('groups.description')
+    expect(offending(mergeMessages(en, poly.messages.en), enExamples)).toEqual([])
+    expect(offending(mergeMessages(de, poly.messages.de), deExamples)).toEqual([])
+  })
 })
 
 describe('mergeMessages', () => {
