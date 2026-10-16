@@ -1,5 +1,5 @@
-# Reusable workflow: build and push the multi-arch (linux/amd64 + linux/arm64) images api, worker and web
-# to GHCR. Called by release-please.yml (release tags X.Y.Z, X.Y, latest) and images.yml (main, main-<sha>).
+# Reusable workflow: build and push the multi-arch (linux/amd64 + linux/arm64) images api, worker, web and
+# poly-web (the web image of the poly edition: web.Dockerfile with EDITION=poly) to GHCR. Called by release-please.yml (release tags X.Y.Z, X.Y, latest) and images.yml (main, main-<sha>).
 # See docs/development/workflow.md §4 and docs/deployment/coolify.md §2.
 name: build-images
 
@@ -45,6 +45,10 @@ jobs:
             description: sCalenderPlus background worker (jobs, emails, imports)
           - image: web
             description: sCalenderPlus web app (Caddy serving the SPA and proxying the api)
+          - image: poly-web
+            dockerfile: web
+            edition: poly
+            description: sCalenderPlus web app, poly edition (Caddy serving the SPA and proxying the api)
     steps:
       - uses: actions/checkout@v7
         with:
@@ -85,7 +89,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: deploy/docker/${{ matrix.image }}.Dockerfile
+          file: deploy/docker/${{ matrix.dockerfile || matrix.image }}.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -94,6 +98,7 @@ jobs:
           build-args: |
             VERSION=${{ inputs.version }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ${{ matrix.edition && format('EDITION={0}', matrix.edition) || '' }}
           provenance: mode=max
           sbom: true
           # Reuse the amd64 layers cached by ci.yml (scope <image>) and keep a multi-arch cache of our own.
