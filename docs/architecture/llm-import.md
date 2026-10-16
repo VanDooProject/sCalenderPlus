@@ -139,7 +139,7 @@ Review UI: grouped by run, shows diff for updates, bulk accept/reject, edit-then
 
 ## 8. Cost controls
 
-- Plan quotas: sources, minimum interval, LLM runs/month, events/run (see [plans.md](../product/plans.md)). Runs skipped as unchanged, ICS and JSON-LD paths **do not consume** LLM runs.
+- Plan quotas: sources, minimum interval, LLM runs/month, events/run (see [plans.md](../product/plans.md)); accounts in the reverse trial keep the **Free** import quotas (the trial raises only calendar, group, member and override limits). Runs skipped as unchanged, ICS and JSON-LD paths **do not consume** LLM runs.
 - Token caps per run (`MaxInputTokens`); oversized pages truncated at section boundaries, with `hasMoreEvents=true` so removals are not inferred.
 - Every run stores `tokens_in`, `tokens_out`, `cost_micros` (price table in config) → admin dashboard, per-subject monthly cost, alert if a subject exceeds 3× its plan's expected cost.
 - **Sybil protection:** Free LLM usage (runs + dry runs) requires a verified, non-disposable email and is additionally bounded by a **global daily Free LLM budget** (`Import__FreeDailyBudgetMicros`); when exhausted, Free HTML runs are deferred to the next day (ICS/JSON-LD unaffected). Per-IP sign-up throttling (M1) limits account farming.

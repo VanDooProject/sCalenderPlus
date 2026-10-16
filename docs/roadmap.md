@@ -93,6 +93,9 @@ Spec: [product/editions.md](product/editions.md), [architecture/privacy-levels.m
 - [x] **feat(api): product name in emails** — `Brand__ProductName` (default "sCalenderPlus") and `Brand__SupportEmail` in email subjects and bodies. *AC:* email tests render the configured name.
 - [x] **feat(billing): reverse trial and entitlements endpoint** — Pro limits for `Plans__TrialDays` (default 90, 0 disables) from `users.created_at`, only with `Billing__Provider=stripe`; resource owner governs; `GET /api/v1/me/entitlements` → `{ plan, trialEndsAt, limits }`. *AC:* new account on stripe creates the 11th override event; same account at day 91 → 402; `selfhost` unchanged.
 - [x] **feat(events): cover titles** — `coverTitle` (nullable, trimmed, ≤ 200) settable with `edit`; `free_busy` viewers get it instead of "Busy", `read`+ get title and cover title; web event dialog and busy rendering. *AC:* `free_busy` response contains `coverTitle` but no title/description/location (authz test).
+- [x] **feat(web): trial notice** — `GET /me/entitlements` as a query; "Pro trial: N days left" in the top bar while `trialEndsAt` is set (not for `selfhost`), dismissible per browser session, no checkout. *AC:* unit tests cover days left, plural forms (en/de), dismissal and no notice without a trial.
+- [x] **fix(ui): brand hue contrast** — Text-bearing brand steps darken for green to cyan hues (`--scal-brand-shade`). *AC:* Vitest checks every text-bearing token pair for hues 0–360 (step 5) in light and dark mode at ≥ 4.5:1.
+- [x] **build(web): edition title and favicon** — The build writes the edition's name into `index.html` and emits its favicon (poly: a discreet calendar glyph). *AC:* standard and poly builds pass the leak check; the poly favicon is not in the standard `dist/`.
 - [ ] **build(deploy): per-edition web image** — `web.Dockerfile` build arg `EDITION`; publish `scalenderplus-poly-web` alongside `scalenderplus-web` in `images.yml` and releases; compose files take the web image name from a variable (default `scalenderplus-web`). *AC:* both images published; leak check runs on the standard image's assets.
 - [ ] **feat(web): poly wording overlay** — Poly-only locale JSON merged over base messages ("group" → "constellation" / "Konstellation"). *AC:* i18n completeness test covers the overlay; standard build unchanged (leak check).
 - [ ] **feat(billing): trial-end reminder** — Email and in-app banner 7 days before `trialEndsAt`, once per account. *AC:* worker test sends exactly one email at day 83 with `Plans__TrialDays=90`.
@@ -131,7 +134,7 @@ Later in this track:
 - [ ] **feat(import): ICS and JSON-LD fast paths** — Detect `text/calendar` and schema.org Event. *AC:* fixtures import without LLM call.
 - [ ] **feat(import): HTML sanitizer and change detection** — AngleSharp cleaning, token budget truncation, content hash skip. *AC:* unchanged page → `skipped_unchanged`, no quota used.
 - [ ] **feat(import): LLM extractor abstraction with Anthropic and OpenAI-compatible providers** — Structured output schema, prompt versioning, usage/cost recording, fake extractor + fake LLM server for compose. *AC:* fixture corpus passes with recorded responses.
-- [ ] **feat(import): LLM cost guards** — Per-subject quotas, dry-run caps per user and subject, global daily Free budget, cost alerting. *AC:* exhausted Free budget defers HTML runs, ICS runs still execute.
+- [ ] **feat(import): LLM cost guards** — Per-subject quotas (Free values during the reverse trial, plans.md principle 1), dry-run caps per user and subject, global daily Free budget, cost alerting. *AC:* exhausted Free budget defers HTML runs, ICS runs still execute; a trialing account gets the Free LLM runs per month.
 - [ ] **feat(import): validation, dedupe and update detection** — Import keys, pg_trgm fuzzy duplicates, local-edits-win, removal after 2 misses. *AC:* re-running same page creates 0 new events; moved event updates.
 - [ ] **feat(import): review queue API and UI** — Pending candidates, diff view, bulk accept/reject, edit-then-accept. *AC:* fullstack e2e with fake LLM: dry run → review → events appear.
 - [ ] **feat(import): auto-publish with confidence threshold and anomaly guard** — Pro/Team only. *AC:* anomaly (3× count) forces review.
@@ -198,6 +201,6 @@ Later in this track:
 11. **External sharing by creators**: keep default `creatorsMayShareExternally = false`?
 12. **Poly edition name and brand**: product name, domain, logo and hue for the poly deployment (needed before its first deployment; the code only uses the edition key `poly`).
 13. **Adult add-on payment provider**: which provider that accepts adult businesses (Stripe stays for the core)?
-14. **Trial length**: confirm 90 days (`Plans__TrialDays`), and whether trial accounts should get Pro LLM quotas or Free ones (cost, account farming; see plans.md pricing rationale).
+14. **Trial length**: confirm 90 days (`Plans__TrialDays`). (Decided: trial accounts keep the Free LLM import quotas, [plans.md](product/plans.md) principle 1.)
 15. **DPIA owner**: who on the customer side owns the DPIA and Art. 9 consent texts for the poly edition?
 16. **Poly Free limits**: confirm the proposal in plans.md (events with overrides unlimited or 50, 10 entries per event, 15 members per group).
