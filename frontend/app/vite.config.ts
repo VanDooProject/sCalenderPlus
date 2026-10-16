@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, loadEnv, searchForWorkspaceRoot } from 'vite'
+import { defineConfig, loadEnv, searchForWorkspaceRoot, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import vueI18n from '@intlify/unplugin-vue-i18n/vite'
@@ -36,6 +36,36 @@ function resolveEdition(mode: string): string {
   return edition
 }
 
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+
+/**
+ * The edition's static brand before /config.json loads: its name as index.html's `<title>` and its
+ * `favicon.svg` (else the default in src/assets) served and emitted as `/favicon.svg`, so another
+ * edition's favicon never ends up in the build.
+ */
+function editionShell(edition: string): Plugin {
+  const dir = `${editionsDir}/${edition}`
+  const brand = JSON.parse(readFileSync(`${dir}/brand.json`, 'utf8')) as { name: string }
+  const favicon = existsSync(`${dir}/favicon.svg`)
+    ? `${dir}/favicon.svg`
+    : fileURLToPath(new URL('./src/assets/favicon.svg', import.meta.url))
+  return {
+    name: 'scal-edition-shell',
+    transformIndexHtml: (html) =>
+      html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(brand.name)}</title>`),
+    configureServer(server) {
+      server.middlewares.use('/favicon.svg', (_req, res) => {
+        res.setHeader('Content-Type', 'image/svg+xml')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.end(readFileSync(favicon))
+      })
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'favicon.svg', source: readFileSync(favicon) })
+    },
+  }
+}
+
 // `--mode mock` (`pnpm dev:mock`): no backend; MSW intercepts requests in the browser with the
 // shared handlers from @scalenderplus/api-client/mocks. The plugin serves the service worker
 // script; it is not part of normal builds.
@@ -45,6 +75,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       tailwindcss(),
+      editionShell(edition),
       // Precompiles the locale JSON: the runtime-only vue-i18n build ships no message compiler
       // (smaller, and no runtime code generation under the strict CSP). Vitest uses the full build
       // and the plain JSON (the i18n tests read the files as written).

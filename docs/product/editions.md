@@ -32,6 +32,7 @@ The edition is chosen at **build time** so poly-only code, wording and assets **
 - Vite env `VITE_EDITION=standard|poly` (default `standard`).
 - Edition-specific code lives in `frontend/app/src/editions/<edition>/` and is imported only through the Vite alias `@edition`, which points at the selected folder. The other folder is never imported, so it is never bundled.
 - Shared code may import `@edition/…` but never `editions/poly/…` or `editions/standard/…` directly (lint rule).
+- Static shell before `/config.json` loads: the build writes the edition's default name (`brand.json`) into `index.html`'s `<title>` and emits the edition's `favicon.svg` (default: `src/assets/favicon.svg`) as `/favicon.svg`. The poly favicon is a plain, discreet calendar glyph in the poly hue; the leak check matches it by content hash, so it can't end up in a standard build.
 
 ### 2.2 CI leak check
 

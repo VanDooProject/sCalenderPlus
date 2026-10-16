@@ -1,4 +1,5 @@
 import type { EditionDefinition } from '../types'
+import brand from './brand.json'
 import de from './locales/de.json'
 import en from './locales/en.json'
 
@@ -10,7 +11,7 @@ import en from './locales/en.json'
 export const edition: EditionDefinition = {
   id: 'poly',
   marker: 'scalenderplus-edition-poly',
-  brand: { name: 'sCalenderPlus Poly', hue: 330 },
+  brand,
   messages: { en, de },
   features: {},
 }
