@@ -1,6 +1,7 @@
 # sCalenderPlus web image: Caddy serving the built Vue SPA and reverse-proxying the api (same origin).
-# Build context: repository root.
+# Build context: repository root. EDITION selects the build-time edition (frontend/app/src/editions):
 #   docker build -f deploy/docker/web.Dockerfile -t scalenderplus-web .
+#   docker build -f deploy/docker/web.Dockerfile --build-arg EDITION=poly -t scalenderplus-poly-web .
 
 FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /src/frontend
@@ -17,16 +18,19 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --store-dir /pnpm/store --filter app...
 
 COPY frontend/ ./
-RUN pnpm --filter app build
+ARG EDITION=standard
+RUN VITE_EDITION="$EDITION" pnpm --filter app build
 
 FROM caddy:2-alpine AS runtime
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
+ARG EDITION=standard
 LABEL org.opencontainers.image.title="scalenderplus-web" \
       org.opencontainers.image.description="sCalenderPlus web app (Caddy: SPA + same-origin reverse proxy to the api)" \
       org.opencontainers.image.source="https://github.com/VanDooProject/sCalenderPlus" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.revision="${REVISION}"
+      org.opencontainers.image.revision="${REVISION}" \
+      org.vandooproject.scalenderplus.edition="${EDITION}"
 
 # Non-root: listen on 8080 and drop the file capability (cap_net_bind_service) the base image sets on
 # the binary, so the container also starts with `no-new-privileges` and all capabilities dropped.

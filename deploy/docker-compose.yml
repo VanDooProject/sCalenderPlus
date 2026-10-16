@@ -98,15 +98,26 @@ services:
       start_period: 30s
     <<: *hardening
 
-  # Public entry point: SPA + reverse proxy to api.
+  # Public entry point: SPA + reverse proxy to api. Poly edition: WEB_IMAGE=scalenderplus-poly-web
+  # (and EDITION=poly for local builds).
   web:
-    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/scalenderplus-web:${IMAGE_TAG:-local}
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/${WEB_IMAGE:-scalenderplus-web}:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: deploy/docker/web.Dockerfile
+      args:
+        EDITION: ${EDITION:-standard}
     environment:
       API_UPSTREAM: api:8080
       PUBLIC_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      # White-label branding in /config.json (optional; unset = the edition's defaults).
+      PUBLIC_BRAND_NAME: ${PUBLIC_BRAND_NAME:-}
+      PUBLIC_BRAND_LOGO_URL: ${PUBLIC_BRAND_LOGO_URL:-}
+      PUBLIC_BRAND_HUE: ${PUBLIC_BRAND_HUE:-}
+      PUBLIC_BRAND_SUPPORT_EMAIL: ${PUBLIC_BRAND_SUPPORT_EMAIL:-}
+      PUBLIC_BRAND_IMPRINT_URL: ${PUBLIC_BRAND_IMPRINT_URL:-}
+      PUBLIC_BRAND_PRIVACY_URL: ${PUBLIC_BRAND_PRIVACY_URL:-}
+      PUBLIC_BRAND_TERMS_URL: ${PUBLIC_BRAND_TERMS_URL:-}
     depends_on:
       api:
         condition: service_healthy

@@ -5,6 +5,9 @@
 #   WEB_PORT            listen port (default 8080; non-root)
 #   API_UPSTREAM        api host:port (default api:8080)
 #   PUBLIC_ENVIRONMENT  rendered into /config.json (whitelisted keys only, see config.json.tmpl)
+#   PUBLIC_BRAND_*      white-label branding in /config.json (all optional, see config.json.tmpl and
+#                       deploy/.env.example); the origin of an https PUBLIC_BRAND_LOGO_URL is added to
+#                       the CSP's img-src
 
 # Secrets in URLs are masked in the request URI and the Referer (the SPA's own API calls send the page URL
 # as Referer, same-origin):
@@ -51,8 +54,9 @@
 		# Strict CSP: no inline scripts or styles (Vite emits files; Vue sets styles via CSSOM).
 		# The only inline styles allowed are reka-ui's fixed scrollbar rules of the select and
 		# combobox viewports, by hash (checked against the installed reka-ui in the frontend tests:
-		# frontend/app/src/__tests__/csp.spec.ts).
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-60LHlRjW/B3CtzIoE/Lf1/NEDvko9efWMFaGVhHu/cs=' 'sha256-0sLsI2a+NIcumVvBF9zD/ArGqlZR2xfnxsALPmK7nj8='; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# frontend/app/src/__tests__/csp.spec.ts). Images may also come from the brand logo's origin
+		# ({brand_logo_origin}, empty unless PUBLIC_BRAND_LOGO_URL is an https URL; see the map below).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-60LHlRjW/B3CtzIoE/Lf1/NEDvko9efWMFaGVhHu/cs=' 'sha256-0sLsI2a+NIcumVvBF9zD/ArGqlZR2xfnxsALPmK7nj8='; img-src 'self' data: {brand_logo_origin}; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 		# Feed tokens are in URLs: never leak them via Referer to other origins.
 		Referrer-Policy "same-origin"
@@ -67,6 +71,12 @@
 }
 
 :{$WEB_PORT:8080} {
+	# Origin (scheme, host, port) of an https brand logo for the CSP's img-src. Only a strict https
+	# origin passes, so the variable can't inject other CSP directives; a same-origin path needs none.
+	map {env.PUBLIC_BRAND_LOGO_URL} {brand_logo_origin} {
+		~^\s*(https://[A-Za-z0-9.-]+(?::[0-9]+)?)(?:[/?#]\S*)?\s*$ "${1}"
+		default ""
+	}
 	import security_headers
 	encode zstd gzip
 
