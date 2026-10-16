@@ -47,6 +47,7 @@ internal sealed class EventConfiguration :
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.Uid).HasMaxLength(Event.UidMaxLength);
         builder.Property(e => e.Title).HasMaxLength(Event.TitleMaxLength);
+        builder.Property(e => e.CoverTitle).HasMaxLength(Event.CoverTitleMaxLength);
         builder.Property(e => e.Description).HasMaxLength(Event.DescriptionMaxLength);
         builder.Property(e => e.Location).HasMaxLength(Event.LocationMaxLength);
         builder.Property(e => e.Url).HasMaxLength(Event.UrlMaxLength);
@@ -95,6 +96,7 @@ internal sealed class EventConfiguration :
         });
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.Title).HasMaxLength(Event.TitleMaxLength);
+        builder.Property(x => x.CoverTitle).HasMaxLength(Event.CoverTitleMaxLength);
         builder.Property(x => x.Description).HasMaxLength(Event.DescriptionMaxLength);
         builder.Property(x => x.Location).HasMaxLength(Event.LocationMaxLength);
         builder.Property(x => x.Status).HasConversion<short?>();

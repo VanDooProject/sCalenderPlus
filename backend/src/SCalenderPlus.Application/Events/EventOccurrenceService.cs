@@ -15,6 +15,7 @@ namespace SCalenderPlus.Application.Events;
 /// <summary>Merge-patch of one occurrence: <c>null</c> members stay unchanged; only these fields can differ per occurrence.</summary>
 /// <param name="Description">Empty removes it for this occurrence.</param>
 /// <param name="Location">Empty removes it for this occurrence.</param>
+/// <param name="CoverTitle">Empty removes it for this occurrence (busy viewers see "Busy" there).</param>
 public sealed record OccurrenceChanges(
     string? Title = null,
     string? Description = null,
@@ -22,7 +23,8 @@ public sealed record OccurrenceChanges(
     EventStatus? Status = null,
     EventTransparency? Transparency = null,
     EventTimeInput? Start = null,
-    EventTimeInput? End = null);
+    EventTimeInput? End = null,
+    string? CoverTitle = null);
 
 /// <summary>The changed occurrence as the actor sees it (<see cref="EventView.Occurrence"/> set) and how requested times were resolved.</summary>
 public sealed record OccurrenceResult(EventView View, IReadOnlyList<TimeAdjustment> Adjustments);
@@ -68,6 +70,7 @@ public sealed class EventOccurrenceService(
             exception.Title = title == series.Title ? null : title;
         }
 
+        exception.CoverTitle = Text(changes.CoverTitle, exception.CoverTitle, series.CoverTitle, Event.CoverTitleMaxLength, "coverTitle");
         exception.Description = Text(changes.Description, exception.Description, series.Description, Event.DescriptionMaxLength, "description");
         exception.Location = Text(changes.Location, exception.Location, series.Location, Event.LocationMaxLength, "location");
         if (changes.Status is { } status)
@@ -126,7 +129,7 @@ public sealed class EventOccurrenceService(
         var before = OccurrenceAudit.State(occurrence.Exception);
         var exception = occurrence.Exception ?? new EventExceptionEntry { Id = Guid.CreateVersion7(), RecurrenceId = occurrence.RecurrenceId, CreatedAt = now };
         exception.Cancelled = true;
-        exception.Title = exception.Description = exception.Location = null;
+        exception.Title = exception.CoverTitle = exception.Description = exception.Location = null;
         exception.Status = null;
         exception.Transparency = null;
         exception.Move(null);
@@ -197,6 +200,7 @@ public sealed class EventOccurrenceService(
                 CalendarId = series.CalendarId,
                 CreatorUserId = series.CreatorUserId, // permissions.md §4.6: an edit user who splits gains no creator floor
                 Title = series.Title,
+                CoverTitle = series.CoverTitle,
                 Description = series.Description,
                 Location = series.Location,
                 Url = series.Url,
@@ -342,6 +346,7 @@ internal static class OccurrenceAudit
                 LocalDateTimePattern.ExtendedIso.Format(exception.RecurrenceId),
                 exception.Cancelled,
                 exception.Title,
+                exception.CoverTitle,
                 exception.Description,
                 exception.Location,
                 exception.Status?.ToString().ToLowerInvariant(),
@@ -352,6 +357,7 @@ internal static class OccurrenceAudit
         string RecurrenceId,
         bool Cancelled,
         string? Title,
+        string? CoverTitle,
         string? Description,
         string? Location,
         string? Status,

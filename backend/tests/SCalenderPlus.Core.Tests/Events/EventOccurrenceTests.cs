@@ -61,6 +61,21 @@ public sealed class EventOccurrenceTests
     }
 
     [Fact]
+    public void Occurrences_inherit_override_or_remove_the_cover_title()
+    {
+        var series = Series("FREQ=WEEKLY;COUNT=3");
+        series.CoverTitle = "Sports";
+        series.Exceptions.Add(new EventExceptionEntry { RecurrenceId = new(2026, 11, 9, 18, 0), CoverTitle = "Match" });
+        series.Exceptions.Add(new EventExceptionEntry { RecurrenceId = new(2026, 11, 16, 18, 0), CoverTitle = string.Empty });
+
+        var items = series.Occurrences(Instant.FromUtc(2026, 11, 1, 0, 0), Instant.FromUtc(2026, 12, 1, 0, 0)).Items;
+
+        Assert.Equal(["Sports", "Match", null], items.Select(o => o.CoverTitle));
+        Assert.Equal(["Training", "Training", "Training"], items.Select(o => o.Title)); // the real title is untouched
+        Assert.Equal([false, true, true], items.Select(o => o.IsModified));
+    }
+
+    [Fact]
     public void Exceptions_report_whether_they_override_anything()
     {
         var empty = new EventExceptionEntry();
@@ -68,6 +83,7 @@ public sealed class EventOccurrenceTests
         Assert.Null(empty.MovedTimes("Europe/Berlin"));
         Assert.False(new EventExceptionEntry { Cancelled = true }.IsEmpty);
         Assert.False(new EventExceptionEntry { Location = string.Empty }.IsEmpty);
+        Assert.False(new EventExceptionEntry { CoverTitle = "Away" }.IsEmpty);
 
         var allDay = new EventExceptionEntry();
         allDay.Move(EventTimes.AllDayEvent(new LocalDate(2026, 11, 3), new LocalDate(2026, 11, 4)));

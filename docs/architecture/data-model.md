@@ -124,6 +124,7 @@ Unique `(calendar_id, principal_type, principal_id, min_role)` `NULLS NOT DISTIN
 | uid | text | iCalendar UID (≤ 255, RFC 5545-safe printable ASCII), unique per calendar among live events; `{id}@scalenderplus` for native events, preserved for imports/CalDAV. Multi-calendar feeds emit `{id}@scalenderplus` instead (the same external UID may exist in two calendars). |
 | creator_user_id | uuid null | null for system/import (then import source creator acts as creator); kept as tombstone after user deletion (no FK, no floor). Preserved on series split. |
 | title | text | ≤ 500 chars |
+| cover_title | text null | ≤ 200 chars; what `free_busy` viewers see instead of "Busy" (cover title, privacy level C); null = "Busy" |
 | description | text | markdown subset, ≤ 20k |
 | location | text | ≤ 1000 |
 | url | text | absolute http(s), ≤ 2000 |
@@ -167,7 +168,7 @@ Indexes:
 | event_id | uuid FK → events (cascade) | series master |
 | recurrence_id | timestamp | original (nominal) occurrence start as wall clock in the series' zone; all-day: the date at midnight (iCal RECURRENCE-ID) |
 | cancelled | bool | exported as EXDATE |
-| title, description, location, status, transparency | nullable | null = inherit from master; empty description/location = removed for this occurrence |
+| title, cover_title, description, location, status, transparency | nullable | null = inherit from master; empty cover_title/description/location = removed for this occurrence |
 | start_local/end_local or start_date/end_date | nullable | moved occurrence (same kind and zone as the series; no `time_zone` column) |
 | start_utc, end_utc | timestamptz null | derived instants of a moved occurrence (all-day: padded) |
 | created_at, updated_at | | |

@@ -35,6 +35,7 @@ public enum EventTransparency : short
 public sealed partial class Event
 {
     public const int TitleMaxLength = 500;
+    public const int CoverTitleMaxLength = 200;
     public const int DescriptionMaxLength = 20_000;
     public const int LocationMaxLength = 1000;
     public const int UrlMaxLength = 2000;
@@ -58,6 +59,12 @@ public sealed partial class Event
     public Guid? CreatorUserId { get; set; }
 
     public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// What viewers below <c>read</c> (<c>free_busy</c>) see instead of the generic "Busy" (privacy level C, cover
+    /// titles); null = "Busy". Never a substitute for the real title: <c>read</c> and above see both.
+    /// </summary>
+    public string? CoverTitle { get; set; }
 
     public string? Description { get; set; }
 

@@ -376,6 +376,11 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(7)")
                         .HasColumnName("color");
 
+                    b.Property<string>("CoverTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("cover_title");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -534,6 +539,11 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Cancelled")
                         .HasColumnType("boolean")
                         .HasColumnName("cancelled");
+
+                    b.Property<string>("CoverTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("cover_title");
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone")

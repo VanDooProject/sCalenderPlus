@@ -21,6 +21,7 @@ public sealed record EventTimeInput(string? DateTime = null, string? TimeZone = 
 /// <param name="Description">Markdown subset, ≤ 20,000 characters; empty removes it on update.</param>
 /// <param name="Color"><c>#rrggbb</c>; empty removes it on update (the calendar's color applies).</param>
 /// <param name="Categories">≤ 20 texts of ≤ 50 characters; an empty list removes them.</param>
+/// <param name="CoverTitle">What <c>free_busy</c> viewers see instead of "Busy", ≤ 200 characters; empty removes it on update.</param>
 public sealed record EventDetails(
     string? Title = null,
     string? Description = null,
@@ -29,7 +30,8 @@ public sealed record EventDetails(
     EventStatus? Status = null,
     EventTransparency? Transparency = null,
     string? Color = null,
-    IReadOnlyList<string>? Categories = null);
+    IReadOnlyList<string>? Categories = null,
+    string? CoverTitle = null);
 
 /// <summary>A new event in <see cref="CalendarId"/>: single, or a series with <paramref name="Recurrence"/>.</summary>
 /// <param name="Uid">iCalendar UID to keep (imports, CalDAV); default <c>{id}@scalenderplus</c>.</param>
@@ -366,6 +368,7 @@ public sealed class EventService(
 
     internal static void ApplyOptionalDetails(Event ev, EventDetails details)
     {
+        ev.CoverTitle = details.CoverTitle is null ? ev.CoverTitle : Optional(details.CoverTitle, Event.CoverTitleMaxLength, "coverTitle");
         ev.Description = details.Description is null ? ev.Description : Optional(details.Description, Event.DescriptionMaxLength, "description");
         ev.Location = details.Location is null ? ev.Location : Optional(details.Location, Event.LocationMaxLength, "location");
         ev.Url = details.Url is null ? ev.Url : ValidUrl(details.Url);
@@ -431,6 +434,7 @@ internal static class EventAudit
             ev.CalendarId,
             ev.Uid,
             ev.Title,
+            ev.CoverTitle,
             ev.Description,
             ev.Location,
             ev.Url,
@@ -451,6 +455,7 @@ internal static class EventAudit
         Guid CalendarId,
         string Uid,
         string Title,
+        string? CoverTitle,
         string? Description,
         string? Location,
         string? Url,
