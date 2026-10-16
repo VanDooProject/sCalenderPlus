@@ -1,21 +1,33 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using NodaTime;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Application.Persistence;
+using SCalenderPlus.Application.Users;
 using SCalenderPlus.Core.Entitlements;
 
 namespace SCalenderPlus.Application.Entitlements;
 
 /// <summary>
-/// Plan limits from configuration (<see cref="PlansOptions"/>). Plan resolution until billing lands:
-/// <c>Billing__Provider=none</c> → <see cref="Plan.SelfHost"/>, otherwise <see cref="Plan.Free"/> for everyone.
+/// Plan limits from configuration (<see cref="PlansOptions"/>). Plan resolution until billing lands
+/// (<see cref="PlanResolution"/>): <c>Billing__Provider=none</c> → <see cref="Plan.SelfHost"/>; otherwise
+/// <see cref="Plan.Pro"/> during the reverse trial of the billing owner's account, <see cref="Plan.Free"/> after it.
 /// </summary>
-internal sealed class EntitlementService(IAppDbContext db, IOptions<BillingOptions> billing, IOptions<PlansOptions> plans) : IEntitlementService
+internal sealed class EntitlementService(
+    IAppDbContext db,
+    IUserDirectory users,
+    IClock clock,
+    IOptions<BillingOptions> billing,
+    IOptions<PlansOptions> plans) : IEntitlementService
 {
-    public Task<PlanEntitlements> GetAsync(Guid billingOwnerId, CancellationToken cancellationToken = default)
+    public async Task<PlanEntitlements> GetAsync(Guid billingOwnerId, CancellationToken cancellationToken = default)
     {
-        var plan = billing.Value.Provider == BillingProvider.None ? Plan.SelfHost : Plan.Free;
-        return Task.FromResult(new PlanEntitlements(plan, plans.Value.For(plan).ToValues()));
+        var provider = billing.Value.Provider;
+        var options = plans.Value;
+        var createdAt = PlanResolution.HasTrial(provider, options)
+            ? await users.CreatedAtAsync(billingOwnerId, cancellationToken).ConfigureAwait(false)
+            : null;
+        return PlanResolution.Resolve(provider, options, createdAt, clock.GetCurrentInstant());
     }
 
     public async Task EnsureCanCreateGroupAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -60,6 +72,39 @@ internal sealed class EntitlementService(IAppDbContext db, IOptions<BillingOptio
         {
             throw EntitlementErrors.LimitReached(entitlements.Plan, exceeded);
         }
+    }
+}
+
+/// <summary>
+/// Which plan a billing subject has until billing lands (docs/product/plans.md): self-host without a billing
+/// provider; otherwise the reverse trial — <see cref="Plan.Pro"/> for <see cref="PlansOptions.TrialDays"/> days from
+/// the account's creation — then <see cref="Plan.Free"/>.
+/// </summary>
+public static class PlanResolution
+{
+    /// <summary>Whether plans depend on the account's age (a billing provider and a trial of at least one day).</summary>
+    public static bool HasTrial(BillingProvider provider, PlansOptions plans)
+    {
+        ArgumentNullException.ThrowIfNull(plans);
+        return provider != BillingProvider.None && plans.TrialDays > 0;
+    }
+
+    /// <summary>The trial's end for an account created at <paramref name="createdAt"/>; null without a trial.</summary>
+    public static Instant? TrialEndsAt(BillingProvider provider, PlansOptions plans, Instant? createdAt) =>
+        HasTrial(provider, plans) && createdAt is { } created ? created + Duration.FromDays(plans.TrialDays) : null;
+
+    /// <param name="createdAt">Creation of the billing owner's account (null: unknown, e.g. deleted — no trial).</param>
+    public static PlanEntitlements Resolve(BillingProvider provider, PlansOptions plans, Instant? createdAt, Instant now)
+    {
+        ArgumentNullException.ThrowIfNull(plans);
+        if (provider == BillingProvider.None)
+        {
+            return new(Plan.SelfHost, plans.For(Plan.SelfHost).ToValues());
+        }
+
+        return TrialEndsAt(provider, plans, createdAt) is { } ends && now < ends
+            ? new(Plan.Pro, plans.For(Plan.Pro).ToValues(), ends)
+            : new(Plan.Free, plans.For(Plan.Free).ToValues());
     }
 }
 

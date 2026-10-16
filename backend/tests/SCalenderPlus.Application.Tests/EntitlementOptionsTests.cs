@@ -22,7 +22,22 @@ public sealed class EntitlementOptionsTests
         Assert.Equal(new PlanLimitValues(30, 10, 150, null, 25), plans.For(Plan.Pro).ToValues());
         Assert.Equal(new PlanLimitValues(300, null, 1000, null, 100), plans.For(Plan.Team).ToValues());
         Assert.Equal(PlanLimitValues.Unlimited, plans.For(Plan.SelfHost).ToValues());
+        Assert.Equal(90, plans.TrialDays);
         Assert.Throws<ArgumentOutOfRangeException>(() => plans.For((Plan)99));
+    }
+
+    [Fact]
+    public void Trial_days_are_configurable_and_never_negative()
+    {
+        using (var provider = BuildProvider(new() { ["Plans:TrialDays"] = "0" }))
+        {
+            provider.GetRequiredService<IStartupValidator>().Validate();
+            Assert.Equal(0, provider.GetRequiredService<IOptions<PlansOptions>>().Value.TrialDays);
+        }
+
+        using var negative = BuildProvider(new() { ["Plans:TrialDays"] = "-1" });
+        var ex = Assert.Throws<OptionsValidationException>(() => negative.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Contains("Plans:TrialDays", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

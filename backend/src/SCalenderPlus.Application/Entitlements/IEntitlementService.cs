@@ -1,9 +1,11 @@
+using NodaTime;
 using SCalenderPlus.Core.Entitlements;
 
 namespace SCalenderPlus.Application.Entitlements;
 
 /// <summary>The plan of a billing subject and its limits.</summary>
-public sealed record PlanEntitlements(Plan Plan, PlanLimitValues Limits);
+/// <param name="TrialEndsAt">End of the reverse trial while it runs (the plan is then <see cref="Plan.Pro"/>); null otherwise.</param>
+public sealed record PlanEntitlements(Plan Plan, PlanLimitValues Limits, Instant? TrialEndsAt = null);
 
 /// <summary>
 /// The single server-side enforcement point of plan limits (docs/product/plans.md principle 5). The plan of

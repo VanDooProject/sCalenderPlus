@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace SCalenderPlus.Application.Users;
 
 /// <summary>
@@ -10,6 +12,9 @@ public interface IUserDirectory
 
     /// <summary>The account with this email address (any confirmation state), if one exists.</summary>
     Task<UserSummary?> FindByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>When the account was created (<c>users.created_at</c>; the reverse trial counts from it); null for unknown ids.</summary>
+    Task<Instant?> CreatedAtAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>The lookup form of an email address, as Identity stores it in <c>normalized_email</c>.</summary>
     string NormalizeEmail(string email);

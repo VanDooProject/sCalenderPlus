@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using SCalenderPlus.Application.Users;
 using SCalenderPlus.Infrastructure.Persistence;
 
@@ -29,6 +30,12 @@ internal sealed class UserDirectory(AppDbContext db) : IUserDirectory
             .Select(u => new UserSummary(u.Id, u.Email!, u.DisplayName, u.Locale, u.EmailConfirmed))
             .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<Instant?> CreatedAtAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await db.Users.AsNoTracking()
+            .Where(u => u.Id == id)
+            .Select(u => (Instant?)u.CreatedAt)
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>Same as Identity's <c>UpperInvariantLookupNormalizer</c> (the user manager's default).</summary>
     public string NormalizeEmail(string email)
