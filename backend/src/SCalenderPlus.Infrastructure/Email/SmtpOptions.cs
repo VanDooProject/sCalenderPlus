@@ -28,7 +28,8 @@ public sealed class SmtpOptions
     [EmailAddress(ErrorMessage = "Smtp:From must be an email address.")]
     public string From { get; set; } = string.Empty;
 
-    public string FromName { get; set; } = "sCalenderPlus";
+    /// <summary>Display name of the sender; default: <c>Brand:ProductName</c>.</summary>
+    public string? FromName { get; set; }
 
     [Range(typeof(TimeSpan), "00:00:01", "00:10:00")]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);

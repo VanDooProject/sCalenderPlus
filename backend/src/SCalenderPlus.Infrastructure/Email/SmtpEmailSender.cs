@@ -2,13 +2,14 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Jobs;
 
 namespace SCalenderPlus.Infrastructure.Email;
 
 /// <summary>Sends via SMTP with MailKit; one connection per message (volume is low, retries come from the job queue).</summary>
-internal sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
+internal sealed class SmtpEmailSender(IOptions<SmtpOptions> options, IOptions<BrandOptions> brand) : IEmailSender
 {
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
@@ -20,7 +21,7 @@ internal sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSen
             Subject = message.Subject,
             Body = new BodyBuilder { TextBody = message.TextBody, HtmlBody = message.HtmlBody }.ToMessageBody(),
         };
-        mime.From.Add(new MailboxAddress(smtp.FromName, smtp.From));
+        mime.From.Add(new MailboxAddress(string.IsNullOrWhiteSpace(smtp.FromName) ? brand.Value.ProductName : smtp.FromName, smtp.From));
         if (!MailboxAddress.TryParse(message.To, out var to))
         {
             throw new PermanentJobFailureException("Invalid recipient address.");

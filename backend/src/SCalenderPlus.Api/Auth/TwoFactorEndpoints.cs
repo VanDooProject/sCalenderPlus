@@ -2,10 +2,12 @@ using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using SCalenderPlus.Api.Problems;
 using SCalenderPlus.Api.RateLimiting;
 using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Auditing;
+using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Infrastructure.Identity;
@@ -24,7 +26,6 @@ namespace SCalenderPlus.Api.Auth;
 internal static class TwoFactorEndpoints
 {
     public const int RecoveryCodeCount = 10;
-    private const string Issuer = "sCalenderPlus";
 
     public static RouteGroupBuilder MapTwoFactorEndpoints(this RouteGroupBuilder me)
     {
@@ -59,7 +60,8 @@ internal static class TwoFactorEndpoints
     private static async Task<Results<Ok<TwoFactorSetupResponse>, UnauthorizedHttpResult, ProblemHttpResult>> SetupAsync(
         ClaimsPrincipal principal,
         UserManager<AppUser> users,
-        SignInManager<AppUser> signIn)
+        SignInManager<AppUser> signIn,
+        IOptions<BrandOptions> brand)
     {
         var user = await users.GetUserAsync(principal).ConfigureAwait(false);
         if (user is null)
@@ -75,9 +77,10 @@ internal static class TwoFactorEndpoints
         await users.ResetAuthenticatorKeyAsync(user).ConfigureAwait(false);
         await signIn.RefreshSignInAsync(user).ConfigureAwait(false);
         var key = (await users.GetAuthenticatorKeyAsync(user).ConfigureAwait(false))!;
+        var issuer = Uri.EscapeDataString(brand.Value.ProductName); // the account's label in the authenticator app
         var uri = string.Create(
             CultureInfo.InvariantCulture,
-            $"otpauth://totp/{Uri.EscapeDataString(Issuer)}:{Uri.EscapeDataString(user.Email!)}?secret={key}&issuer={Uri.EscapeDataString(Issuer)}&digits=6");
+            $"otpauth://totp/{issuer}:{Uri.EscapeDataString(user.Email!)}?secret={key}&issuer={issuer}&digits=6");
         return TypedResults.Ok(new TwoFactorSetupResponse(key, uri));
     }
 

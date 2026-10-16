@@ -12,8 +12,10 @@ namespace SCalenderPlus.Application.Groups;
 /// below <c>App:PublicBaseUrl</c> (<c>?token=…</c>); the app posts the token to <c>POST /api/v1/invites/accept</c>
 /// after sign-in (and sign-up plus email verification for new users).
 /// </summary>
-public sealed class GroupEmails(IOptions<AppOptions> options)
+public sealed class GroupEmails(IOptions<AppOptions> options, IOptions<BrandOptions> brand)
 {
+    private BrandOptions Brand => brand.Value;
+
     public const string InvitePath = "/invite";
 
     public Uri InviteLink(string token)
@@ -29,19 +31,21 @@ public sealed class GroupEmails(IOptions<AppOptions> options)
         var expires = expiresAt.ToDateTimeOffset().ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
         var template = german
             ? new EmailTemplate(
+                Brand,
                 $"Einladung in die Gruppe „{groupName}“",
                 [
                     "Hallo,",
-                    $"{inviterName} lädt dich als {RoleName(role, german)} in die Gruppe „{groupName}“ bei sCalenderPlus ein.",
+                    $"{inviterName} lädt dich als {RoleName(role, german)} in die Gruppe „{groupName}“ bei {Brand.ProductName} ein.",
                     $"Die Einladung gilt bis {expires} und nur für diese E-Mail-Adresse: Melde dich mit ihr an oder registriere dich und bestätige sie – danach bist du automatisch Mitglied.",
                     "Wenn du die Einladung nicht erwartet hast, ignoriere diese E-Mail.",
                 ],
                 new EmailAction("Einladung annehmen", url))
             : new EmailTemplate(
+                Brand,
                 $"Invitation to the group “{groupName}”",
                 [
                     "Hi,",
-                    $"{inviterName} invites you to join the group “{groupName}” on sCalenderPlus as {RoleName(role, german)}.",
+                    $"{inviterName} invites you to join the group “{groupName}” on {Brand.ProductName} as {RoleName(role, german)}.",
                     $"The invitation is valid until {expires} and only for this email address: sign in with it, or sign up and confirm it — you join automatically afterwards.",
                     "If you did not expect this invitation, ignore this email.",
                 ],

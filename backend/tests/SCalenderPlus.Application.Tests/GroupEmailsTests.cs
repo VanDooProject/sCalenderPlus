@@ -9,7 +9,7 @@ namespace SCalenderPlus.Application.Tests;
 public sealed class GroupEmailsTests
 {
     private static readonly Instant _expiresAt = Instant.FromUtc(2026, 10, 17, 18, 30);
-    private readonly GroupEmails _emails = new(Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }));
+    private readonly GroupEmails _emails = new(Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }), Options.Create(new BrandOptions()));
 
     [Fact]
     public void Invite_link_points_to_the_web_app_invite_route_with_an_escaped_token() =>
@@ -36,5 +36,21 @@ public sealed class GroupEmailsTests
         Assert.Contains("Olga <script> lädt dich als Mitglied in die Gruppe „Löwen & Co“", message.TextBody, StringComparison.Ordinal);
         Assert.Contains("Olga &lt;script&gt;", message.HtmlBody, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>", message.HtmlBody, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("en", "on Lions Calendar as")]
+    [InlineData("de", "bei Lions Calendar ein.")]
+    public void Invitations_name_the_configured_product(string locale, string expected)
+    {
+        var emails = new GroupEmails(
+            Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }),
+            Options.Create(new BrandOptions { ProductName = "Lions Calendar", SupportEmail = "help@lions.example" }));
+
+        var message = emails.Invitation("vic@example.test", locale, "Olga", "FC Lions", GroupRole.Member, "tok", _expiresAt);
+
+        Assert.Contains(expected, message.TextBody, StringComparison.Ordinal);
+        Assert.EndsWith("-- \nLions Calendar\nhelp@lions.example\n", message.TextBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("sCalenderPlus", message.Subject + message.TextBody + message.HtmlBody, StringComparison.Ordinal);
     }
 }

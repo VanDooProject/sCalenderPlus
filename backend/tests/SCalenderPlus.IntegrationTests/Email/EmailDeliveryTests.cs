@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
+using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.IntegrationTests.Infrastructure;
@@ -21,12 +22,14 @@ public sealed class EmailDeliveryTests(PostgresFixture postgres, MailpitFixture 
         settings["Smtp:Host"] = host;
         settings["Smtp:Port"] = port.ToString(CultureInfo.InvariantCulture);
         settings["Jobs:PollInterval"] = "00:00:00.050";
+        settings["Brand:ProductName"] = "Lions Calendar"; // the sender name defaults to the brand
         var recipient = $"mia-{Guid.NewGuid():N}@example.test";
 
         await using var api = new HostFactory<ApiProgram>(settings);
         await using (var scope = api.Services.CreateAsyncScope())
         {
             var message = new EmailTemplate(
+                new BrandOptions(),
                 "Welcome to sCalenderPlus",
                 ["Hi Mia,", "please confirm your <email> address."],
                 new EmailAction("Confirm email", new Uri("https://app.example.test/confirm?token=abc&x=1"))).Render(recipient, "Mia");
@@ -40,6 +43,7 @@ public sealed class EmailDeliveryTests(PostgresFixture postgres, MailpitFixture 
         var delivered = await WaitForMessageAsync(recipient, ct);
         Assert.Equal("Welcome to sCalenderPlus", delivered.Subject);
         Assert.Equal("noreply@scalenderplus.test", delivered.From.Address);
+        Assert.Equal("Lions Calendar", delivered.From.Name);
         Assert.Equal("Mia", delivered.To.Single().Name);
 
         var detail = await mailpit.MessageAsync(delivered.Id, ct);

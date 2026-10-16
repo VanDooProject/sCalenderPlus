@@ -7,7 +7,7 @@ namespace SCalenderPlus.Application.Tests;
 public sealed class AccountEmailsTests
 {
     private static readonly Guid _userId = Guid.Parse("0192f2c4-0000-7000-8000-000000000001");
-    private readonly AccountEmails _emails = new(Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }));
+    private readonly AccountEmails _emails = new(Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }), Options.Create(new BrandOptions()));
 
     [Fact]
     public void Confirmation_link_points_to_the_web_app_verify_route_with_an_escaped_token()
@@ -35,5 +35,26 @@ public sealed class AccountEmailsTests
 
         Assert.Contains("https://app.example.test/forgot-password", message.TextBody, StringComparison.Ordinal);
         Assert.DoesNotContain("token=", message.TextBody, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("de")]
+    public void Every_account_email_names_the_configured_product(string locale)
+    {
+        var emails = new AccountEmails(
+            Options.Create(new AppOptions { PublicBaseUrl = "https://app.example.test/" }),
+            Options.Create(new BrandOptions { ProductName = "Lions Calendar" }));
+
+        foreach (var message in new[]
+        {
+            emails.EmailConfirmation("mia@example.test", "Mia", locale, _userId, "tok"),
+            emails.PasswordReset("mia@example.test", "Mia", locale, _userId, "tok"),
+            emails.AlreadyRegistered("mia@example.test", "Mia", locale),
+        })
+        {
+            Assert.Contains("Lions Calendar", message.TextBody.Split("-- \n")[0], StringComparison.Ordinal); // body, not only the footer
+            Assert.DoesNotContain("sCalenderPlus", message.Subject + message.TextBody + message.HtmlBody, StringComparison.Ordinal);
+        }
     }
 }

@@ -1,3 +1,4 @@
+using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 
 namespace SCalenderPlus.Application.Tests;
@@ -5,6 +6,7 @@ namespace SCalenderPlus.Application.Tests;
 public sealed class EmailTemplateTests
 {
     private static readonly EmailTemplate _template = new(
+        new BrandOptions(),
         "Join <Lions>",
         ["Adam invited you to \"Lions\" & friends."],
         new EmailAction("Accept invite", new Uri("https://app.example.test/invites/abc?x=1&y=<2>")));
@@ -30,5 +32,26 @@ public sealed class EmailTemplateTests
         Assert.Contains("Adam invited you to &quot;Lions&quot; &amp; friends.", html, StringComparison.Ordinal);
         Assert.Contains("href=\"https://app.example.test/invites/abc?x=1&amp;y=%3C2%3E\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<Lions>", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Footer_carries_the_default_product_name()
+    {
+        var message = _template.Render("eve@example.test");
+
+        Assert.EndsWith("-- \nsCalenderPlus\n", message.TextBody, StringComparison.Ordinal);
+        Assert.Contains(">sCalenderPlus</p>", message.HtmlBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Footer_carries_the_configured_brand_and_support_address_encoded()
+    {
+        var brand = new BrandOptions { ProductName = "Lions & <Co>", SupportEmail = "help@lions.example" };
+
+        var message = (_template with { Brand = brand }).Render("eve@example.test");
+
+        Assert.EndsWith("-- \nLions & <Co>\nhelp@lions.example\n", message.TextBody, StringComparison.Ordinal);
+        Assert.Contains("Lions &amp; &lt;Co&gt; · <a href=\"mailto:help@lions.example\"", message.HtmlBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("sCalenderPlus", message.TextBody + message.HtmlBody, StringComparison.Ordinal);
     }
 }

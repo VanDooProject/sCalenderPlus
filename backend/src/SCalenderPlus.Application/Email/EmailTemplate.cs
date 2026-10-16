@@ -1,17 +1,18 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using SCalenderPlus.Application.Configuration;
 
 namespace SCalenderPlus.Application.Email;
 
 /// <summary>
 /// Minimal transactional email layout: subject, paragraphs and an optional call-to-action link, rendered as
 /// plain text and as simple, inline-styled HTML (all values HTML-encoded). Templates for concrete emails
-/// (verification, password reset, invites) build one of these from localized texts.
+/// (verification, password reset, invites) build one of these from localized texts. The footer carries the
+/// configured product name (<see cref="BrandOptions.ProductName"/>) and support address, if any.
 /// </summary>
-public sealed record EmailTemplate(string Subject, IReadOnlyList<string> Paragraphs, EmailAction? Action = null)
+public sealed record EmailTemplate(BrandOptions Brand, string Subject, IReadOnlyList<string> Paragraphs, EmailAction? Action = null)
 {
-    public const string ProductName = "sCalenderPlus";
 
     public EmailMessage Render(string to, string? toName = null) =>
         new(to, toName, Subject, RenderText(), RenderHtml());
@@ -29,7 +30,13 @@ public sealed record EmailTemplate(string Subject, IReadOnlyList<string> Paragra
             text.Append(CultureInfo.InvariantCulture, $"{action.Label}: {action.Url.AbsoluteUri}\n\n");
         }
 
-        return text.Append("-- \n").Append(ProductName).Append('\n').ToString();
+        text.Append("-- \n").Append(Brand.ProductName).Append('\n');
+        if (Brand.SupportEmail is { } support)
+        {
+            text.Append(support).Append('\n');
+        }
+
+        return text.ToString();
     }
 
     private string RenderHtml()
@@ -52,8 +59,13 @@ public sealed record EmailTemplate(string Subject, IReadOnlyList<string> Paragra
                 .Append(E(action.Label)).Append("</a></p>");
         }
 
-        return html.Append("<p style=\"margin:24px 0 0;color:#6b7280;font-size:12px\">").Append(ProductName).Append("</p>")
-            .Append("</div></body></html>").ToString();
+        html.Append("<p style=\"margin:24px 0 0;color:#6b7280;font-size:12px\">").Append(E(Brand.ProductName));
+        if (Brand.SupportEmail is { } support)
+        {
+            html.Append(" · <a href=\"mailto:").Append(E(support)).Append("\" style=\"color:#6b7280\">").Append(E(support)).Append("</a>");
+        }
+
+        return html.Append("</p></div></body></html>").ToString();
     }
 }
 
