@@ -2,6 +2,8 @@
 
 Native calendar apps are first-class clients. **Phase 1 (MVP, M4):** read-only personalised iCalendar subscription feeds. **Phase 2 (M8):** CalDAV, read-only first, then read/write with per-event ACL enforcement.
 
+Which clients support what, real-time updates and Google/Microsoft API sync: [sync.md](sync.md).
+
 ## 1. iCal subscription feeds (MVP)
 
 ### 1.1 Feed types
@@ -33,7 +35,7 @@ Native calendar apps are first-class clients. **Phase 1 (MVP, M4):** read-only p
 | Effective level | VEVENT output |
 |---|---|
 | `none` | Omitted. |
-| `free_busy` | `SUMMARY:<busy label>` ("Busy" / "Beschäftigt"), `CLASS:CONFIDENTIAL`, only DTSTART/DTEND/RRULE/EXDATE/RECURRENCE-ID/TRANSP and an opaque UID kept; exception VEVENTs stripped identically. Transparent events omitted. No access label, no `X-SCALENDERPLUS-*`. |
+| `free_busy` | `SUMMARY:<coverTitle>` if the event has a cover title ([privacy-levels.md §5](privacy-levels.md#5-cover-titles)), else `<busy label>` ("Busy" / "Beschäftigt"), `CLASS:CONFIDENTIAL`, only DTSTART/DTEND/RRULE/EXDATE/RECURRENCE-ID/TRANSP and an opaque UID kept; exception VEVENTs stripped identically. Transparent events omitted. No access label, no `X-SCALENDERPLUS-*`. |
 | `read` | Full content + **read-only label**. |
 | `edit` / `manage` | Full content + **editable label**. |
 

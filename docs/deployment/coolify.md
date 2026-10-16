@@ -83,6 +83,9 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `Llm__ApiKey`, `Llm__Model`, `Llm__BaseUrl` | worker, api | if provider | |
 | `Import__Enabled`, `Import__BlockedDomains` | worker | | `true`, `` |
 | `Plans__{Free,Pro,Team,SelfHost}__{OwnedCalendars,OwnedGroups,MembersPerGroup,EventsWithOverrides,OverridesPerEvent}` | api, worker | | limit overrides (empty = unlimited, negative fails start); defaults are the numbers of plans.md, `SelfHost` unlimited |
+| `Plans__TrialDays` | api, worker | | `90` — reverse trial: Pro limits for this many days from account creation; `0` disables; only with `Billing__Provider=stripe` ([plans.md](../product/plans.md)) |
+| `Brand__ProductName` | api, worker | | `sCalenderPlus` — product name in email subjects/bodies and other server-rendered text ([editions.md §3.2](../product/editions.md#32-backend)) |
+| `Brand__SupportEmail` | api, worker | | support address shown in emails (optional) |
 | `WebPush__VapidPublicKey`, `__VapidPrivateKey` | api, worker | v1 | |
 | `Database__AutoMigrate` | api | | `false`; `true` only in Development (see §7) |
 | `Otel__Endpoint` | all backend | | OTLP endpoint (optional), e.g. `http://otel-collector:4317`; nothing is exported when unset |
@@ -93,6 +96,7 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `API_UPSTREAM` | web | ✓ | `api:8080` (image default) |
 | `WEB_PORT` | web | | listen port, `8080` (image default) |
 | `PUBLIC_*` (e.g. `PUBLIC_ENVIRONMENT`, later `PUBLIC_SENTRY_DSN`) | web | | rendered into `/config.json`; each key must be added to `deploy/caddy/config.json.tmpl` (whitelist). `PUBLIC_ENVIRONMENT` → `environment` (default `production`) |
+| `PUBLIC_BRAND_NAME`, `PUBLIC_BRAND_LOGO_URL`, `PUBLIC_BRAND_HUE`, `PUBLIC_BRAND_SUPPORT_EMAIL`, `PUBLIC_BRAND_IMPRINT_URL`, `PUBLIC_BRAND_PRIVACY_URL`, `PUBLIC_BRAND_TERMS_URL` | web | | runtime white-label branding → `/config.json` `brand.{name, logoUrl, hue, supportEmail, imprintUrl, privacyUrl, termsUrl}`; all optional, unset = edition default (standard name `sCalenderPlus`, hue `268` = OKLCH hue 0–360) ([editions.md §3.1](../product/editions.md#31-web-configjson)) |
 
 Compose-level variables (`deploy/docker-compose.yml`, see `deploy/.env.example`): `APP_URL` (→ `App__PublicBaseUrl`), `DATABASE_URL` (→ `ConnectionStrings__Default`), `POSTGRES_PASSWORD` (bundled database), `IMAGE_TAG` and `IMAGE_PREFIX` (image tags), `APP_ENVIRONMENT` (→ `PUBLIC_ENVIRONMENT`), `WEB_PORT` (host port), `TRUSTED_PROXY_NETWORKS` (→ `ReverseProxy__KnownNetworks`), `RATE_LIMIT_AUTH_PER_MINUTE`/`RATE_LIMIT_SIGN_UP_PER_HOUR` (→ `RateLimiting__Auth__PermitLimit`/`RateLimiting__SignUp__PermitLimit`, defaults 10 and 5; raised only by the fullstack e2e job), `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURITY`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM` (→ `Smtp__*`; default: the bundled Mailpit of `--profile with-mailpit`, UI on `127.0.0.1:${MAILPIT_PORT:-8025}`). `deploy/coolify/docker-compose.yml` uses `IMAGE_TAG` (default `main`), `IMAGE_PREFIX`, `DATABASE_URL` and `APP_URL` (required), `APP_ENVIRONMENT` (default `staging`), `API_UPSTREAM` (§11 step 6), `SMTP_HOST` and `SMTP_FROM` (required) plus the optional `SMTP_*`, and `TRUSTED_PROXY_NETWORKS` (optional, same default).
 
@@ -172,3 +176,15 @@ Written against Coolify **v4.3.23** (single server with Traefik v3.6 and Docker 
 11. **Verify the pipeline.** Merge something to `main`: `ci` → `images` (`publish main images`, `deploy staging`). The job summary shows the pushed tags, the Coolify deployment status and the health check result. Re-run with *Actions → images → Run workflow* on `main`.
 
 Rollback: set `IMAGE_TAG` to an earlier `main-<sha>` in Coolify and *Redeploy* (safe because migrations are expand/contract, §7); the next push to `main` pins the new tag again. Manual deployment without GitHub: `COOLIFY_WEBHOOK_URL=… COOLIFY_TOKEN=… IMAGE_TAG=main-<sha> HEALTH_URL=https://staging.example.com/health/ready .github/scripts/coolify-deploy.sh`.
+
+## 12. A second, independent edition deployment
+
+Each edition ([editions.md](../product/editions.md)) is a separate tenant; nothing is shared with the standard deployment except the Coolify server (optional) and the api/worker images.
+
+1. **Own Coolify project** (e.g. `scalenderplus-poly`) with its own `staging` and `production` environments — never a second resource inside the standard project's environments.
+2. **Own database** (§11 step 3) and own backup schedule and S3 bucket/prefix (§11 step 4).
+3. **Application** as in §11 step 5 with the same compose file, but the `web` service must run `scalenderplus-poly-web`. The compose files hard-code `scalenderplus-web` today; the per-edition web image item ([roadmap ME](../roadmap.md#me--editions-and-white-label-parallel-track)) adds a variable for the web image name. `api` and `worker` use the shared images until edition-specific backend images exist ([editions.md §2.3](../product/editions.md#23-images)).
+4. **Own domain** (`APP_URL`), own SMTP sender (`SMTP_FROM`), own Stripe account and price ids (`Billing__Stripe__*`).
+5. **Branding**: `Brand__ProductName`, `Brand__SupportEmail` and the `PUBLIC_BRAND_*` variables (§4) with the poly brand; legal URLs point to the poly operator's imprint, privacy policy and terms.
+6. **Plans**: poly Free limits via `Plans__Free__*` ([plans.md §Per-edition defaults](../product/plans.md#per-edition-defaults)); `Plans__TrialDays` as decided.
+7. **Own deploy webhook and API token**; the `deploy-staging` job and its secrets are per deployment (a second GitHub environment, e.g. `staging-poly`, once the pipeline deploys both).
