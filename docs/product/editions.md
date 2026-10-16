@@ -36,7 +36,7 @@ The edition is chosen at **build time** so poly-only code, wording and assets **
 
 ### 2.2 CI leak check
 
-A CI step builds the **standard** edition and fails if any poly marker string (a maintained list of words and identifiers that only exist in the poly edition) appears anywhere in `dist/`. New poly wording must add its marker to the list.
+A CI step builds the **standard** edition and fails if any poly marker appears anywhere in `dist/` (`frontend/app/scripts/check-edition-leak.mjs`). The markers are derived from the other edition's folder itself (every string literal and message not shared with the base locales, the folder path, and other files such as the favicon by content hash), so new poly wording is covered without maintaining a list. As a self-test the built edition's own markers must all be found in its build, so a change in how strings are bundled cannot make the check pass blindly. The poly build is checked the same way against the standard edition.
 
 ### 2.3 Images
 
