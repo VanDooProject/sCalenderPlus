@@ -627,6 +627,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/me/entitlements': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My plan and its limits
+     * @description plan: free, pro, team or selfhost. trialEndsAt: end of the reverse trial while it runs (plan pro, then free), else null. limits: null = unlimited. The plan of a resource's owner governs it (a group's billing owner, a calendar's owner), so limits of shared resources may differ from mine.
+     */
+    get: operations['GetMyEntitlements']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/events': {
     parameters: {
       query?: never
@@ -900,6 +920,12 @@ export interface components {
     EnableTwoFactorRequest: {
       code: string
       password: string
+    }
+    EntitlementsResponse: {
+      plan: string
+      /** Format: date-time */
+      trialEndsAt: null | string
+      limits: components['schemas']['PlanLimitsResponse']
     }
     /**
      * @description Stable machine-readable error code (part of the contract; never renamed).
@@ -1219,6 +1245,18 @@ export interface components {
       createdBy: string
       /** Format: date-time */
       createdAt: string
+    }
+    PlanLimitsResponse: {
+      /** Format: int32 */
+      ownedCalendars: null | number
+      /** Format: int32 */
+      ownedGroups: null | number
+      /** Format: int32 */
+      membersPerGroup: null | number
+      /** Format: int32 */
+      eventsWithOverrides: null | number
+      /** Format: int32 */
+      overridesPerEvent: null | number
     }
     PreviewInviteRequest: {
       token: string
@@ -2803,6 +2841,35 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['CalendarPrefsListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetMyEntitlements: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EntitlementsResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

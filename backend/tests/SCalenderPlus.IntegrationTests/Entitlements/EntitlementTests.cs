@@ -246,6 +246,39 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
     }
 
     [Fact]
+    public async Task My_entitlements_show_the_plan_its_limits_and_the_trial_end()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:TrialDays"] = "90" });
+        var (email, olga) = await PersonAsync("olga");
+        var createdAt = (await Host.FindUserAsync(email)).CreatedAt;
+
+        var trial = await EntitlementsAsync(olga);
+        Assert.Equal("pro", (string?)trial["plan"]);
+        Assert.Equal((createdAt + Duration.FromDays(90)).ToDateTimeOffset(), (DateTimeOffset)trial["trialEndsAt"]!);
+        AssertLimits(trial, ownedCalendars: 30, ownedGroups: 10, membersPerGroup: 150, eventsWithOverrides: null, overridesPerEvent: 25);
+
+        await AgeAccountAsync(email, 90);
+        var free = await EntitlementsAsync(olga);
+        Assert.Equal("free", (string?)free["plan"]);
+        Assert.True(free.AsObject().ContainsKey("trialEndsAt"));
+        Assert.Null(free["trialEndsAt"]);
+        AssertLimits(free, ownedCalendars: 3, ownedGroups: 1, membersPerGroup: 15, eventsWithOverrides: 10, overridesPerEvent: 3);
+    }
+
+    [Fact]
+    public async Task Self_hosted_entitlements_are_unlimited_without_a_trial()
+    {
+        await StartAsync(new() { ["Plans:TrialDays"] = "90" });
+        var (_, olga) = await PersonAsync("olga");
+
+        var entitlements = await EntitlementsAsync(olga);
+
+        Assert.Equal("selfhost", (string?)entitlements["plan"]);
+        Assert.Null(entitlements["trialEndsAt"]);
+        AssertLimits(entitlements, null, null, null, null, null);
+    }
+
+    [Fact]
     public async Task Trial_days_zero_disable_the_reverse_trial()
     {
         await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:TrialDays"] = "0" });
@@ -255,6 +288,7 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         using var second = await olga.SendJsonAsync(HttpMethod.Post, "/api/v1/groups", new { name = "Tennis" });
 
         Assert.Equal("free", (string?)(await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached))["plan"]);
+        Assert.Equal("free", (string?)(await EntitlementsAsync(olga))["plan"]);
     }
 
     [Fact]
@@ -287,6 +321,24 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
             end = new { dateTime = start[..11] + "11:00:00" },
             recurrence = new { rrule },
         };
+
+    private static async Task<JsonNode> EntitlementsAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync(new Uri("/api/v1/me/entitlements", UriKind.Relative), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.JsonAsync();
+    }
+
+    private static void AssertLimits(JsonNode entitlements, int? ownedCalendars, int? ownedGroups, int? membersPerGroup, int? eventsWithOverrides, int? overridesPerEvent)
+    {
+        var limits = entitlements["limits"]!.AsObject();
+        Assert.Equal(5, limits.Count); // unlimited is null, not absent
+        Assert.Equal(ownedCalendars, (int?)limits["ownedCalendars"]);
+        Assert.Equal(ownedGroups, (int?)limits["ownedGroups"]);
+        Assert.Equal(membersPerGroup, (int?)limits["membersPerGroup"]);
+        Assert.Equal(eventsWithOverrides, (int?)limits["eventsWithOverrides"]);
+        Assert.Equal(overridesPerEvent, (int?)limits["overridesPerEvent"]);
+    }
 
     private static void AssertLimit(JsonObject problem, string key, int max, int used)
     {

@@ -2,6 +2,7 @@ import { createOpenApiHttp } from 'openapi-msw'
 import type { paths } from '../schema'
 import { authHandlers, sessionGuard } from './auth'
 import { calendarHandlers } from './calendars'
+import { entitlementHandlers } from './entitlements'
 import { eventHandlers } from './events'
 import { groupHandlers } from './groups'
 import { overrideHandlers } from './overrides'
@@ -32,6 +33,7 @@ export {
   resetMockCalendars,
   type MockCalendarsState,
 } from './calendars'
+export { mockEntitlements } from './entitlements'
 export { mockConflictTitle } from './events'
 export { mockExplain, mockOverrideLimit } from './overrides'
 export {
@@ -60,6 +62,7 @@ export const handlers = [
     response(200).json({ status: 'Healthy', checks: { database: 'Healthy' } }),
   ),
   ...authHandlers(http),
+  ...entitlementHandlers(http),
 
   ...groupHandlers(http),
 

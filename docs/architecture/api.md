@@ -100,7 +100,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 
 | Resource | Endpoints |
 |---|---|
-| **Me** | `GET/PATCH /me`, `GET/POST /me/two-factor…` (§3.2), `GET /me/entitlements` (plan, limits, usage), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
+| **Me** | `GET/PATCH /me`, `GET/POST /me/two-factor…` (§3.2), `GET /me/entitlements` (`{ plan, trialEndsAt, limits }`, null = unlimited; implemented — usage counts later), `DELETE /me` (MVP, 14-day grace), `GET /me/export` (v1, GDPR, async job) |
 | **Groups** | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/{id}/members`, `PATCH/DELETE /groups/{id}/members/{userId}`, `POST /groups/{id}/invites`, `GET /groups/{id}/invites`, `DELETE /invites/{id}`, `POST /invites/preview` and `POST /invites/accept` (`{ token }` in the body, not the path or query: keeps tokens out of access logs), `POST /groups/{id}/transfer` (billing owner); leaving = `DELETE /groups/{id}/members/{myUserId}` |
 | **Calendars** | `GET /calendars` (all visible, with `myLevel`), `POST /calendars`, `GET/PATCH/DELETE /calendars/{id}`, `POST /calendars/{id}/transfer`, `POST /calendars/{id}/archive` |
 | **Calendar grants** | `GET/POST /calendars/{id}/grants`, `PATCH/DELETE /calendars/{id}/grants/{grantId}` |

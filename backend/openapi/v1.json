@@ -2150,6 +2150,43 @@
         ]
       }
     },
+    "/api/v1/me/entitlements": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "My plan and its limits",
+        "description": "plan: free, pro, team or selfhost. trialEndsAt: end of the reverse trial while it runs (plan pro, then free), else null. limits: null = unlimited. The plan of a resource's owner governs it (a group's billing owner, a calendar's owner), so limits of shared resources may differ from mine.",
+        "operationId": "GetMyEntitlements",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/events": {
       "get": {
         "tags": [
@@ -3390,6 +3427,29 @@
           }
         }
       },
+      "EntitlementsResponse": {
+        "required": [
+          "plan",
+          "trialEndsAt",
+          "limits"
+        ],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string"
+          },
+          "trialEndsAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimitsResponse"
+          }
+        }
+      },
       "ErrorCode": {
         "enum": [
           "bad_request",
@@ -4601,6 +4661,53 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "PlanLimitsResponse": {
+        "required": [
+          "ownedCalendars",
+          "ownedGroups",
+          "membersPerGroup",
+          "eventsWithOverrides",
+          "overridesPerEvent"
+        ],
+        "type": "object",
+        "properties": {
+          "ownedCalendars": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "ownedGroups": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "membersPerGroup": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "eventsWithOverrides": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "overridesPerEvent": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
