@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Hourglass, X } from '@lucide/vue'
-import { trialDaysLeft, useEntitlements } from '@/composables/entitlements'
+import { useEntitlements, useTrialDaysLeft } from '@/composables/entitlements'
 
 /**
  * "Pro trial: N days left" while the reverse trial runs (docs/product/plans.md); hidden without a
@@ -23,7 +23,7 @@ function readDismissed(): string | null {
 const dismissed = ref(readDismissed())
 
 const trialEndsAt = computed(() => entitlements.value?.trialEndsAt ?? null)
-const daysLeft = computed(() => trialDaysLeft(entitlements.value))
+const daysLeft = useTrialDaysLeft(entitlements)
 const visible = computed(() => daysLeft.value !== null && dismissed.value !== trialEndsAt.value)
 const until = computed(() =>
   trialEndsAt.value
