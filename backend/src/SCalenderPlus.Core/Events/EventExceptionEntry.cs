@@ -7,7 +7,7 @@ namespace SCalenderPlus.Core.Events;
 /// A modified or cancelled occurrence of a series (<c>event_exceptions</c>, data-model.md §4/§9): keyed by
 /// <see cref="RecurrenceId"/> — the occurrence's nominal start as wall clock in the series' zone (all-day: the date
 /// at midnight), the iCalendar RECURRENCE-ID — so tzdb updates never orphan it. Null members inherit the series'
-/// value; an empty <see cref="Description"/> or <see cref="Location"/> removes it for this occurrence. Moved
+/// value; an empty <see cref="CoverTitle"/>, <see cref="Description"/> or <see cref="Location"/> removes it for this occurrence. Moved
 /// occurrences carry their own times (same kind and zone as the series) and the derived instants. Exceptions have
 /// no ACL of their own: they resolve like their series (permissions.md §4.6, <c>EventAcl.ExceptionOf</c>).
 /// </summary>
@@ -24,6 +24,9 @@ public sealed class EventExceptionEntry
     public bool Cancelled { get; set; }
 
     public string? Title { get; set; }
+
+    /// <summary>The occurrence's own cover title; empty = none for this occurrence (busy viewers see "Busy").</summary>
+    public string? CoverTitle { get; set; }
 
     public string? Description { get; set; }
 
@@ -54,7 +57,7 @@ public sealed class EventExceptionEntry
     public bool IsMoved => StartUtc is not null;
 
     /// <summary>Nothing is overridden: the occurrence is exactly the series' (the row can go).</summary>
-    public bool IsEmpty => !Cancelled && !IsMoved && Title is null && Description is null && Location is null && Status is null && Transparency is null;
+    public bool IsEmpty => !Cancelled && !IsMoved && Title is null && CoverTitle is null && Description is null && Location is null && Status is null && Transparency is null;
 
     /// <summary>The moved times (zone of the series for timed occurrences), or null when not moved.</summary>
     public EventTimes? MovedTimes(string? timeZone) => !IsMoved
@@ -86,6 +89,8 @@ public sealed record EventOccurrence(Event Series, Occurrence Original, EventExc
     public EventTimes Times => Exception?.MovedTimes(Series.TimeZone) ?? Original.Times;
 
     public string Title => Exception?.Title ?? Series.Title;
+
+    public string? CoverTitle => Effective(Exception?.CoverTitle, Series.CoverTitle);
 
     public string? Description => Effective(Exception?.Description, Series.Description);
 

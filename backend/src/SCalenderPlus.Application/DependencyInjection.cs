@@ -23,6 +23,12 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<BrandOptions>()
+            .Bind(configuration.GetSection(BrandOptions.SectionName))
+            .PostConfigure(o => o.Normalize())
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddOptions<SignUpOptions>()
             .Bind(configuration.GetSection(SignUpOptions.SectionName))
             .ValidateOnStart();

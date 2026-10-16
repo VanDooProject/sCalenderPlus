@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using SCalenderPlus.Application.Configuration;
 
 namespace SCalenderPlus.Infrastructure.Identity;
 
@@ -44,9 +46,11 @@ public static class IdentitySetup
             options.Lockout.AllowedForNewUsers = true;
             options.Lockout.MaxFailedAccessAttempts = MaxFailedAccessAttempts;
             options.Lockout.DefaultLockoutTimeSpan = LockoutDuration;
-
-            options.Tokens.AuthenticatorIssuer = "sCalenderPlus";
         });
+
+        // The authenticator app shows the configured product name (white-label).
+        services.AddOptions<IdentityOptions>()
+            .Configure<IOptions<BrandOptions>>((options, brand) => options.Tokens.AuthenticatorIssuer = brand.Value.ProductName);
         builder.AddUserStore<AppUserStore>().AddDefaultTokenProviders();
 
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = EmailTokenLifespan);

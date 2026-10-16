@@ -1,5 +1,6 @@
 using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Calendars;
+using SCalenderPlus.Api.Entitlements;
 using SCalenderPlus.Api.Events;
 using SCalenderPlus.Api.Groups;
 
@@ -25,6 +26,7 @@ internal static class ApiV1
         group.MapInviteEndpoints();
         group.MapCalendarEndpoints();
         group.MapEventEndpoints();
+        group.MapEntitlementEndpoints();
 
         return group;
     }

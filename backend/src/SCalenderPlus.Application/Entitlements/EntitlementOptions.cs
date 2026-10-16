@@ -9,7 +9,10 @@ public enum BillingProvider
     /// <summary>Self-host: every subject has plan <see cref="Plan.SelfHost"/> (unlimited unless <c>Plans__SelfHost__*</c> says otherwise). Default.</summary>
     None,
 
-    /// <summary>SaaS: plans come from Stripe subscriptions; until billing lands every subject has plan <see cref="Plan.Free"/>.</summary>
+    /// <summary>
+    /// SaaS: plans come from Stripe subscriptions; until billing lands every subject has plan <see cref="Plan.Free"/>,
+    /// after the reverse trial (<see cref="PlansOptions.TrialDays"/>) with <see cref="Plan.Pro"/>'s limits.
+    /// </summary>
     Stripe,
 }
 
@@ -46,6 +49,13 @@ public sealed class PlansOptions
 {
     public const string SectionName = "Plans";
 
+    /// <summary>
+    /// Reverse trial (<c>Plans__TrialDays</c>): with a billing provider, every account has <see cref="Plan.Pro"/> for
+    /// this many days from its creation, then falls back to <see cref="Plan.Free"/> (over-limit usage stays, only
+    /// growth is refused). 0 disables the trial. Self-host is not affected.
+    /// </summary>
+    public int TrialDays { get; set; } = 90;
+
     public PlanLimitOptions Free { get; set; } = new() { OwnedCalendars = 3, OwnedGroups = 1, MembersPerGroup = 15, EventsWithOverrides = 10, OverridesPerEvent = 3 };
 
     public PlanLimitOptions Pro { get; set; } = new() { OwnedCalendars = 30, OwnedGroups = 10, MembersPerGroup = 150, OverridesPerEvent = 25 };
@@ -64,12 +74,17 @@ public sealed class PlansOptions
     };
 }
 
-/// <summary>Fails start-up on negative limits (a typo must not silently lock everyone out or open everything).</summary>
+/// <summary>Fails start-up on negative limits and trial days (a typo must not silently lock everyone out or open everything).</summary>
 internal sealed class PlansOptionsValidator : IValidateOptions<PlansOptions>
 {
     public ValidateOptionsResult Validate(string? name, PlansOptions options)
     {
         var failures = new List<string>();
+        if (options.TrialDays < 0)
+        {
+            failures.Add($"{PlansOptions.SectionName}:{nameof(PlansOptions.TrialDays)} must be ≥ 0 (0 disables the trial).");
+        }
+
         foreach (var plan in Enum.GetValues<Plan>())
         {
             var limits = options.For(plan).ToValues();

@@ -68,6 +68,13 @@ public static class AuthorizationMatrix
             .Expect(Actors.OtherUser, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized), // password alone is no session
 
+        // My plan and limits (reverse trial): every signed-in user, only their own.
+        .. For("GET", "/api/v1/me/entitlements")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+
         // Profile settings (#33)
         .. For("PATCH", "/api/v1/me")
             .WithBody(_ => JsonContent.Create(new { weekStart = "sunday" }))
