@@ -1,0 +1,132 @@
+{
+  "nav": {
+    "groups": "Konstellationen"
+  },
+  "sidebar": {
+    "groups": "Meine Konstellationen",
+    "noGroups": "Noch keine Konstellationen.",
+    "groupsError": "Konstellationen konnten nicht geladen werden."
+  },
+  "calendarSettings": {
+    "create": {
+      "description": "Ein eigener Kalender oder einer einer Konstellation, die du verwaltest.",
+      "ownerHint": "Konstellationskalender können Admins und Eigentümer der Konstellation anlegen.",
+      "inGroup": "Konstellation {group}"
+    },
+    "permissions": {
+      "description": "Was Personen mit eigenen Terminen dürfen und was Konstellationsmitglieder standardmäßig bekommen.",
+      "roleDefaults": "Zugriff nach Konstellationsrolle",
+      "roleDefaultsHint": "Was Mitglieder der besitzenden Konstellation je nach ihrer Rolle bekommen."
+    },
+    "sharing": {
+      "description": "Personen und Konstellationen, die über die Standards hinaus Zugriff bekommen.",
+      "groupOption": "Konstellation: {group}",
+      "addDescription": "Mit jemandem aus einer deiner Konstellationen oder mit einer ganzen Konstellation, in der du bist.",
+      "whoPlaceholder": "Person oder Konstellation wählen",
+      "pickSomeone": "Wähle zuerst eine Person oder Konstellation.",
+      "minRole": "Konstellationsmitglieder"
+    },
+    "errors": {
+      "grantExists": "Diese Person oder Konstellation hat bereits Zugriff. Ändere die Stufe stattdessen in der Liste."
+    }
+  },
+  "groups": {
+    "title": "Konstellationen",
+    "create": "Neue Konstellation",
+    "emptyTitle": "Noch keine Konstellationen",
+    "emptyText": "Lege eine Konstellation für deine Liebsten, Metamours und Wahlfamilie an und lade dann Leute per E-Mail oder Link ein.",
+    "loadError": "Konstellationen konnten nicht geladen werden.",
+    "frozenHint": "Diese Konstellation liegt über ihrem Tariflimit: Rollenänderungen und neue Mitglieder sind pausiert, bis sie wieder im Limit ist. Mitglieder entfernen geht weiterhin.",
+    "back": "Alle Konstellationen",
+    "notFoundTitle": "Konstellation nicht gefunden",
+    "notFoundText": "Diese Konstellation gibt es nicht, oder du bist (nicht mehr) Mitglied.",
+    "roleHints": {
+      "owner": "Alles, auch Rollen, Abrechnung und Löschen der Konstellation",
+      "member": "Sieht die Mitglieder und trägt in Konstellationskalender ein",
+      "viewer": "Sieht die Konstellationskalender"
+    },
+    "createDialog": {
+      "title": "Konstellation anlegen",
+      "submit": "Konstellation anlegen",
+      "created": "Konstellation {name} angelegt."
+    },
+    "tabs": {
+      "label": "Bereiche der Konstellation"
+    },
+    "members": {
+      "hidden": "Nur Mitglieder, Admins und Inhaber sehen die Mitgliederliste dieser Konstellation.",
+      "remove": "Aus der Konstellation entfernen",
+      "leave": "Konstellation verlassen"
+    },
+    "roleDialog": {
+      "description": "Rollen legen fest, was jemand in der Konstellation und ihren Kalendern darf."
+    },
+    "revokeShares": {
+      "hint": "Entfernt Terminberechtigungen, die {name} persönlich in den Kalendern dieser Konstellation bekommen hat. Abwählen, um sie zu behalten.",
+      "selfHint": "Entfernt Terminberechtigungen, die du persönlich in den Kalendern dieser Konstellation bekommen hast. Abwählen, um sie zu behalten.",
+      "demoteHint": "Entfernt auch Terminberechtigungen, die {name} persönlich in den Kalendern dieser Konstellation bekommen hat. Abwählen, um sie zu behalten."
+    },
+    "removeDialog": {
+      "description": "{name} verliert den Zugriff auf die Konstellation und ihre Kalender. Du kannst später erneut einladen.",
+      "removed": "{name} wurde aus der Konstellation entfernt."
+    },
+    "leaveDialog": {
+      "description": "Du verlierst den Zugriff auf die Kalender der Konstellation. Um zurückzukommen, brauchst du eine neue Einladung.",
+      "submit": "Konstellation verlassen"
+    },
+    "transferDialog": {
+      "description": "Ab jetzt gilt dessen Tarif für die Konstellation (Limits wie Mitglieder pro Konstellation). Du bleibst Inhaber."
+    },
+    "errors": {
+      "lastOwnerLeave": "Du bist der einzige Inhaber. Mache ein anderes Mitglied zum Inhaber, bevor du gehst, oder lösche die Konstellation.",
+      "frozen": "Diese Konstellation liegt über ihrem Tariflimit: Rollen können sich gerade nicht ändern und niemand kann beitreten. Mitglieder entfernen geht weiterhin.",
+      "forbidden": "Deine Rolle in dieser Konstellation erlaubt das nicht.",
+      "hasCalendars": "Diese Konstellation besitzt noch Kalender. Lösche sie oder übertrage sie zuerst an jemand anderen."
+    },
+    "settings": {
+      "title": "Konstellationsdetails",
+      "readOnly": "Nur Admins und Inhaber können die Konstellationsdetails ändern.",
+      "saved": "Konstellation gespeichert.",
+      "billingText": "Der Tarif des Rechnungsinhabers bestimmt die Limits dieser Konstellation.",
+      "leaveTitle": "Konstellation verlassen",
+      "leaveText": "Du verlierst den Zugriff auf die Kalender der Konstellation.",
+      "dangerTitle": "Konstellation löschen",
+      "dangerText": "Löscht die Konstellation mit allen Mitgliedschaften und Einladungen für alle. Die Kalender der Konstellation müssen vorher gelöscht oder übertragen werden.",
+      "delete": "Konstellation löschen",
+      "deleteConfirm": "Das kann nicht rückgängig gemacht werden. Gib zur Bestätigung den Konstellationsnamen ein.",
+      "deleteConfirmLabel": "Konstellationsname"
+    }
+  },
+  "invite": {
+    "description": "Tritt der Konstellation bei, um ihre geteilten Kalender zu sehen und zu bearbeiten.",
+    "expiredText": "Die Einladung ist ungültig, abgelaufen, widerrufen oder schon benutzt. Wenn du schon beigetreten bist, findest du die Konstellation unter Konstellationen. Sonst bitte um eine neue Einladung.",
+    "toGroups": "Zu meinen Konstellationen",
+    "unverifiedText": "Um Konstellationen beizutreten, bestätige {email}. Öffne den Link aus unserer E-Mail und komm dann auf diese Seite zurück.",
+    "frozenTitle": "Diese Konstellation nimmt gerade keine neuen Mitglieder auf",
+    "frozenText": "Die Konstellation liegt über ihrem Tariflimit. Bitte den Inhaber der Konstellation, Platz zu schaffen, und versuch es dann erneut."
+  },
+  "errors": {
+    "code": {
+      "billing_owner_must_be_owner": "Die Rechnungsverantwortung muss bei einem Konstellationsinhaber liegen.",
+      "external_sharing_not_allowed": "Teilen außerhalb der Konstellation ist für diesen Kalender nicht erlaubt.",
+      "group_frozen": "Diese Konstellation ist schreibgeschützt, weil das Tariflimit überschritten ist.",
+      "group_has_calendars": "Lösche oder verschiebe zuerst die Kalender der Konstellation.",
+      "last_owner": "Eine Konstellation braucht mindestens einen Inhaber."
+    }
+  },
+  "permissions": {
+    "principal": {
+      "unknownGroup": "Eine Konstellation"
+    },
+    "add": {
+      "title": "Person oder Konstellation hinzufügen",
+      "whoPlaceholder": "Person, Konstellation oder alle wählen",
+      "groupOption": "{group} (Konstellation)"
+    },
+    "violations": {
+      "duplicate_principal": "Diese Person oder Konstellation steht doppelt in der Liste.",
+      "group_not_selectable": "Du kannst nur Konstellationen wählen, in denen du bist oder die schon Zugriff auf den Kalender haben.",
+      "user_not_selectable": "Du kannst nur Personen wählen, die eine Konstellation oder diesen Kalender mit dir teilen."
+    }
+  }
+}
