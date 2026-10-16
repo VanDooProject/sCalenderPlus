@@ -166,7 +166,16 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Builds the standard edition (frontend/app/src/editions): the default and the white-label build.
       - run: pnpm build
+      - name: Edition leak check (standard build has no poly code or wording)
+        run: pnpm --filter app check:edition-leak
+      - name: Build the poly edition and check it
+        env:
+          VITE_EDITION: poly
+        run: |
+          pnpm --filter app build
+          pnpm --filter app check:edition-leak --edition poly
 
   openapi-breaking:
     name: openapi breaking changes
@@ -212,7 +221,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [api, worker, web]
+        image: [api, worker, web, poly-web]
+        # poly-web: the web image of the poly edition (web.Dockerfile with EDITION=poly).
+        include:
+          - image: poly-web
+            dockerfile: web
+            edition: poly
     env:
       IMAGE: ghcr.io/vandooproject/scalenderplus-${{ matrix.image }}:ci
       TRIVY_VERSION: v0.75.0
@@ -224,12 +238,13 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: deploy/docker/${{ matrix.image }}.Dockerfile
+          file: deploy/docker/${{ matrix.dockerfile || matrix.image }}.Dockerfile
           tags: ${{ env.IMAGE }}
           load: true
           push: false
           build-args: |
             REVISION=${{ github.sha }}
+            ${{ matrix.edition && format('EDITION={0}', matrix.edition) || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
       - name: Trivy (fail on fixable CRITICAL)
@@ -260,9 +275,12 @@ jobs:
           if [ -f "trivy-${{ matrix.image }}.txt" ]; then
             { echo "### Trivy: ${{ matrix.image }} (HIGH/CRITICAL)"; echo '```'; cat "trivy-${{ matrix.image }}.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
+      # The fullstack suite runs the standard edition.
       - name: Save image for e2e-fullstack
+        if: ${{ !matrix.edition }}
         run: docker save "$IMAGE" | gzip -1 > "image-${{ matrix.image }}.tar.gz"
       - uses: actions/upload-artifact@v7
+        if: ${{ !matrix.edition }}
         with:
           name: image-${{ matrix.image }}
           path: image-${{ matrix.image }}.tar.gz

@@ -13,9 +13,11 @@ import SkipLink from '@/components/SkipLink.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import UserMenu from '@/components/UserMenu.vue'
 import { useSession } from '@/composables/session'
+import { useBrand } from '@/config'
 
 const { t } = useI18n()
 const { query, user } = useSession()
+const brand = useBrand()
 const drawerOpen = ref(false)
 </script>
 
@@ -55,7 +57,7 @@ const drawerOpen = ref(false)
         <RouterLink
           :to="{ name: 'calendar' }"
           class="rounded-lg focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
-          :aria-label="t('app.name')"
+          :aria-label="brand.name"
         >
           <BrandMark :show-name="false" />
         </RouterLink>
@@ -77,7 +79,7 @@ const drawerOpen = ref(false)
         <EmptyState
           v-else-if="query.isError.value"
           :title="t('errors.apiUnavailableTitle')"
-          :description="t('errors.apiUnavailable')"
+          :description="t('errors.apiUnavailable', { app: brand.name })"
           data-testid="api-unavailable"
         >
           <template #icon><CloudOff aria-hidden="true" /></template>

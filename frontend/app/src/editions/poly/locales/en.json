@@ -1,0 +1,132 @@
+{
+  "nav": {
+    "groups": "Constellations"
+  },
+  "sidebar": {
+    "groups": "My constellations",
+    "noGroups": "No constellations yet.",
+    "groupsError": "Constellations could not be loaded."
+  },
+  "calendarSettings": {
+    "create": {
+      "description": "A calendar of your own, or one of a constellation you manage.",
+      "ownerHint": "Constellation calendars can be created by admins and owners of the constellation.",
+      "inGroup": "Constellation {group}"
+    },
+    "permissions": {
+      "description": "What people may do with their own events and what constellation members get by default.",
+      "roleDefaults": "Access by constellation role",
+      "roleDefaultsHint": "What members of the owning constellation get, by their role in the constellation."
+    },
+    "sharing": {
+      "description": "People and constellations who get access beyond the defaults.",
+      "groupOption": "Constellation: {group}",
+      "addDescription": "With someone from one of your constellations, or with a whole constellation you are in.",
+      "whoPlaceholder": "Pick a person or constellation",
+      "pickSomeone": "Pick a person or constellation first.",
+      "minRole": "Constellation members"
+    },
+    "errors": {
+      "grantExists": "This person or constellation already has access. Change their level in the list instead."
+    }
+  },
+  "groups": {
+    "title": "Constellations",
+    "create": "New constellation",
+    "emptyTitle": "No constellations yet",
+    "emptyText": "Create a constellation for your partners, metamours and chosen family, then invite people by email or link.",
+    "loadError": "Constellations could not be loaded.",
+    "frozenHint": "This constellation is over its plan limit: role changes and new members are paused until it is back within the limit. Removing members still works.",
+    "back": "All constellations",
+    "notFoundTitle": "Constellation not found",
+    "notFoundText": "This constellation does not exist, or you are not a member (any more).",
+    "roleHints": {
+      "owner": "Everything, including roles, billing and deleting the constellation",
+      "member": "Sees the members and adds to constellation calendars",
+      "viewer": "Sees the constellation calendars"
+    },
+    "createDialog": {
+      "title": "Create a constellation",
+      "submit": "Create constellation",
+      "created": "Constellation {name} created."
+    },
+    "tabs": {
+      "label": "Constellation sections"
+    },
+    "members": {
+      "hidden": "Only members, admins and owners can see the member list of this constellation.",
+      "remove": "Remove from constellation",
+      "leave": "Leave constellation"
+    },
+    "roleDialog": {
+      "description": "Roles decide what someone may do in the constellation and its calendars."
+    },
+    "revokeShares": {
+      "hint": "Removes event permissions given to {name} personally in this constellation's calendars. Uncheck to keep them.",
+      "selfHint": "Removes event permissions given to you personally in this constellation's calendars. Uncheck to keep them.",
+      "demoteHint": "Also removes event permissions given to {name} personally in this constellation's calendars. Uncheck to keep them."
+    },
+    "removeDialog": {
+      "description": "{name} loses access to the constellation and its calendars. You can invite them again later.",
+      "removed": "{name} was removed from the constellation."
+    },
+    "leaveDialog": {
+      "description": "You lose access to the constellation's calendars. To come back, you need a new invitation.",
+      "submit": "Leave constellation"
+    },
+    "transferDialog": {
+      "description": "Their plan will govern the constellation from now on (limits like members per constellation). You stay an owner."
+    },
+    "errors": {
+      "lastOwnerLeave": "You are the only owner. Make another member an owner before you leave, or delete the constellation.",
+      "frozen": "This constellation is over its plan limit, so roles can't change and nobody can join right now. Removing members still works.",
+      "forbidden": "Your role in this constellation doesn't allow this.",
+      "hasCalendars": "This constellation still owns calendars. Delete them or move them to someone else first."
+    },
+    "settings": {
+      "title": "Constellation details",
+      "readOnly": "Only admins and owners can change the constellation details.",
+      "saved": "Constellation saved.",
+      "billingText": "The billing owner's plan governs this constellation's limits.",
+      "leaveTitle": "Leave the constellation",
+      "leaveText": "You lose access to the constellation's calendars.",
+      "dangerTitle": "Delete constellation",
+      "dangerText": "Deletes the constellation, its memberships and invitations for everyone. The constellation's calendars must be deleted or moved first.",
+      "delete": "Delete constellation",
+      "deleteConfirm": "This can't be undone. Type the constellation name to confirm.",
+      "deleteConfirmLabel": "Constellation name"
+    }
+  },
+  "invite": {
+    "description": "Join the constellation to see and edit its shared calendars.",
+    "expiredText": "The invitation is invalid, has expired, was revoked or was already used. If you already joined, you find the constellation under Constellations. Otherwise ask for a new invitation.",
+    "toGroups": "Go to my constellations",
+    "unverifiedText": "To join constellations, confirm {email}. Open the link we sent you, then come back to this page.",
+    "frozenTitle": "This constellation can't take new members right now",
+    "frozenText": "The constellation is over its plan limit. Ask the constellation's owner to free up space, then try again."
+  },
+  "errors": {
+    "code": {
+      "billing_owner_must_be_owner": "The billing owner must be an owner of the constellation.",
+      "external_sharing_not_allowed": "Sharing outside the constellation is not allowed for this calendar.",
+      "group_frozen": "This constellation is read-only because the plan limit was exceeded.",
+      "group_has_calendars": "Delete or move the constellation's calendars first.",
+      "last_owner": "A constellation needs at least one owner."
+    }
+  },
+  "permissions": {
+    "principal": {
+      "unknownGroup": "A constellation"
+    },
+    "add": {
+      "title": "Add a person or constellation",
+      "whoPlaceholder": "Choose a person, constellation or everyone",
+      "groupOption": "{group} (constellation)"
+    },
+    "violations": {
+      "duplicate_principal": "This person or constellation is listed twice.",
+      "group_not_selectable": "You can only choose constellations you belong to or that already have access to the calendar.",
+      "user_not_selectable": "You can only choose people who share a constellation or this calendar with you."
+    }
+  }
+}

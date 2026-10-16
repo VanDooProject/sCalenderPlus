@@ -4,7 +4,7 @@ import '@fontsource-variable/inter/wght.css'
 import App from './App.vue'
 import { createAppContext } from './appContext'
 import { useTheme } from './composables/theme'
-import { configKey, loadConfig } from './config'
+import { applyBrand, configKey, loadConfig } from './config'
 import { detectLocale } from './i18n'
 import './style.css'
 
@@ -18,6 +18,7 @@ async function enableMocking() {
 async function bootstrap() {
   await enableMocking()
   const config = await loadConfig()
+  applyBrand(config.brand)
   useTheme().apply()
 
   const locale = detectLocale()

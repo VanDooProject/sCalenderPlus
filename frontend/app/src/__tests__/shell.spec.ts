@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { http, mockUser, resetMockAuth } from '@scalenderplus/api-client/mocks'
 import { sessionQueryKey } from '@/composables/session'
+import { defaultConfig } from '@/config'
 import { byTestId, click, mountApp, queryTestId, resetDom, settle } from './app'
 import { useMockApi } from './msw'
 
@@ -50,7 +51,7 @@ describe('routing and session', () => {
   })
 
   it('hides the environment badge in production', async () => {
-    await mountApp('/calendar', { config: { environment: 'production' } })
+    await mountApp('/calendar', { config: { ...defaultConfig, environment: 'production' } })
     expect(queryTestId('environment-badge')).toBeNull()
   })
 
