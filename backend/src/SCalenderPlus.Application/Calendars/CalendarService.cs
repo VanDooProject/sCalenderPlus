@@ -88,7 +88,7 @@ public sealed class CalendarService(
         };
         calendar.CreatedAt = calendar.UpdatedAt = clock.Now();
 
-        Guid billingOwnerId;
+        PlanSubject subject;
         if (request.GroupId is { } groupId)
         {
             var membership = await db.GroupMembers.AsNoTracking()
@@ -101,8 +101,8 @@ public sealed class CalendarService(
 
             calendar.OwnerGroupId = groupId;
             calendar.RoleDefaults = request.RoleDefaults?.ApplyTo(GroupRoleDefaults.Default) ?? GroupRoleDefaults.Default;
-            billingOwnerId = await db.Groups.AsNoTracking().Where(g => g.Id == groupId).Select(g => g.OwnerUserId)
-                .SingleAsync(cancellationToken).ConfigureAwait(false);
+            subject = PlanSubject.Group(groupId, await db.Groups.AsNoTracking().Where(g => g.Id == groupId).Select(g => g.OwnerUserId)
+                .SingleAsync(cancellationToken).ConfigureAwait(false));
         }
         else
         {
@@ -112,7 +112,7 @@ public sealed class CalendarService(
             }
 
             calendar.OwnerUserId = actorId;
-            billingOwnerId = actorId;
+            subject = PlanSubject.User(actorId);
         }
 
         var principal = await access.PrincipalAsync(actorId, cancellationToken).ConfigureAwait(false);
@@ -125,9 +125,10 @@ public sealed class CalendarService(
         return await db.InTransactionAsync(async ct =>
         {
             // Serializes concurrent creations of the subject, so the count below stays true until the commit.
+            var billingOwnerId = subject.BillingOwnerId;
             await db.LockAsync(billingOwnerId, ct).ConfigureAwait(false);
             var owned = await CountOwnedAsync(billingOwnerId, ct).ConfigureAwait(false);
-            await entitlements.EnsureCanCreateCalendarAsync(billingOwnerId, owned, ct).ConfigureAwait(false);
+            await entitlements.EnsureCanCreateCalendarAsync(subject, owned, ct).ConfigureAwait(false);
 
             db.Calendars.Add(calendar);
             await aclVersions.BumpPrincipalsAsync([calendar.Owner], ct).ConfigureAwait(false); // the owner's (group members') calendars changed
@@ -352,6 +353,12 @@ internal static class CalendarAudit
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         return rows.Where(r => r.Subject is not null).ToDictionary(r => r.Id, r => r.Subject!.Value);
     }
+
+    /// <summary>The plan subject of limits on the calendar: the owning user, or the owning group with its billing owner.</summary>
+    public static async Task<PlanSubject> PlanSubjectAsync(IAppDbContext db, Calendar calendar, CancellationToken cancellationToken) =>
+        calendar.OwnerGroupId is { } groupId
+            ? PlanSubject.Group(groupId, await db.Groups.AsNoTracking().Where(g => g.Id == groupId).Select(g => g.OwnerUserId).SingleAsync(cancellationToken).ConfigureAwait(false))
+            : PlanSubject.User(calendar.OwnerUserId!.Value);
 
     /// <summary>The plan subject: the owning user, or the owning group's billing owner.</summary>
     public static async Task<Guid> BillingSubjectAsync(IAppDbContext db, Calendar calendar, CancellationToken cancellationToken) =>

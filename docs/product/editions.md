@@ -68,6 +68,20 @@ Caddy renders `brand: { name, logoUrl, hue, supportEmail, imprintUrl, privacyUrl
 | `Brand__ProductName` | "sCalenderPlus" | Email subjects and bodies, any product name rendered server-side (later: iCal `PRODID`, feed footer) |
 | `Brand__SupportEmail` | none | Support contact in emails |
 
+### 3.3 Identifiers that stay unbranded
+
+Branding covers what people read. Technical identifiers that clients, other calendars or operators store and compare stay the same in every edition and deployment, deliberately:
+
+| Identifier | Value | Why it stays |
+|---|---|---|
+| Problem `type` URIs | `https://scalenderplus.app/problems/{code}` | Part of the error contract ([api.md §2](../architecture/api.md#2-errors--rfc-9457-problem-details)); clients may match on them. Users see the localized `title`/`detail`, never the URI. |
+| iCalendar UID domain of native events | `{id}@scalenderplus` | UIDs must never change: calendar apps de-duplicate and update subscribed events by UID, so a rename would duplicate every event. |
+| Data Protection application name | `scalenderplus` | Isolates the key ring and the cookies/tokens it protects; changing it invalidates every session and protected token. |
+| OpenTelemetry service names | `scalenderplus-api`, `scalenderplus-worker` | Operator-facing; dashboards and alerts key on them. |
+| OpenAPI document title | `sCalenderPlus API` | The document is exported at build time and committed (`backend/openapi/v1.json`), before any deployment's `Brand__*` exists; a per-deployment title would make it drift. Developer-facing only. |
+
+None of them reaches end users in normal use. If a tenant ever needs them branded, that is a new, versioned contract (e.g. a new problem type base), not a `Brand__*` setting.
+
 ## 4. Poly wording overlay
 
 Poly builds merge a locale JSON overlay over the base locale messages (poly build only, so it is covered by the leak check).

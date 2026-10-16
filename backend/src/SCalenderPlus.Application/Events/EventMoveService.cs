@@ -76,14 +76,15 @@ public sealed class EventMoveService(
 
             var now = clock.Now();
             var sourceSubject = await CalendarAudit.BillingSubjectAsync(db, view.Calendar, ct).ConfigureAwait(false);
-            var targetSubject = await CalendarAudit.BillingSubjectAsync(db, target.Calendar, ct).ConfigureAwait(false);
+            var targetPlan = await CalendarAudit.PlanSubjectAsync(db, target.Calendar, ct).ConfigureAwait(false);
+            var targetSubject = targetPlan.BillingOwnerId;
             if (current.Count > 0 && targetSubject != sourceSubject)
             {
                 // The overrides are new to the target owner's plan (a move within one plan changes no count).
                 await db.LockAsync(targetSubject, ct).ConfigureAwait(false);
                 var active = await queries.ActiveEventsWithOverridesAsync(targetSubject, now, ct).ConfigureAwait(false);
                 await entitlements.EnsureCanChangeEventOverridesAsync(
-                    targetSubject,
+                    targetPlan,
                     new OverrideUsage(active, PlanLimits.IsActive(ev.OccursUntil, now), 0, current.Count, OnlyRemovals: false),
                     ct).ConfigureAwait(false);
             }

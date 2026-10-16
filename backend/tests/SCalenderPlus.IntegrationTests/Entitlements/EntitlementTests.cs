@@ -43,6 +43,7 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         var problem = await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
         AssertLimit(problem, "owned_groups", max: 1, used: 1);
         Assert.Equal("free", (string?)problem["plan"]);
+        AssertNoTrial(problem);
         Assert.Contains("1", (string?)problem["detail"], StringComparison.Ordinal);
     }
 
@@ -232,6 +233,7 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
             var problem = await ProblemResponse.AssertProblemAsync(third, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
             AssertLimit(problem, "events_with_overrides", max: 1, used: 2);
             Assert.Equal("free", (string?)problem["plan"]);
+            AssertNoTrial(problem);
         }
 
         using (var group = await olga.SendJsonAsync(HttpMethod.Post, "/api/v1/groups", new { name = "Chess" }))
@@ -243,6 +245,89 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         Assert.Single(await Host.StoredOverridesAsync(b));
         await mia.SetOverridesAsync(b);
         Assert.Empty(await Host.StoredOverridesAsync(b));
+    }
+
+    [Fact]
+    public async Task Transferring_billing_to_a_new_account_does_not_restart_the_groups_trial()
+    {
+        await StartAsync(new()
+        {
+            ["Billing:Provider"] = "stripe",
+            ["Plans:TrialDays"] = "90",
+            ["Plans:Free:MembersPerGroup"] = "2",
+            ["Plans:Free:EventsWithOverrides"] = "1",
+        });
+        var (olgaEmail, olga) = await PersonAsync("olga");
+        var lions = await olga.CreateGroupAsync("Lions");
+        var club = await olga.CreateCalendarAsync("Club", lions);
+        await olga.CreateCalendarAsync("Fixtures", lions);
+        await olga.CreateCalendarAsync("Training", lions);
+        await AgeAccountAsync(olgaEmail, 400); // Olga's trial ended long ago, and the group is as old
+        await AgeGroupAsync(lions, 400);
+
+        // Billing moves to a brand-new (trialing) account.
+        var (ninaEmail, nina) = await PersonAsync("nina");
+        var ninaId = (await Host.FindUserAsync(ninaEmail)).Id;
+        await Host.AddMemberAsync(lions, ninaId, GroupRole.Owner);
+        using (var transfer = await olga.SendJsonAsync(HttpMethod.Post, $"/api/v1/groups/{lions}/transfer", new { userId = ninaId }))
+        {
+            Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
+        }
+
+        // The group's limits stay Free: calendars, members and overrides.
+        using (var fourth = await nina.SendJsonAsync(HttpMethod.Post, "/api/v1/calendars", new { name = "Youth", defaultTimeZone = "UTC", groupId = lions }))
+        {
+            var problem = await ProblemResponse.AssertProblemAsync(fourth, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
+            AssertLimit(problem, "owned_calendars", max: 3, used: 3);
+            Assert.Equal("free", (string?)problem["plan"]);
+            AssertNoTrial(problem);
+        }
+
+        using (var invite = await nina.SendJsonAsync(HttpMethod.Post, $"/api/v1/groups/{lions}/invites", new { role = "member" }))
+        {
+            AssertLimit(await ProblemResponse.AssertProblemAsync(invite, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "members_per_group", max: 2, used: 2);
+        }
+
+        var a = await nina.CreateEventIdAsync(EventApi.Timed(club, start: "2099-01-01T10:00:00", end: "2099-01-01T11:00:00"));
+        var b = await nina.CreateEventIdAsync(EventApi.Timed(club, start: "2099-01-02T10:00:00", end: "2099-01-02T11:00:00"));
+        await nina.SetOverridesAsync(a, EventApi.Everyone("none"));
+        using (var second = await nina.PutOverridesAsync(b, [EventApi.Everyone("none")]))
+        {
+            AssertLimit(await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached), "events_with_overrides", max: 1, used: 1);
+        }
+
+        // Nina's own trial still governs her personal resources and her own view of her plan.
+        await nina.CreateCalendarAsync("Nina");
+        Assert.Equal("pro", (string?)(await EntitlementsAsync(nina))["plan"]);
+    }
+
+    [Fact]
+    public async Task A_group_created_by_a_trialing_account_gets_the_trial()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:TrialDays"] = "90" });
+        var (_, nina) = await PersonAsync("nina");
+        var lions = await nina.CreateGroupAsync("Lions");
+
+        for (var i = 0; i < 4; i++)
+        {
+            await nina.CreateCalendarAsync($"Calendar {i}", lions); // Free allows three
+        }
+    }
+
+    [Fact]
+    public async Task Refusals_during_the_trial_carry_the_trial_end()
+    {
+        await StartAsync(new() { ["Billing:Provider"] = "stripe", ["Plans:TrialDays"] = "90", ["Plans:Pro:OwnedGroups"] = "1" });
+        var (email, olga) = await PersonAsync("olga");
+        var createdAt = (await Host.FindUserAsync(email)).CreatedAt;
+        await olga.CreateGroupAsync("Lions");
+
+        using var second = await olga.SendJsonAsync(HttpMethod.Post, "/api/v1/groups", new { name = "Tennis" });
+
+        var problem = await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
+        AssertLimit(problem, "owned_groups", max: 1, used: 1);
+        Assert.Equal("pro", (string?)problem["plan"]);
+        Assert.Equal((createdAt + Duration.FromDays(90)).ToDateTimeOffset(), (DateTimeOffset)problem["trialEndsAt"]!);
     }
 
     [Fact]
@@ -310,6 +395,7 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
 
         var problem = await ProblemResponse.AssertProblemAsync(second, HttpStatusCode.PaymentRequired, ErrorCodes.PlanLimitReached);
         Assert.Equal("selfhost", (string?)problem["plan"]);
+        AssertNoTrial(problem);
     }
 
     private static object Series(Guid calendarId, string start, string rrule) =>
@@ -340,6 +426,13 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
         Assert.Equal(overridesPerEvent, (int?)limits["overridesPerEvent"]);
     }
 
+    /// <summary><c>trialEndsAt</c> is always present on a 402; null outside the reverse trial.</summary>
+    private static void AssertNoTrial(JsonObject problem)
+    {
+        Assert.True(problem.ContainsKey("trialEndsAt"));
+        Assert.Null(problem["trialEndsAt"]);
+    }
+
     private static void AssertLimit(JsonObject problem, string key, int max, int used)
     {
         var limit = problem["limit"]!;
@@ -363,6 +456,11 @@ public sealed class EntitlementTests(PostgresFixture postgres) : IAsyncDisposabl
     private Task<int> AgeAccountAsync(string email, int days) =>
         Host.QueryAsync(db => db.Users.Where(u => u.Email == email)
             .ExecuteUpdateAsync(u => u.SetProperty(x => x.CreatedAt, x => x.CreatedAt - Duration.FromDays(days)), TestContext.Current.CancellationToken));
+
+    /// <summary>Moves the group's creation back (a group's trial counts from the older of group and billing owner).</summary>
+    private Task<int> AgeGroupAsync(Guid groupId, int days) =>
+        Host.QueryAsync(db => db.Groups.Where(g => g.Id == groupId)
+            .ExecuteUpdateAsync(g => g.SetProperty(x => x.CreatedAt, x => x.CreatedAt - Duration.FromDays(days)), TestContext.Current.CancellationToken));
 
     private async Task<(string Email, HttpClient Client)> PersonAsync(string name)
     {

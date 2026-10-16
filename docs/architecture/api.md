@@ -33,6 +33,7 @@ All errors are `application/problem+json`:
   "code": "plan_limit_reached",
   "limit": { "key": "events_with_overrides", "max": 10, "used": 10 },
   "plan": "free",
+  "trialEndsAt": null,
   "traceId": "00-4bf92f..."
 }
 ```
@@ -45,7 +46,7 @@ All errors are `application/problem+json`:
 | 404 | `not_found` (also for `none`-level resources — no existence leaks; also unknown routes) |
 | 405 | `method_not_allowed` |
 | 409 | `conflict`, `permission_self_lockout` (defensive), `calendar_frozen`, `override_invalid_in_target` (+ `violations`), `uid_conflict`, `last_owner`, `billing_owner_transfer_required`, `billing_owner_must_be_owner`, `group_frozen`, `group_has_calendars` (+ `calendarCount`) |
-| 402 | `plan_limit_reached`, `feature_not_in_plan` (+ `limit`/`feature`) |
+| 402 | `plan_limit_reached` (+ `limit`, `plan`, `trialEndsAt`), `feature_not_in_plan` (+ `feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
 | 422 | `recurrence_invalid` (malformed RRULE/RDATE/EXDATE, UNTIL before the start), `recurrence_not_supported` (valid RFC 5545 outside the supported subset, naming the part), `time_zone_invalid`, `email_domain_not_allowed`, `override_invalid` (+ `violations`) (all + `errors` with the field, like `validation_failed`) |
@@ -149,7 +150,7 @@ Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Gr
 - `POST /invites/preview { token }` → `{ groupName, inviterName, role, expiresAt }` (`200`): what the invite page shows before signing in and joining. **Anonymous** (the token is the credential; CSRF header still required like on every unsafe request), rate limited per client IP (`RateLimiting__InvitePreview__*`, 30/min). It reveals nothing else — not the invited address, whether it has an account, the members or the group id; `inviterName` is null when the inviter's account is gone. Unknown, expired, revoked and used-up tokens are `400 token_invalid` alike; previewing does not use the invite.
 - `POST /invites/accept { token }` → the group (`200`, `ETag`): needs a **verified** email (`403 email_not_verified`); email invites only for the invited address (`403 invite_email_mismatch`); unknown, expired, revoked and used-up tokens are all `400 token_invalid`; a member accepting again keeps their role; a frozen group takes no new members (`409 group_frozen`, also for invites created before the freeze; auto-join leaves such invites pending). Uses are counted atomically (`UPDATE … WHERE uses < max_uses`), and concurrent joins don't conflict with each other (the group row is touched without a version check). **Auto-join:** confirming an email address (`POST /auth/confirm-email`, or a password reset that confirms it) joins every pending email invite for that address in the same transaction; an unverified account never joins. Covered by backend integration tests (invite → sign-up → verify → joined) and the fullstack e2e suite (`e2e/fullstack/groups.spec.ts`: email invite → sign-up through the invite link → confirmation from Mailpit → member).
 - Audit (resource `group`, subject = billing owner): `group.created`, `group.updated`, `group.deleted`, `group.member.role_changed`, `group.member.removed`, `group.member.left`, `group.member.joined` (`after`: user, role, invite, `via` email|link, `automatic`), `group.billing_owner_transferred`, `group.invite.created`, `group.invite.revoked` (before/after; tokens never).
-- Plan limits (`IEntitlementService`, the billing owner's plan): creating a group beyond *owned groups* and inviting to or joining a group at *members per group* → `402 plan_limit_reached` with `limit: { key: owned_groups | members_per_group, max, used }` and `plan`. An auto-join that hits the limit leaves the invite pending.
+- Plan limits (`IEntitlementService`, the billing owner's plan): creating a group beyond *owned groups* and inviting to or joining a group at *members per group* → `402 plan_limit_reached` with `limit: { key: owned_groups | members_per_group, max, used }`, `plan` and `trialEndsAt` (always present: the UTC end of the reverse trial when `plan` is its `pro`, else `null` — tells trial Pro from paid Pro). An auto-join that hits the limit leaves the invite pending.
 - Extension point: `IGroupMembershipObserver` (called in the transaction of every membership change — joined, role changed, removed, left, group deleted); `EventShareRevocation` implements "membership removal revokes event shares" (issue #49).
 
 ### Calendars (implemented, M2)

@@ -54,4 +54,17 @@ public sealed class EmailTemplateTests
         Assert.Contains("Lions &amp; &lt;Co&gt; · <a href=\"mailto:help@lions.example\"", message.HtmlBody, StringComparison.Ordinal);
         Assert.DoesNotContain("sCalenderPlus", message.TextBody + message.HtmlBody, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void The_support_link_percent_encodes_the_address_so_it_cannot_add_mailto_fields()
+    {
+        // [EmailAddress] accepts this; unencoded, "?" and "&" would start mailto: header fields (subject, body).
+        var brand = new BrandOptions { SupportEmail = "help+x?subject=Hi&body=\"<b>\"@lions.example" };
+
+        var html = (_template with { Brand = brand }).Render("eve@example.test").HtmlBody;
+
+        Assert.Contains("<a href=\"mailto:help%2Bx%3Fsubject%3DHi%26body%3D%22%3Cb%3E%22@lions.example\"", html, StringComparison.Ordinal);
+        Assert.Contains(">help+x?subject=Hi&amp;body=&quot;&lt;b&gt;&quot;@lions.example</a>", html, StringComparison.Ordinal); // the text stays readable, HTML-encoded
+        Assert.DoesNotContain("mailto:help+", html, StringComparison.Ordinal);
+    }
 }

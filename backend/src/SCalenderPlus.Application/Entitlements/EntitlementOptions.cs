@@ -52,9 +52,12 @@ public sealed class PlansOptions
     /// <summary>
     /// Reverse trial (<c>Plans__TrialDays</c>): with a billing provider, every account has <see cref="Plan.Pro"/> for
     /// this many days from its creation, then falls back to <see cref="Plan.Free"/> (over-limit usage stays, only
-    /// growth is refused). 0 disables the trial. Self-host is not affected.
+    /// growth is refused). 0 disables the trial; at most <see cref="MaxTrialDays"/>. Self-host is not affected.
     /// </summary>
     public int TrialDays { get; set; } = 90;
+
+    /// <summary>Upper bound of <see cref="TrialDays"/> (ten years): larger values overflow the trial's end and are surely typos.</summary>
+    public const int MaxTrialDays = 3650;
 
     public PlanLimitOptions Free { get; set; } = new() { OwnedCalendars = 3, OwnedGroups = 1, MembersPerGroup = 15, EventsWithOverrides = 10, OverridesPerEvent = 3 };
 
@@ -74,15 +77,15 @@ public sealed class PlansOptions
     };
 }
 
-/// <summary>Fails start-up on negative limits and trial days (a typo must not silently lock everyone out or open everything).</summary>
+/// <summary>Fails start-up on negative limits and on trial days outside 0 … 3650 (a typo must not silently lock everyone out or open everything).</summary>
 internal sealed class PlansOptionsValidator : IValidateOptions<PlansOptions>
 {
     public ValidateOptionsResult Validate(string? name, PlansOptions options)
     {
         var failures = new List<string>();
-        if (options.TrialDays < 0)
+        if (options.TrialDays is < 0 or > PlansOptions.MaxTrialDays)
         {
-            failures.Add($"{PlansOptions.SectionName}:{nameof(PlansOptions.TrialDays)} must be ≥ 0 (0 disables the trial).");
+            failures.Add($"{PlansOptions.SectionName}:{nameof(PlansOptions.TrialDays)} must be 0 … {PlansOptions.MaxTrialDays} (0 disables the trial).");
         }
 
         foreach (var plan in Enum.GetValues<Plan>())

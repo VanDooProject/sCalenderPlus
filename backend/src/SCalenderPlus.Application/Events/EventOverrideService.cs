@@ -90,11 +90,12 @@ public sealed class EventOverrideService(
             ThrowIfRefused(decision, unselectable);
 
             var now = clock.Now();
-            var subject = await CalendarAudit.BillingSubjectAsync(db, view.Calendar, ct).ConfigureAwait(false);
+            var plan = await CalendarAudit.PlanSubjectAsync(db, view.Calendar, ct).ConfigureAwait(false);
+            var subject = plan.BillingOwnerId;
             await db.LockAsync(subject, ct).ConfigureAwait(false); // plan-limit count and change under one lock per plan subject
             var active = await queries.ActiveEventsWithOverridesAsync(subject, now, ct).ConfigureAwait(false);
             await entitlements.EnsureCanChangeEventOverridesAsync(
-                subject,
+                plan,
                 new OverrideUsage(active, PlanLimits.IsActive(ev.OccursUntil, now), current.Count, proposed.Count, onlyRemovals),
                 ct).ConfigureAwait(false);
 

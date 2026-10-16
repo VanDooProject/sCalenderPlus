@@ -59,6 +59,26 @@ public sealed class EventExceptionEntry
     /// <summary>Nothing is overridden: the occurrence is exactly the series' (the row can go).</summary>
     public bool IsEmpty => !Cancelled && !IsMoved && Title is null && CoverTitle is null && Description is null && Location is null && Status is null && Transparency is null;
 
+    /// <summary>
+    /// After the series changed: members whose value now equals the series' — an empty text where the series has
+    /// none counts as equal — inherit again (null), as an occurrence patch with the series' value would store them.
+    /// The occurrence then follows later changes of the series, and an exception left with nothing of its own can go
+    /// (<see cref="IsEmpty"/>). Times stay (moves are not compared).
+    /// </summary>
+    /// <returns>Whether a member changed.</returns>
+    public bool InheritEqualValues(Event series)
+    {
+        ArgumentNullException.ThrowIfNull(series);
+        var before = (Title, CoverTitle, Description, Location, Status, Transparency);
+        Title = Title == series.Title ? null : Title;
+        CoverTitle = Inherit(CoverTitle, series.CoverTitle);
+        Description = Inherit(Description, series.Description);
+        Location = Inherit(Location, series.Location);
+        Status = Status == series.Status ? null : Status;
+        Transparency = Transparency == series.Transparency ? null : Transparency;
+        return before != (Title, CoverTitle, Description, Location, Status, Transparency);
+    }
+
     /// <summary>The moved times (zone of the series for timed occurrences), or null when not moved.</summary>
     public EventTimes? MovedTimes(string? timeZone) => !IsMoved
         ? null
@@ -76,6 +96,9 @@ public sealed class EventExceptionEntry
         StartUtc = times?.StartUtc;
         EndUtc = times?.EndUtc;
     }
+
+    private static string? Inherit(string? own, string? series) =>
+        own is not null && own == (series ?? string.Empty) ? null : own;
 }
 
 /// <summary>

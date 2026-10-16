@@ -203,6 +203,39 @@ public sealed class CoverTitleTests(PostgresFixture postgres) : IAsyncLifetime
         AssertJson("""[{ "recurrenceId": "2026-11-09T17:00:00Z", "cancelled": true }]""", (await _eve.GetEventAsync(id)).Body["exceptions"]);
     }
 
+    [Fact]
+    public async Task An_occurrences_no_cover_title_inherits_again_once_the_series_has_none()
+    {
+        var (series, _) = await _mia.CreateEventAsync(new
+        {
+            calendarId = _club,
+            title = "Therapy",
+            coverTitle = "Sports",
+            start = new { dateTime = "2026-11-02T18:00:00", timeZone = "Europe/Berlin" },
+            end = new { dateTime = "2026-11-02T19:00:00" },
+            recurrence = new { rrule = "FREQ=WEEKLY;COUNT=6" },
+        });
+        var id = (Guid)series["id"]!;
+        await PatchOccurrenceAsync(id, "2026-11-09T17:00:00Z", new { coverTitle = "Match" });
+        var none = await PatchOccurrenceAsync(id, "2026-11-16T17:00:00Z", new { coverTitle = (string?)null });
+        Assert.True((bool?)none["modified"]);
+
+        await PatchAsync(id, new { coverTitle = (string?)null });
+
+        // The "no cover title" of 16 November is what the series says now: the exception is gone, "Match" stays.
+        var occurrences = await WindowAsync(_mia, NovemberOccurrences);
+        var sixteenth = Assert.Single(occurrences, o => (string?)o!["recurrenceId"] == "2026-11-16T17:00:00Z");
+        Assert.False((bool?)sixteenth!["modified"] ?? false);
+        var (busyMaster, _) = await _eve.GetEventAsync(id);
+        Assert.False(busyMaster.AsObject().ContainsKey("coverTitle"));
+        AssertJson("""[{ "recurrenceId": "2026-11-09T17:00:00Z", "coverTitle": "Match" }]""", busyMaster["exceptions"]);
+
+        // Setting a cover title on the series again reaches the occurrence.
+        await PatchAsync(id, new { coverTitle = "Gym" });
+        var after = await WindowAsync(_eve, NovemberOccurrences);
+        Assert.Equal(["Gym", "Match", "Gym", "Gym", "Gym"], after.Select(o => (string?)o!["coverTitle"]));
+    }
+
     private object WithCover(string coverTitle) =>
         new
         {
