@@ -197,7 +197,9 @@ public sealed class EventService(
     /// whose first occurrence moves (in wall clock), RDATEs/EXDATEs (unless the recurrence is given anew) and the
     /// exceptions' keys shift by the same amount (data-model.md §9 "all"); exceptions that no longer match an
     /// occurrence — or all of them when the series switches between timed and all-day or stops recurring — are
-    /// dropped. Moved exceptions keep their times (re-resolved in a new zone). Refreshes the series bounds.
+    /// dropped. Moved exceptions keep their times (re-resolved in a new zone). Exception values that now equal the
+    /// series' inherit again (<see cref="EventExceptionEntry.InheritEqualValues"/>); exceptions left empty are removed
+    /// (not reported as dropped: the occurrence looks the same). Refreshes the series bounds.
     /// </summary>
     internal ChangeOutcome Apply(Event ev, EventChanges changes, string defaultZone)
     {
@@ -260,6 +262,17 @@ public sealed class EventService(
                 if (exception.IsMoved && !ev.AllDay && ev.TimeZone != oldZone)
                 {
                     exception.Move(EventTimes.Timed(exception.StartLocal!.Value, exception.EndLocal!.Value, DateTimeZoneProviders.Tzdb[ev.TimeZone!]));
+                }
+
+                // Values the series now has itself inherit again (e.g. an occurrence's "no cover title" once the
+                // series has none either); an exception left with nothing of its own goes.
+                if (exception.InheritEqualValues(ev))
+                {
+                    exception.UpdatedAt = clock.Now();
+                    if (exception.IsEmpty)
+                    {
+                        writer.RemoveException(ev, exception);
+                    }
                 }
             }
         }

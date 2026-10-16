@@ -118,6 +118,26 @@ public sealed class EventOccurrenceTests
         Assert.Equal(10, window.Items.Count);
     }
 
+    [Fact]
+    public void Exception_values_equal_to_the_series_inherit_again()
+    {
+        var series = Series("FREQ=WEEKLY");
+        series.CoverTitle = "Sports";
+        var none = new EventExceptionEntry { RecurrenceId = new(2026, 11, 9, 18, 0), CoverTitle = string.Empty };
+        var own = new EventExceptionEntry { RecurrenceId = new(2026, 11, 16, 18, 0), CoverTitle = "Match", Description = string.Empty, Location = "Hall" };
+        Assert.False(none.InheritEqualValues(series)); // the series still has a cover title: "none" is the occurrence's own
+
+        series.CoverTitle = null;
+        series.Location = "Hall";
+
+        Assert.True(none.InheritEqualValues(series)); // "none" where the series has none: inherit
+        Assert.True(none.IsEmpty);
+        Assert.True(own.InheritEqualValues(series));
+        Assert.Equal(("Match", string.Empty, null), (own.CoverTitle, own.Description, own.Location)); // only the equal location inherits
+        Assert.False(own.IsEmpty);
+        Assert.False(own.InheritEqualValues(series));
+    }
+
     private static Event Series(string rrule)
     {
         var ev = new Event { Id = Guid.CreateVersion7(), Title = "Training", Description = "Bring shoes", Location = "Pitch", Rrule = rrule };
