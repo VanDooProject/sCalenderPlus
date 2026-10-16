@@ -105,7 +105,7 @@ public sealed class EntitlementOptionsTests
     [InlineData(PlanLimit.OverridesPerEvent)]
     public void Refusals_are_402_problems_with_the_limit(PlanLimit limit)
     {
-        var ex = EntitlementErrors.LimitReached(Plan.Free, new PlanLimitExceeded(limit, 10, 10));
+        var ex = EntitlementErrors.LimitReached(new PlanEntitlements(Plan.Free, new PlansOptions().Free.ToValues()), new PlanLimitExceeded(limit, 10, 10));
 
         Assert.Equal(ErrorCodes.PlanLimitReached, ex.Code);
         Assert.Contains("10", ex.Detail, StringComparison.Ordinal);
@@ -114,6 +114,19 @@ public sealed class EntitlementOptionsTests
         Assert.Equal(10, problemLimit["max"]);
         Assert.Equal(10, problemLimit["used"]);
         Assert.Equal("free", ex.Extensions["plan"]);
+        Assert.True(ex.Extensions.ContainsKey("trialEndsAt"));
+        Assert.Null(ex.Extensions["trialEndsAt"]);
+    }
+
+    [Fact]
+    public void Refusals_during_the_trial_carry_its_end()
+    {
+        var ends = NodaTime.Instant.FromUtc(2027, 1, 30, 12, 0);
+
+        var ex = EntitlementErrors.LimitReached(new PlanEntitlements(Plan.Pro, new PlansOptions().Pro.ToValues(), ends), new PlanLimitExceeded(PlanLimit.OwnedGroups, 10, 10));
+
+        Assert.Equal("pro", ex.Extensions["plan"]);
+        Assert.Equal(new DateTimeOffset(2027, 1, 30, 12, 0, 0, TimeSpan.Zero), ex.Extensions["trialEndsAt"]);
     }
 
     [Theory]

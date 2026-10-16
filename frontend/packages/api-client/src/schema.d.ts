@@ -1276,7 +1276,7 @@ export interface components {
       id?: null | string
       minRole?: null | string
     }
-    /** @description RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`). */
+    /** @description RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `plan` and `trialEndsAt` for `plan_limit_reached`; `required`, `actual`). */
     ProblemDetails: {
       /** Format: uri */
       type: string

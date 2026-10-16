@@ -4834,7 +4834,7 @@
             "description": "Validation errors by field (code `validation_failed`)."
           }
         },
-        "description": "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`)."
+        "description": "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `plan` and `trialEndsAt` for `plan_limit_reached`; `required`, `actual`)."
       },
       "PutCalendarPrefsRequest": {
         "required": [

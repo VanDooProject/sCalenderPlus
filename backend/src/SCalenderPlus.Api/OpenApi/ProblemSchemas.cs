@@ -57,7 +57,7 @@ internal static class ProblemSchemas
     private static OpenApiSchema ProblemDetails(OpenApiDocument document) => new()
     {
         Type = JsonSchemaType.Object,
-        Description = "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `required`, `actual`).",
+        Description = "RFC 9457 problem details. Further members depend on the code (e.g. `limit`, `plan` and `trialEndsAt` for `plan_limit_reached`; `required`, `actual`).",
         Required = new HashSet<string>(StringComparer.Ordinal) { "type", "title", "status", ProblemDetailsSetup.CodeMember },
         Properties = new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal)
         {

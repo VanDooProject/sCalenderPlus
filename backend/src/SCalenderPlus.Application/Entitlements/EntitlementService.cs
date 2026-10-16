@@ -82,7 +82,7 @@ internal sealed class EntitlementService(
     {
         if (exceeded is not null)
         {
-            throw EntitlementErrors.LimitReached(entitlements.Plan, exceeded);
+            throw EntitlementErrors.LimitReached(entitlements, exceeded);
         }
     }
 }
@@ -128,11 +128,16 @@ public static class PlanResolution
     }
 }
 
-/// <summary>The problem of a refused change: <c>402 plan_limit_reached</c> with <c>limit: { key, max, used }</c> and <c>plan</c>.</summary>
+/// <summary>
+/// The problem of a refused change: <c>402 plan_limit_reached</c> with <c>limit: { key, max, used }</c>, <c>plan</c>
+/// and <c>trialEndsAt</c> (always present; null unless the plan is the reverse trial's Pro, so clients can tell it
+/// from paid Pro).
+/// </summary>
 public static class EntitlementErrors
 {
-    public static AppException LimitReached(Plan plan, PlanLimitExceeded exceeded)
+    public static AppException LimitReached(PlanEntitlements entitlements, PlanLimitExceeded exceeded)
     {
+        ArgumentNullException.ThrowIfNull(entitlements);
         ArgumentNullException.ThrowIfNull(exceeded);
         return new(ErrorCodes.PlanLimitReached, Detail(exceeded), new Dictionary<string, object?>(StringComparer.Ordinal)
         {
@@ -142,7 +147,8 @@ public static class EntitlementErrors
                 ["max"] = exceeded.Max,
                 ["used"] = exceeded.Used,
             },
-            ["plan"] = PlanName(plan),
+            ["plan"] = PlanName(entitlements.Plan),
+            ["trialEndsAt"] = entitlements.TrialEndsAt?.ToDateTimeOffset(),
         });
     }
 
