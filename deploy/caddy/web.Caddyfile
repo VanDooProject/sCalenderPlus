@@ -73,8 +73,10 @@
 :{$WEB_PORT:8080} {
 	# Origin (scheme, host, port) of an https brand logo for the CSP's img-src. Only a strict https
 	# origin passes, so the variable can't inject other CSP directives; a same-origin path needs none.
+	# The SPA applies the same rule (cspLogoUrlPattern in frontend/app/src/config.ts, tested against
+	# this line) and shows its built-in mark for any other logo URL: keep both in sync.
 	map {env.PUBLIC_BRAND_LOGO_URL} {brand_logo_origin} {
-		~^\s*(https://[A-Za-z0-9.-]+(?::[0-9]+)?)(?:[/?#]\S*)?\s*$ "${1}"
+		~(?i)^\s*(https://[A-Za-z0-9.-]+(?::[0-9]+)?)(?:[/?#]\S*)?\s*$ "${1}"
 		default ""
 	}
 	import security_headers
