@@ -3,6 +3,23 @@ import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescri
 import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 import globals from 'globals'
 
+const editionMessage = "Import the build's edition from '@edition', not an edition folder."
+
+// A module source naming an edition folder (`../editions/poly/…`, `@/editions/standard`; not
+// `editions/types`) or an `@edition/…` subpath. esquery regexes can't contain a slash: \u002f.
+const editionSource = String.raw`/(^|\u002f|\\)editions(\u002f|\\)(?!types(\.ts)?$)|^@edition(\u002f|\\)/`
+const editionSourceSelectors = [
+  // import('../editions/poly/x'), import(`../editions/${id}/index.ts`)
+  `ImportExpression > Literal[value=${editionSource}]`,
+  `ImportExpression > TemplateLiteral > TemplateElement[value.raw=${editionSource}]`,
+  // import.meta.glob('../editions/*/index.ts'), also with an array of patterns
+  `CallExpression[callee.object.type='MetaProperty'][callee.property.name=/^glob/] Literal[value=${editionSource}]`,
+  `CallExpression[callee.object.type='MetaProperty'][callee.property.name=/^glob/] TemplateElement[value.raw=${editionSource}]`,
+  // new URL('../editions/poly/logo.svg', import.meta.url)
+  `NewExpression[callee.name='URL'] > Literal[value=${editionSource}]`,
+  `NewExpression[callee.name='URL'] > TemplateLiteral > TemplateElement[value.raw=${editionSource}]`,
+]
+
 export default defineConfigWithVueTs(
   {
     name: 'scal/files',
@@ -42,6 +59,9 @@ export default defineConfigWithVueTs(
   {
     // Editions are selected at build time through the `@edition` alias; importing a folder directly
     // would bundle it into every edition (app/src/editions/types.ts). Tests may look at all of them.
+    // Static imports, dynamic `import()`, `import.meta.glob()` and `new URL(…, import.meta.url)` all
+    // make Vite bundle the target, so all four are checked; `@edition/…` subpaths (`@edition/../poly`)
+    // are rejected too, the alias names exactly one module.
     name: 'scal/editions',
     files: ['app/src/**/*.{ts,vue}'],
     ignores: ['app/src/__tests__/**'],
@@ -52,10 +72,15 @@ export default defineConfigWithVueTs(
           patterns: [
             {
               group: ['**/editions/*', '!**/editions/types'],
-              message: "Import the build's edition from '@edition', not an edition folder.",
+              message: editionMessage,
             },
+            { regex: '^@edition/', message: editionMessage },
           ],
         },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...editionSourceSelectors.map((selector) => ({ selector, message: editionMessage })),
       ],
     },
   },
