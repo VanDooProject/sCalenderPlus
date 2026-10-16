@@ -3,7 +3,7 @@ import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createMemoryHistory } from 'vue-router'
 import { useToast } from '@scalenderplus/ui'
 import App from '@/App.vue'
-import { configKey, type AppConfig } from '@/config'
+import { configKey, defaultConfig, type AppConfig } from '@/config'
 import { createAppContext } from '@/appContext'
 import type { Locale } from '@/i18n'
 
@@ -29,7 +29,9 @@ export async function mountApp(path: string, options: MountOptions = {}) {
     attachTo: document.body,
     global: {
       plugins: [i18n, router, [VueQueryPlugin, { queryClient }]],
-      provide: { [configKey as symbol]: options.config ?? { environment: 'test' } },
+      provide: {
+        [configKey as symbol]: options.config ?? { ...defaultConfig, environment: 'test' },
+      },
     },
   })
   mounted.push(wrapper)

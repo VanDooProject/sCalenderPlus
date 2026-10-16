@@ -1,7 +1,13 @@
 {
   "app": {
-    "name": "sCalenderPlus",
     "tagline": "Shared calendars with per-event permissions."
+  },
+  "legal": {
+    "label": "Legal",
+    "imprint": "Imprint",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "support": "Support"
   },
   "environment": "Environment: {name}",
   "common": {
@@ -457,7 +463,7 @@
       "recoveryLeft": "No recovery codes left | One recovery code left | {n} recovery codes left",
       "recoveryLow": "You're running out of recovery codes. Create new ones so you don't get locked out.",
       "recoveryCodes": "Recovery codes",
-      "recoveryFileHeader": "sCalenderPlus recovery codes. Each code works once. Keep them somewhere safe.",
+      "recoveryFileHeader": "{app} recovery codes. Each code works once. Keep them somewhere safe.",
       "codesTitle": "Save your recovery codes",
       "codesText": "If you lose your phone, each of these codes lets you sign in once. They are shown only now.",
       "codesSaved": "I saved my codes",
@@ -556,7 +562,7 @@
     "checkFields": "Please check the highlighted fields.",
     "rateLimitedRetry": "Too many attempts. Please try again in {wait}.",
     "apiUnavailableTitle": "We can't reach the server",
-    "apiUnavailable": "sCalenderPlus is temporarily unavailable. Please try again in a moment.",
+    "apiUnavailable": "{app} is temporarily unavailable. Please try again in a moment.",
     "code": {
       "bad_request": "The request could not be processed.",
       "billing_owner_must_be_owner": "The billing owner must be an owner of the group.",

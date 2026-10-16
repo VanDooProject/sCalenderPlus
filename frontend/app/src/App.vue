@@ -3,16 +3,18 @@ import { nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiToaster } from '@scalenderplus/ui'
+import { useBrand } from '@/config'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const brand = useBrand()
 
 // Page title per route and language.
 watch(
   [() => route.meta.title, locale],
   ([title]) => {
-    const name = t('app.name')
+    const name = brand.name
     document.title = title ? `${t(title)} · ${name}` : name
   },
   { immediate: true },

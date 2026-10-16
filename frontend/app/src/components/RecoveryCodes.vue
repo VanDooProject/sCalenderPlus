@@ -3,13 +3,16 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, Copy, Download } from '@lucide/vue'
 import { UiButton } from '@scalenderplus/ui'
+import { useBrand } from '@/config'
 
 /** One-time display of new recovery codes with copy and download. */
 const props = defineProps<{ codes: readonly string[] }>()
 const { t } = useI18n()
+const brand = useBrand()
 const copied = ref(false)
 
-const text = () => `${t('settings.security.recoveryFileHeader')}\n\n${props.codes.join('\n')}\n`
+const text = () =>
+  `${t('settings.security.recoveryFileHeader', { app: brand.name })}\n\n${props.codes.join('\n')}\n`
 
 async function copy() {
   try {

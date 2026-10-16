@@ -6,10 +6,20 @@ import {
   resetMockCalendars,
   resetMockGroups,
 } from '@scalenderplus/api-client/mocks'
-import type { AppConfig } from '@/config'
-
-/** `/config.json` is served by `web` (not part of the API); in mock mode the badge shows "mock". */
-const mockConfig: AppConfig = { environment: 'mock' }
+/**
+ * `/config.json` is served by `web` (not part of the API); in mock mode the badge shows "mock".
+ * `localStorage['scal.mock.brand']` (JSON) is served as its `brand`, so the mocked e2e suite can
+ * check white-label branding with an init script.
+ */
+function mockConfig() {
+  let brand: unknown = undefined
+  try {
+    brand = JSON.parse(localStorage.getItem('scal.mock.brand') ?? 'null') ?? undefined
+  } catch {
+    // Missing or malformed: no brand, the edition defaults apply.
+  }
+  return { environment: 'mock', brand }
+}
 
 /**
  * Starting session of mock mode: signed in, unless `localStorage['scal.mock.session']` says
@@ -24,7 +34,7 @@ function initialSession() {
 }
 
 export const worker = setupWorker(
-  http.get('/config.json', () => HttpResponse.json(mockConfig)),
+  http.get('/config.json', () => HttpResponse.json(mockConfig())),
   ...handlers,
 )
 
