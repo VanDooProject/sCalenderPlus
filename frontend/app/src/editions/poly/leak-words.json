@@ -1,0 +1,14 @@
+{
+  "description": "Words that must never appear in another edition's build (scripts/check-edition-leak.mjs): matched case-insensitively at the start of a word, so 'polyamor' finds 'Polyamorous' and 'polyfill' stays fine. Lives in this folder, so the list itself never ships in the standard build.",
+  "words": [
+    "constellation",
+    "konstellation",
+    "metamour",
+    "polycule",
+    "polyamor",
+    "kink",
+    "swinger",
+    "bdsm",
+    "scalenderplus-edition-poly"
+  ]
+}
