@@ -110,12 +110,37 @@ describe('event form → payload', () => {
     expect(toMergePatch(allDay, { ...allDay, startTime: '07:00' })).toEqual({})
   })
 
+  it('sends a cover title on create only when set and removes a cleared one with null', () => {
+    const v = newEventValues({
+      calendarId,
+      timeZone: 'UTC',
+      start: '2026-11-02T09:00:00',
+      allDay: false,
+    })
+    expect(toCreateRequest({ ...v, title: 'Therapy', coverTitle: '  ' })).not.toHaveProperty(
+      'coverTitle',
+    )
+    expect(toCreateRequest({ ...v, title: 'Therapy', coverTitle: ' Appointment ' })).toMatchObject({
+      coverTitle: 'Appointment',
+    })
+
+    const before = eventValues({ ...mockEvent, coverTitle: 'Sport' }, 'UTC')
+    expect(before.coverTitle).toBe('Sport')
+    expect(toMergePatch(before, { ...before, coverTitle: ' Sport ' })).toEqual({})
+    expect(toMergePatch(before, { ...before, coverTitle: 'Gym' })).toEqual({ coverTitle: 'Gym' })
+    expect(toMergePatch(before, { ...before, coverTitle: ' ' })).toEqual({ coverTitle: null })
+    expect(eventValues(mockEvent, 'UTC').coverTitle).toBe('')
+  })
+
   it('patches occurrences with their members only', () => {
     const before = eventValues(mockSeries, 'UTC')
     expect(toOccurrencePatch(before, { ...before, title: 'Moved', startTime: '19:00' })).toEqual({
       title: 'Moved',
       start: { dateTime: '2026-11-03T19:00:00', timeZone: 'Europe/Berlin' },
       end: { dateTime: '2026-11-03T19:30:00', timeZone: 'Europe/Berlin' },
+    })
+    expect(toOccurrencePatch(before, { ...before, coverTitle: 'Busy evening' })).toEqual({
+      coverTitle: 'Busy evening',
     })
   })
 

@@ -248,10 +248,16 @@ function seed(): MockCalendarsState {
       ...fields,
     } satisfies CalendarEvent
   }
-  const busy = (calendarId: string, start: EventTime, end: EventTime): CalendarEvent => ({
+  const busy = (
+    calendarId: string,
+    start: EventTime,
+    end: EventTime,
+    coverTitle?: string,
+  ): CalendarEvent => ({
     id: id(),
     calendarId,
     title: null,
+    ...(coverTitle ? { coverTitle } : {}),
     start,
     end,
     allDay: Boolean(start.date),
@@ -322,9 +328,11 @@ function seed(): MockCalendarsState {
       myLevel: 'read',
       createdBy: { id: '0192f2c4-0000-7000-8000-000000000006', displayName: 'Lena' },
     }),
-    busy(mockBusyCalendar.id, at(d(4), '14:00'), at(d(4), '16:00')),
+    // Adam set a cover title: busy-only viewers see it instead of "Busy".
+    busy(mockBusyCalendar.id, at(d(4), '14:00'), at(d(4), '16:00'), 'Out of office'),
     event({
       title: 'League match vs. SV Nord',
+      coverTitle: 'Football',
       description: 'Meet 9:15 at the clubhouse.',
       location: 'Stadium Nord',
       start: at(d(5), '10:00'),
@@ -460,11 +468,14 @@ export function mockOccurrences(series: SeriesRecord): CalendarEvent[] {
     const start = plusDays(series.master.start, i * series.everyDays)
     const recurrenceId = start.utc ?? start.date ?? ''
     const exception = series.exceptions?.[recurrenceId]
+    // An exception's empty cover title: this occurrence has none (not the series').
+    const { coverTitle, ...changes } = exception ?? {}
     return {
       ...series.master,
       start,
       end: plusDays(series.master.end, i * series.everyDays),
-      ...exception,
+      ...changes,
+      ...(coverTitle === '' ? { coverTitle: undefined } : coverTitle ? { coverTitle } : {}),
       occurrenceId: `${series.master.id}:${recurrenceId}`,
       recurrenceId,
       modified: exception !== undefined,

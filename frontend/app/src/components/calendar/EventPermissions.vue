@@ -287,6 +287,13 @@ function reset() {
           </p>
         </li>
       </ul>
+      <p
+        v-if="rows.some((r) => r.level === 'free_busy')"
+        class="text-on-surface-muted"
+        data-testid="overrides-busy-preview"
+      >
+        {{ t('permissions.busyPreview', { title: event.coverTitle || t('calendar.busy') }) }}
+      </p>
 
       <fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3">
         <legend class="px-1 font-medium">{{ t('permissions.add.title') }}</legend>

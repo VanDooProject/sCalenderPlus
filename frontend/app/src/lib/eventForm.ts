@@ -12,6 +12,8 @@ type EventTimeRequest = components['schemas']['EventTimeRequest']
  */
 export interface EventFormValues {
   title: string
+  /** What busy-only viewers see instead of "Busy" (privacy-levels.md §5); empty: none. */
+  coverTitle: string
   calendarId: string
   allDay: boolean
   startDate: string
@@ -37,7 +39,12 @@ export function newEventValues(input: {
   end?: string
   allDay: boolean
 }): EventFormValues {
-  const base = { title: '', calendarId: input.calendarId, timeZone: input.timeZone }
+  const base = {
+    title: '',
+    coverTitle: '',
+    calendarId: input.calendarId,
+    timeZone: input.timeZone,
+  }
   const startDate = input.start.slice(0, 10)
   if (input.allDay) {
     // A selection's end is exclusive; the form shows the last day.
@@ -73,6 +80,7 @@ export function newEventValues(input: {
 export function eventValues(event: EventResponse, fallbackZone: string): EventFormValues {
   const base = {
     title: event.title ?? '',
+    coverTitle: event.coverTitle ?? '',
     calendarId: event.calendarId,
     location: event.location ?? '',
     description: event.description ?? '',
@@ -123,6 +131,7 @@ export function toCreateRequest(v: EventFormValues): CreateEventRequest {
   return {
     calendarId: v.calendarId,
     title: v.title.trim(),
+    ...(v.coverTitle.trim() ? { coverTitle: v.coverTitle.trim() } : {}),
     ...eventTimes(v),
     ...(v.location.trim() ? { location: v.location.trim() } : {}),
     ...(v.description.trim() ? { description: v.description.trim() } : {}),
@@ -133,12 +142,15 @@ const timeFields = ['allDay', 'startDate', 'startTime', 'endDate', 'endTime', 't
 
 /**
  * JSON Merge Patch of the changed members (api.md: absent members stay; an empty `description` or
- * `location` removes it). Times are sent as a pair whenever one of them changed (switching between
+ * `location` removes it, a cleared cover title is sent as `null`). Times are sent as a pair whenever one of them changed (switching between
  * timed and all-day needs both).
  */
 export function toMergePatch(initial: EventFormValues, v: EventFormValues): UpdateEventRequest {
   const patch: UpdateEventRequest = {}
   if (v.title.trim() !== initial.title.trim()) patch.title = v.title.trim()
+  if (v.coverTitle.trim() !== initial.coverTitle.trim()) {
+    patch.coverTitle = v.coverTitle.trim() || null
+  }
   if (v.location.trim() !== initial.location.trim()) patch.location = v.location.trim()
   if (v.description.trim() !== initial.description.trim()) patch.description = v.description.trim()
   const timesChanged = v.allDay
@@ -153,9 +165,11 @@ export function toOccurrencePatch(
   initial: EventFormValues,
   v: EventFormValues,
 ): UpdateOccurrenceRequest {
-  const { title, location, description, start, end } = toMergePatch(initial, v)
+  const { title, coverTitle, location, description, start, end } = toMergePatch(initial, v)
   return Object.fromEntries(
-    Object.entries({ title, location, description, start, end }).filter(([, x]) => x !== undefined),
+    Object.entries({ title, coverTitle, location, description, start, end }).filter(
+      ([, x]) => x !== undefined,
+    ),
   )
 }
 

@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Temporal } from 'temporal-polyfill'
 import type { EventResponse } from '@scalenderplus/api-client'
-import { mockCalendar, mockCalendars, mockPersonalCalendar } from '@scalenderplus/api-client/mocks'
+import {
+  http,
+  mockCalendar,
+  mockCalendars,
+  mockOccurrences,
+  mockPersonalCalendar,
+} from '@scalenderplus/api-client/mocks'
+import { api } from '@/api'
 import {
   contrastText,
   eventsQueryKey,
@@ -15,7 +22,7 @@ import {
   visibleRange,
   type EventsWindow,
 } from '@/lib/calendarView'
-import { byTestId, mountApp, queryTestId, resetDom, until } from './app'
+import { byTestId, click, mountApp, queryTestId, resetDom, settle, type, until } from './app'
 import { useMockApi } from './msw'
 
 const server = useMockApi()
@@ -149,6 +156,48 @@ describe('event mapping', () => {
     expect(mapped?.extendedProps.editable).toBe(false)
   })
 
+  it('titles busy items with their cover title', () => {
+    const busy: EventResponse = {
+      ...timed,
+      title: null,
+      coverTitle: 'Out of office',
+      myLevel: 'free_busy',
+    }
+    expect(toCalendarEvent(busy, colorOf)).toMatchObject({
+      title: 'Out of office',
+      className: 'scal-busy',
+      interactive: false,
+    })
+  })
+
+  it('shows "Busy" for an occurrence whose cover title was removed ("")', () => {
+    const busy: EventResponse = { ...timed, title: null, coverTitle: '', myLevel: 'free_busy' }
+    expect(toCalendarEvent(busy, colorOf)?.title).toBe('')
+  })
+
+  it('stores an occurrence without cover title as "" and a value equal to the series as inherit', async () => {
+    const series = mockCalendars.series[0]!
+    series.master = { ...series.master, coverTitle: 'Sport' }
+    const [first] = mockOccurrences(series)
+    const patch = (coverTitle: string | null) =>
+      api.PATCH('/api/v1/events/{id}/occurrences/{recurrenceId}', {
+        params: {
+          path: { id: series.master.id, recurrenceId: first!.recurrenceId! },
+          header: { 'If-Match': '*' },
+        },
+        body: { coverTitle },
+      })
+
+    const { data } = await patch(null)
+    expect(series.exceptions?.[first!.recurrenceId!]?.coverTitle).toBe('')
+    expect(data?.coverTitle).toBeUndefined()
+    await patch(' Sport ')
+    expect(series.exceptions?.[first!.recurrenceId!]).not.toHaveProperty('coverTitle')
+    expect(mockOccurrences(series)[0]?.coverTitle).toBe('Sport')
+    await patch('Gym')
+    expect(mockOccurrences(series)[0]?.coverTitle).toBe('Gym')
+  })
+
   it('draws nothing for free time of the busy projection', () => {
     const free: EventResponse = {
       ...timed,
@@ -213,5 +262,45 @@ describe('calendar page', () => {
     await mountApp('/calendar?view=month')
     await until(() => queryTestId('calendar-truncated') !== null)
     expect(byTestId('calendar-truncated').textContent).toContain('too many events')
+  })
+
+  it('sends a cover title and shows its validation error at the field', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.post('/api/v1/events', async ({ request, response }) => {
+        bodies.push(await request.json())
+        return response('default').json(
+          {
+            type: 'https://scalenderplus.app/problems/validation-failed',
+            title: 'Validation failed',
+            status: 400,
+            code: 'validation_failed',
+            errors: { coverTitle: ['The cover title is too long.'] },
+          },
+          { status: 400 },
+        )
+      }),
+    )
+    await mountApp('/calendar?view=week')
+    await click('calendar-new-event')
+    await until(() => queryTestId('event-cover-title') !== null)
+    await type('event-title', 'Therapy')
+    await type('event-cover-title', ' Appointment ')
+    document
+      .getElementById('event-form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await until(() => bodies.length === 1)
+    await settle()
+
+    expect(bodies[0]).toMatchObject({ title: 'Therapy', coverTitle: 'Appointment' })
+    const input = byTestId('event-cover-title')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    const describedBy = input.getAttribute('aria-describedby') ?? ''
+    const messages = describedBy
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+    expect(messages).toContain('The cover title is too long.')
+    expect(messages).toContain('instead of “Busy”')
   })
 })

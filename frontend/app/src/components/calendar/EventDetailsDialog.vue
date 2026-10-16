@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Clock,
+  EyeOff,
   Lock,
   MapPin,
   Pencil,
@@ -108,7 +109,7 @@ function onTabKey(event: KeyboardEvent) {
 <template>
   <UiDialog
     v-model:open="open"
-    :title="event?.title ?? ''"
+    :title="event ? (event.title ?? (event.coverTitle || t('calendar.busy'))) : ''"
     :close-label="t('common.close')"
     :size="tab === 'details' ? 'md' : 'lg'"
     testid="event-details"
@@ -212,6 +213,13 @@ function onTabKey(event: KeyboardEvent) {
         <dt class="sr-only">{{ t('calendar.details.createdBy') }}</dt>
         <UserRound class="mt-0.5 size-4 shrink-0 text-on-surface-muted" aria-hidden="true" />
         <dd>{{ t('calendar.details.createdByName', { name: event.createdBy.displayName }) }}</dd>
+      </div>
+      <div v-if="event.title !== null && event.coverTitle" class="flex items-start gap-3">
+        <dt class="sr-only">{{ t('event.form.coverTitle') }}</dt>
+        <EyeOff class="mt-0.5 size-4 shrink-0 text-on-surface-muted" aria-hidden="true" />
+        <dd class="text-on-surface-muted" data-testid="event-details-cover-title">
+          {{ t('calendar.details.coverTitle', { coverTitle: event.coverTitle }) }}
+        </dd>
       </div>
       <div class="flex items-start gap-3">
         <dt class="sr-only">{{ t('calendar.details.access') }}</dt>

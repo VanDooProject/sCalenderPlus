@@ -27,6 +27,7 @@ export {
   mockPersonalCalendar,
   mockPlanLimitName,
   mockCalendarEtag,
+  mockOccurrences,
   mockReadOnlyCalendar,
   mockSeries,
   mockResolveWallTime,

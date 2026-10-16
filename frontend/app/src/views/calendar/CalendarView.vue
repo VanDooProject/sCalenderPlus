@@ -304,10 +304,14 @@ const options = computed<CalendarOptions>(() => ({
       parent.removeAttribute('aria-label')
     }
     if (props.busy) {
-      // Not interactive and nothing to open: keep it out of the tab order and name it "Busy".
+      // Not interactive and nothing to open: keep it out of the tab order and name it "Busy" (or
+      // "<cover title> (busy)").
       info.el.removeAttribute('tabindex')
       info.el.removeAttribute('href')
-      info.el.setAttribute('aria-label', busyLabel.value)
+      info.el.setAttribute(
+        'aria-label',
+        info.event.title ? t('calendar.busyCover', { title: info.event.title }) : busyLabel.value,
+      )
       info.el.setAttribute('data-testid', 'busy-event')
       return
     }
@@ -500,7 +504,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <FullCalendar ref="calendarRef" :options="options">
           <template #eventContent="arg">
             <span v-if="arg.event.extendedProps.busy" class="scal-event-busy">
-              {{ busyLabel }}
+              {{ arg.event.title || busyLabel }}
             </span>
             <span
               v-else
