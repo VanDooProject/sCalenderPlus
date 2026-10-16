@@ -49,6 +49,8 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Public embeddable calendar widget | v1 | Clubs put it on their website; strong acquisition loop. Built on a share link. |
 | ★ Calendar transfer between user and group | v1 | Organizers leave; calendars must survive (also needed by account deletion). |
 | ★ Archive calendar (read-only, out of default view) | later | Season ends; hiding via personal overlay covers it until then. |
+| ★ Privacy level B `content_encrypted` (title/description/location end-to-end encrypted, times clear) | later | Default for the poly edition; keeps feeds, free/busy and reminders working. Needs key management first ([privacy-levels.md](../architecture/privacy-levels.md)). |
+| ★ Privacy level A `end_to_end` (everything encrypted) | later (maybe) | Removes feeds, sync, server reminders and search; build only on proven demand. |
 
 ## 4. Events
 
@@ -70,6 +72,7 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Attachments (files) | later | Storage costs; links cover most needs initially. |
 | ★ Event comments | later | Nice for clubs, but not core. |
 | ★ Per-occurrence permission overrides | later | MVP: exceptions inherit series ACL (keeps engine simple). |
+| ★ Cover titles (`coverTitle` shown to `free_busy` viewers instead of "Busy") | MVP (built) | "Busy with Alex" is more useful than "Busy" and still reveals nothing private; built in API and web app, feeds use it from M4 ([privacy-levels.md §5](../architecture/privacy-levels.md#5-cover-titles)). |
 
 ## 5. Views and UX
 
@@ -85,6 +88,7 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Accessibility (WCAG 2.2 AA) | MVP | Legal relevance in EU (European Accessibility Act); calendar grids are notoriously inaccessible. |
 | ★ Dark mode / system theme | MVP | Cheap with design tokens from the start. |
 | ★ Offline read cache (PWA) | later (M8) | Check today's schedule without network. |
+| ★ Real-time updates in our own clients (SSE/websocket on the change log) | later (M8) | Shared editing feels live; builds on the incremental changes endpoint (M8). Feeds stay polling ([sync.md](../architecture/sync.md)). |
 
 ## 6. Native app integration
 
@@ -98,6 +102,8 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | CalDAV read-only | later (M8) | Better sync than iCal polling. |
 | CalDAV read/write with per-event ACL enforcement | later (M8) | Two-way sync from native apps; Pro gate. |
 | ★ Native iOS/Android apps on the public API | later | After API stabilises; PWA covers until then. |
+| ★ Google Calendar API / Microsoft Graph write-through sync | later | The only way to get near-real-time updates into Google and Outlook ([sync.md §3](../architecture/sync.md#3-google-calendar-api-and-microsoft-graph-connectors)). After v1: feeds cover the MVP promise, and each provider needs OAuth app verification and ongoing token/quota handling. |
+| ★ Google / Microsoft API import (two-way) | later | Same connectors; replaces manual ICS export. ICS upload (MVP) and subscription (v1) cover migration until then. |
 
 ## 7. LLM import
 
@@ -135,6 +141,8 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Graceful downgrade (freeze, never delete, keep overrides enforced) | v1 | Prevents data loss and privacy leaks. |
 | ★ EU VAT handling via Stripe Tax, invoices | v1 | Legal requirement for EU B2C/B2B. |
 | Self-host mode (billing disabled, all features) | v1 | See plans.md. |
+| ★ Reverse trial (Pro limits for `Plans__TrialDays`, default 90, from account creation) | v1 (built) | Users experience the core feature unlimited before meeting limits; only with billing on. Trial-end reminder 7 days before is planned. |
+| ★ Entitlements endpoint `GET /me/entitlements` (plan, `trialEndsAt`, limits) | MVP (built) | The UI shows limits and trial end; usage counts follow in M5. |
 
 ## 10. Privacy, compliance, operations
 
@@ -149,6 +157,20 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Admin console (users, plans, abuse, feature flags) | later (M8) | Operations without SQL; SQL runbook until then. |
 | ★ Privacy policy, imprint, terms | MVP | Legally required in DACH before any public user. |
 | ★ Status page, DPA template | v1 | EU B2B requirement. |
+
+## 11. Editions and white-label
+
+See [editions.md](editions.md).
+
+| Feature | Prio | Rationale |
+|---|---|---|
+| ★ Runtime white-label branding (`PUBLIC_BRAND_*`, `Brand__*`) | MVP (built) | Name, logo, hue, legal links and support email per deployment without a rebuild; also serves self-hosters. |
+| ★ Edition builds (`VITE_EDITION`, `@edition` alias) + CI leak check | MVP (built) | Poly code, wording and assets must never ship in standard builds (owner requirement). |
+| ★ Poly wording overlay ("constellation") | MVP (poly) | Locale overlay only; no behaviour change. |
+| ★ Discretion features (neutral name/icon, discreet notifications, quick-hide) | later (poly launch) | Safety for users who are not out to everyone; session revoke and feed rotation exist in the core. |
+| ★ Event directory | later (poly) | Community events with organisers and moderation ([event-directory.md](event-directory.md)). |
+| ★ Adult add-on (opt-in, age-verified, web-only, separate payment provider) | later (poly) | Keeps the core and store listings clean ([editions.md §7.2](editions.md#72-adult-add-on)). |
+| ★ Edition-specific backend assemblies and api/worker images | later | Needed once the first poly-only backend module (event directory) exists. |
 
 ## Deliberately cut or postponed
 

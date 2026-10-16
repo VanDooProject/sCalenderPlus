@@ -129,6 +129,8 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 
 `GET /api/v1/me` → `{ id, email, emailVerified, displayName, locale, timeZone, weekStart, twoFactorEnabled, createdAt }` with a strong `ETag` (hash of the representation). `PATCH /api/v1/me` takes a JSON Merge Patch (`application/merge-patch+json`; plain `application/json` is accepted too) of `displayName` (1–100 chars, trimmed), `locale` (`en`, `de`), `timeZone` (IANA id validated against the bundled tzdb with NodaTime; unknown → `422 time_zone_invalid` with `errors.timeZone`) and `weekStart` (`monday` … `sunday`); other invalid values are `400 validation_failed`. Absent **and `null`** members stay unchanged (all fields are required, so none can be removed). `If-Match` (the ETag, or `*`) is required: missing → `428`, stale → `412`. Changes are audited (`user.profile_updated` with before/after).
 
+`GET /api/v1/me/entitlements` → `{ plan, trialEndsAt, limits: { ownedCalendars, ownedGroups, membersPerGroup, eventsWithOverrides, overridesPerEvent } }`: `plan` is `free`, `pro`, `team` or `selfhost`; `trialEndsAt` is a UTC instant while the reverse trial runs, else `null`; a `null` limit means unlimited ([plans.md](../product/plans.md)). Usage counts are added in M5.
+
 ### Groups (implemented, M1)
 
 Rules: `Core/Groups/GroupPolicy` (pure, unit-tested), use cases: `Application/Groups/GroupService` (permissions.md §6). Every group endpoint answers **404 `not_found`** to non-members (unknown and foreign groups are indistinguishable) and **403 `insufficient_permission`** (+ `required`, `actual` roles) to members whose role is too low.
@@ -235,7 +237,7 @@ Use cases: `Application/Events/EventOverrideService`, rules in `Core/Permissions
 
 (series add `recurrence`, `exceptions`, `relatedTo`; occurrences `occurrenceId`, `recurrenceId`, `modified` — see "Recurring events"; capabilities follow from `myLevel`: `edit` and `manage` may change the event, `manage` also its overrides and moves it; `GET /events/{id}/access/explain` gives the reason.) List items also carry `etag` (the `ETag` of `GET /events/{id}`); members that are null are omitted.
 
-For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, `allDay`, `transparency`, `myLevel` (and `sharedWithMe` when true), with `"title": null` — the client renders the localized "Busy". Fields are **omitted server-side**, never sent and hidden client-side; transparent events are not returned at all.
+For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, `allDay`, `transparency`, `myLevel` (and `sharedWithMe` when true), with `"title": null` and `coverTitle` when set — the client renders the cover title, else the localized "Busy". `read` and above get `title` and `coverTitle` (nullable, max 200 chars, settable with `edit`; [privacy-levels.md §5](privacy-levels.md#5-cover-titles)). Fields are **omitted server-side**, never sent and hidden client-side; transparent events are not returned at all.
 
 ### Event window (implemented, M2)
 

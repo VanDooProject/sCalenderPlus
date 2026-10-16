@@ -30,8 +30,13 @@ The result is calendar sprawl, accidental edits of important entries, leaked pri
 | **Fiona, family organizer** | Family / shared flat, 2–8 people | Kids' school dates scattered; private entries leak into family calendar | Free plan, school website import, private entries in shared calendar |
 | **Hugo, event aggregator** | Local culture blog, community manager | Copies events from 20 venue sites by hand | LLM import from many sources, dedupe, public read-only links |
 | **Dev, integrator** | Builds tooling around calendars | No fine-grained calendar API | Clean versioned REST API, tokens, webhooks |
+| **Robin, polycule organiser** (poly edition) | Several partners and metamours, overlapping constellations, kids' schedules with a co-parent | Shared calendars reveal too much or too little; juggles several apps and chats | Per-event sharing per partner, busy-only with cover titles for metamours, discretion features ([editions.md](editions.md)) |
 
 Primary market: **German-speaking Europe and EU** first (clubs/"Vereine" are a large, under-served segment; GDPR-native hosting in the EU is a selling point), English from day one.
+
+## Editions
+
+One codebase, two editions, each an independent deployment ([editions.md](editions.md)): **standard** (this vision; white-labelable per deployment) and **poly** (a customer edition for polyamorous and non-monogamous communities). The primary positioning below is the standard edition's; the poly edition reuses the same engine with its own wording, defaults and modules.
 
 ## Positioning
 
@@ -53,7 +58,7 @@ We do **not** compete on: meeting scheduling/booking pages (Calendly), email+cal
 
 1. **Secure by default, explainable always.** New calendars are private; every access is explainable; downgrades never expose data.
 2. **The calendar app you already use is a client.** Feature design starts with "how does this look in an iCal feed?"
-3. **Free must be genuinely useful forever.** We gate *power* (scale, automation, fine-grained control), not *time*.
+3. **Free must be genuinely useful forever.** We gate *power* (scale, automation, fine-grained control), not basic use. The 90-day reverse trial gives new accounts Pro limits *on top* ([plans.md](plans.md)); it never takes Free away.
 4. **Opinionated defaults, few knobs.** Roles and levels are a small totally-ordered set, not an RBAC matrix.
 5. **API-first.** The web app uses the same public, versioned API that native apps and integrators use.
 6. **EU-grade privacy.** Data minimisation, export and deletion are features, not chores.

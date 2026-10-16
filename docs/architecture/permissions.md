@@ -25,7 +25,7 @@ Levels are totally ordered. A higher level includes every capability of the lowe
 | # | Level | Capabilities on the event |
 |---|---|---|
 | 0 | `none` | Event does not exist for this principal. Not listed, not in feeds, not counted, 404 on direct access. |
-| 1 | `free_busy` | Sees start/end, all-day flag and transparency only. Title rendered as "Busy" (localized). Opaque events only; transparent ("free") events are omitted entirely. |
+| 1 | `free_busy` | Sees start/end, all-day flag and transparency only. Title rendered as the event's cover title if set, else "Busy" (localized) — see [privacy-levels.md §5](privacy-levels.md#5-cover-titles). Opaque events only; transparent ("free") events are omitted entirely. |
 | 2 | `read` | Sees all details: title, description, location, attendees, attachments, reminders of their own. Can RSVP if invited. |
 | 3 | `edit` | Read + change fields, times, recurrence, attendees; delete the event or single occurrences. |
 | 4 | `manage` | Edit + change the event's permission overrides, move the event to another calendar (needs `contribute` on the target). **Only reachable through a floor** (calendar `manage`/`owner` or creator floor, §4.2); overrides can grant at most `edit`. |
@@ -262,7 +262,7 @@ Feeds are always personalised (token belongs to a user, or to an anonymous share
 | Effective level | iCal output |
 |---|---|
 | `none` | VEVENT omitted. |
-| `free_busy` | `SUMMARY:Busy` (localized), no DESCRIPTION/LOCATION/ATTENDEE/URL/CATEGORIES/X-SCALENDERPLUS-*, `CLASS:CONFIDENTIAL`, times + `TRANSP` kept; `UID` replaced by the opaque `{eventId}@scalenderplus` (imported UIDs can contain text). Exception VEVENTs are stripped the same way. Transparent events omitted. |
+| `free_busy` | `SUMMARY:` cover title if set, else `Busy` (localized), no DESCRIPTION/LOCATION/ATTENDEE/URL/CATEGORIES/X-SCALENDERPLUS-*, `CLASS:CONFIDENTIAL`, times + `TRANSP` kept; `UID` replaced by the opaque `{eventId}@scalenderplus` (imported UIDs can contain text). Exception VEVENTs are stripped the same way. Transparent events omitted. |
 | `read` | Full event; label "read-only" per feed label settings (default: title prefix `🔒` followed by a space). |
 | `edit` / `manage` | Full event; label "editable" (default: no title marker, description footer only). |
 

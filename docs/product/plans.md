@@ -2,7 +2,7 @@
 
 ## Principles
 
-1. **Free forever, no trial clock.** Free is a complete product for a family or a small club. We gate **power** — scale, automation, fine-grained control, retention, integrations — never basic usefulness.
+1. **Reverse trial on top of a Free plan that stays useful forever.** Every new account gets the **Pro plan's limits for 90 days** from its creation (`users.created_at`), then falls back to Free under the normal downgrade rules (over-limit stays, only growth is refused; nothing deleted, overrides stay enforced). People experience the core feature at full strength before they meet a limit. Free itself remains a complete product for a family or a small club: we gate **power** — scale, automation, fine-grained control, retention, integrations — never basic usefulness. Configured with `Plans__TrialDays` (default `90`, `0` disables) and only active with billing on (`Billing__Provider=stripe`); self-host stays unlimited. The resource owner governs (principle 2): a trialing owner's group calendars have Pro limits for everyone in them.
 2. **The resource owner's plan governs.** Limits and features on a calendar are determined by the plan of the calendar's owner (user; for group-owned calendars the group's billing owner `groups.owner_user_id`, or the organization owning the group). A free user inside a Pro-owned group calendar enjoys Pro features *in that calendar*. This makes one paying organizer enough for a whole club — the right buyer.
 3. **Downgrades never delete and never leak.** Over-limit resources are frozen (read-only), not removed. Existing permission overrides **stay enforced**; only creating new ones is blocked.
 4. **Limits are visible.** Every gated resource shows a usage meter; hitting a limit shows what upgrading unlocks.
@@ -55,7 +55,20 @@ A seat is a distinct user who can **create or change content** in any org-owned 
 | SSO (OIDC/SAML, later) | ✗ | ✗ | ✓ | |
 | Support | community | email, 2 business days | email, 1 business day | |
 
-All numbers live in a single configuration, so marketing can tune them without a release: `PlansOptions` (`Application/Entitlements`) carries the numbers of this table as defaults, and every limit can be overridden per plan with `Plans__{Plan}__{Limit}` (empty = unlimited). Enforced so far: owned calendars, owned groups, members per group, events with overrides, override entries per event (calendars and overrides are wired when they land in M2). A DB table `plan_limits` may replace the configuration with billing.
+All numbers live in a single configuration, so marketing can tune them without a release: `PlansOptions` (`Application/Entitlements`) carries the numbers of this table as defaults, and every limit can be overridden per plan with `Plans__{Plan}__{Limit}` (empty = unlimited). Enforced so far: owned calendars, owned groups, members per group, events with overrides, override entries per event, and the reverse trial (Pro limits until `trialEndsAt`). `GET /api/v1/me/entitlements` returns `{ plan, trialEndsAt, limits }` (`null` = unlimited; [api.md](../architecture/api.md#me-implemented-m1)); usage counts follow in M5. A DB table `plan_limits` may replace the configuration with billing.
+
+## Per-edition defaults
+
+Each edition is an independent deployment ([editions.md](editions.md)) and tunes limits through its own `Plans__*` environment; prices and Stripe products are per deployment too.
+
+| Limit | Standard Free | Poly Free (*proposal*) | Why |
+|---|---|---|---|
+| Events with permission overrides | 10 | unlimited or 50 | In the poly use cases nearly every event is shared selectively (date with one partner, busy for the rest); 10 would block normal use. |
+| Override entries per event | 3 | 10 | Partner + metamours + constellation per event. |
+| Members per owned group | 15 | 15 | Constellations are small; same as standard. |
+| Trial | `Plans__TrialDays=90` | same | |
+
+Set via `Plans__Free__EventsWithOverrides`, `Plans__Free__OverridesPerEvent`, `Plans__Free__MembersPerGroup` in the poly deployment ([coolify.md §4](../deployment/coolify.md#4-environment-variables)).
 
 ## Upgrade triggers (where the paywall appears)
 
@@ -67,6 +80,7 @@ All numbers live in a single configuration, so marketing can tune them without a
 | Opening history older than 7 days | "See a year of changes with Pro." |
 | Adding a webhook / 2nd API token | "Connect sCalenderPlus to your tools with Pro." |
 | Org with > 1 Pro user in same group | Suggest Team (central billing, seats, admin console). |
+| Trial ends in 7 days (*planned*: email + in-app banner) | "Your Pro trial ends on {date}. Keep unlimited private entries and 150 members per group with Pro." |
 
 Paywalls appear **in context, after the user tried to do something**, with a one-click upgrade and a "not now" that never nags again for 14 days.
 
@@ -84,6 +98,7 @@ Paywalls appear **in context, after the user tried to do something**, with a one
 | Audit/history | Retention job trims to new retention after 30-day grace. |
 | Payment failed | Stripe dunning (3 retries over 14 days) → then downgrade as above. |
 | Ownership transfer to a lower-plan subject | Same rules, applied immediately; UI warns before the transfer. |
+| Reverse trial ended | A downgrade from Pro limits to Free: same rules, applied at `trialEndsAt` without a job (entitlements are computed from `created_at`). *Planned:* reminder email and in-app banner 7 days before. |
 
 **Shared-quota note:** on a Free group calendar every contributor's overrides count against the billing owner's 10. A single member can exhaust it; the usage meter shows usage per creator and managers can remove overrides. Accepted for MVP; revisit with beta data.
 
@@ -106,5 +121,5 @@ Paywalls appear **in context, after the user tried to do something**, with a one
 
 - **Pro at €12/month** is deliberately "pricey" vs. consumer calendars but cheap vs. Teamup's higher tiers and per-seat tools; the buyer is one organizer serving a whole group. Annual = 2 months free.
 - **Team per seat (creators only)** scales with value for companies while staying affordable for associations with many passive members.
-- Free costs us ≈ storage + feed bandwidth + ≤ 8 LLM runs/month; feed responses are cached (ETag), so the marginal Free user is < €0.10/month.
+- Free costs us ≈ storage + feed bandwidth + ≤ 8 LLM runs/month; feed responses are cached (ETag), so the marginal Free user is < €0.10/month. **Trial users** cost more for 90 days: Pro limits allow up to 300 LLM runs/month. Mitigation: unpaid (trial) LLM usage counts against the global daily Free LLM budget ([llm-import.md §8](../architecture/llm-import.md#8-cost-controls)) like Free usage, so account farming cannot exceed it; whether trial LLM quotas should be capped below Pro is an open question ([roadmap](../roadmap.md#open-questions-for-the-owner)).
 - Non-profit discount (50 % on Team) is recommended for registered associations — strong word-of-mouth in the club segment.

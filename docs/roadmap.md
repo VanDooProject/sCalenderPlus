@@ -2,7 +2,7 @@
 
 Milestones are ordered; each ends in a deployable state on staging. Each checklist item is sized to become **one GitHub issue / one PR** (title = conventional commit style PR title) and is listed in dependency order within its milestone. Format: **Title** — description. *AC:* acceptance criteria.
 
-MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, account deletion). Paid launch (v1) = M5–M7. Later = M8+.
+MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, account deletion). Paid launch (v1) = M5–M7. Later = M8+. **ME** (editions and white-label) is a parallel track; its first items are done, the rest is scheduled after v1 unless the poly customer needs them earlier.
 
 ---
 
@@ -82,6 +82,35 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 - [ ] **build(deploy): production environment and backups** — Prod Coolify project, `release.yml` deploy, backups to off-site S3, restore drill, uptime monitor. *AC:* documented restore into staging succeeds and smoke e2e passes on it.
 
 **→ Public beta (MVP).**
+
+## ME — Editions and white-label (parallel track)
+
+Spec: [product/editions.md](product/editions.md), [architecture/privacy-levels.md](architecture/privacy-levels.md), [architecture/sync.md](architecture/sync.md), [product/event-directory.md](product/event-directory.md).
+
+- [x] **feat(web): runtime brand configuration** — `/config.json` `brand` object rendered by Caddy from `PUBLIC_BRAND_NAME`, `_LOGO_URL`, `_HUE`, `_SUPPORT_EMAIL`, `_IMPRINT_URL`, `_PRIVACY_URL`, `_TERMS_URL`; app name, logo, OKLCH hue palette and legal/support links from it, edition defaults when unset. *AC:* changing `PUBLIC_BRAND_HUE` and `PUBLIC_BRAND_NAME` on the same image changes palette and title after reload.
+- [x] **build(web): edition builds** — `VITE_EDITION=standard|poly` (default `standard`), edition code in `src/editions/<edition>/` imported only via the `@edition` alias. *AC:* `VITE_EDITION=poly` build contains poly code; standard build does not import the poly folder.
+- [x] **ci: edition leak check** — Build the standard edition and fail if a poly marker string appears in `dist/`. *AC:* adding a poly marker to shared code fails CI.
+- [x] **feat(api): product name in emails** — `Brand__ProductName` (default "sCalenderPlus") and `Brand__SupportEmail` in email subjects and bodies. *AC:* email tests render the configured name.
+- [x] **feat(billing): reverse trial and entitlements endpoint** — Pro limits for `Plans__TrialDays` (default 90, 0 disables) from `users.created_at`, only with `Billing__Provider=stripe`; resource owner governs; `GET /api/v1/me/entitlements` → `{ plan, trialEndsAt, limits }`. *AC:* new account on stripe creates the 11th override event; same account at day 91 → 402; `selfhost` unchanged.
+- [x] **feat(events): cover titles** — `coverTitle` (nullable, trimmed, ≤ 200) settable with `edit`; `free_busy` viewers get it instead of "Busy", `read`+ get title and cover title; web event dialog and busy rendering. *AC:* `free_busy` response contains `coverTitle` but no title/description/location (authz test).
+- [ ] **build(deploy): per-edition web image** — `web.Dockerfile` build arg `EDITION`; publish `scalenderplus-poly-web` alongside `scalenderplus-web` in `images.yml` and releases; compose files take the web image name from a variable (default `scalenderplus-web`). *AC:* both images published; leak check runs on the standard image's assets.
+- [ ] **feat(web): poly wording overlay** — Poly-only locale JSON merged over base messages ("group" → "constellation" / "Konstellation"). *AC:* i18n completeness test covers the overlay; standard build unchanged (leak check).
+- [ ] **feat(billing): trial-end reminder** — Email and in-app banner 7 days before `trialEndsAt`, once per account. *AC:* worker test sends exactly one email at day 83 with `Plans__TrialDays=90`.
+- [ ] **feat(ical): cover titles in feeds** — `free_busy` VEVENTs use `coverTitle` as `SUMMARY` (part of M4 feed rendering). *AC:* golden file for a busy event with cover title.
+- [ ] **feat(auth): special-category consent (poly)** — Explicit Art. 9 consent at sign-up, recorded with timestamp and text version. *AC:* sign-up without consent → 422; consent text version stored.
+- [ ] **docs(poly): DPIA and sub-processor list** — Data protection impact assessment and minimal sub-processor list for the poly deployment. *AC:* reviewed by the DPIA owner (open question 15) before poly launch.
+- [ ] **feat(web): discretion features (poly)** — Neutral app name/icon option (manifest), discreet notification/email texts, quick-hide; prominent session revoke and feed rotation. *AC:* with discreet mode on, no event title or person name appears in push or email payloads (test).
+
+Later in this track:
+
+- [ ] **build(api): edition-specific backend assemblies and images** — Poly-only modules in separate assemblies referenced only by `scalenderplus-poly-api`/`-worker`. *AC:* standard api image contains no poly assembly (CI check).
+- [ ] **feat(api): real-time updates for own clients** — SSE (or websocket) stream of change notifications from `calendar_changes`, permission-filtered; web app refetches affected windows. *AC:* second browser sees an edit within 2 s (fullstack e2e).
+- [ ] **feat(sync): Google Calendar and Microsoft Graph write-through** — Connect account, dedicated target calendar, per-user projection incl. busy-only/cover titles, reconcile job. *AC:* access revoked → event removed from the connected calendar on the next run.
+- [ ] **feat(sync): Google and Microsoft import connectors** — Two-way: import the user's own calendars with ICS-subscription dedupe. *AC:* re-import creates 0 duplicates.
+- [ ] **feat(privacy): privacy level B (content encrypted)** — Per-user key pairs, device pairing (QR, safety numbers), recovery key, event keys wrapped for `read`+, re-key on revoke, raise-only level. *AC:* server DB contains no plaintext title for a level-B event; `free_busy` viewer gets no wrapped key.
+- [ ] **feat(privacy): privacy level A (end-to-end)** — Only if demand is proven; client-side recurrence, reminders, search. *AC:* feeds/CalDAV/sync refuse level-A calendars.
+- [ ] **feat(directory): event directory (poly)** — Regional calendars, organiser verification and claiming, moderation queue, moderator platform role, reports/takedown/bans/audit, going/interested with per-event visibility. *AC:* unverified submission is invisible until approved; moderator cannot read private calendars (authz test).
+- [ ] **feat(directory): adult add-on (poly)** — Opt-in with age verification, web-only, separate payment provider. *AC:* store/PWA-store builds cannot unlock it; without the add-on explicit listings are hidden.
 
 ## M5 — Plans, limits, billing
 
@@ -167,3 +196,8 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 9. **Editors limit on Pro** (proposed 25): accept, tune, or drop?
 10. **Team at paid launch?** Organizations + seats (two M5 items) could slip to after v1, launching with Free + Pro only.
 11. **External sharing by creators**: keep default `creatorsMayShareExternally = false`?
+12. **Poly edition name and brand**: product name, domain, logo and hue for the poly deployment (needed before its first deployment; the code only uses the edition key `poly`).
+13. **Adult add-on payment provider**: which provider that accepts adult businesses (Stripe stays for the core)?
+14. **Trial length**: confirm 90 days (`Plans__TrialDays`), and whether trial accounts should get Pro LLM quotas or Free ones (cost, account farming; see plans.md pricing rationale).
+15. **DPIA owner**: who on the customer side owns the DPIA and Art. 9 consent texts for the poly edition?
+16. **Poly Free limits**: confirm the proposal in plans.md (events with overrides unlimited or 50, 10 entries per event, 15 members per group).
