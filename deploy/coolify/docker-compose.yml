@@ -96,11 +96,12 @@ services:
     <<: *hardening
 
   # Public entry point (SPA + same-origin reverse proxy to api). Domain in Coolify: https://<domain>:8080
-  # Poly edition: WEB_IMAGE=scalenderplus-poly-web.
+  # Poly edition: WEB_IMAGE=scalenderplus-poly-web (the image checks that it is the one asked for).
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/${WEB_IMAGE:-scalenderplus-web}:${IMAGE_TAG:-main}
     environment:
       API_UPSTREAM: ${API_UPSTREAM:-api:8080}
+      EXPECTED_WEB_IMAGE: ${WEB_IMAGE:-scalenderplus-web}
       PUBLIC_ENVIRONMENT: ${APP_ENVIRONMENT:-staging}
       # White-label branding in /config.json (optional; unset = the edition's defaults).
       PUBLIC_BRAND_NAME: ${PUBLIC_BRAND_NAME:-}

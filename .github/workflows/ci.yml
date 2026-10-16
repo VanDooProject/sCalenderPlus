@@ -247,6 +247,26 @@ jobs:
             ${{ matrix.edition && format('EDITION={0}', matrix.edition) || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      # The OCI title is the image's published name (web: chosen by EDITION in web.Dockerfile).
+      - name: Check image title
+        env:
+          EXPECTED_TITLE: scalenderplus-${{ matrix.image }}
+        run: |
+          title=$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.title" }}' "$IMAGE")
+          if [ "$title" != "$EXPECTED_TITLE" ]; then
+            echo "::error::$IMAGE has the title '$title', expected '$EXPECTED_TITLE'"
+            exit 1
+          fi
+      # A web image started as another edition's WEB_IMAGE must exit (deploy/docker/web-start.sh).
+      - name: Web image refuses a mismatched WEB_IMAGE
+        if: ${{ matrix.image == 'web' || matrix.dockerfile == 'web' }}
+        run: |
+          rc=0
+          docker run --rm -e EXPECTED_WEB_IMAGE=scalenderplus-other-web "$IMAGE" || rc=$?
+          if [ "$rc" -ne 64 ]; then
+            echo "::error::expected exit code 64 for a mismatched WEB_IMAGE, got $rc"
+            exit 1
+          fi
       - name: Trivy (fail on fixable CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

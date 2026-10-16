@@ -101,8 +101,10 @@ services:
       start_period: 30s
     <<: *hardening
 
-  # Public entry point: SPA + reverse proxy to api. Poly edition: WEB_IMAGE=scalenderplus-poly-web
-  # (and EDITION=poly for local builds).
+  # Public entry point: SPA + reverse proxy to api. The edition is a pair of variables, because
+  # compose can't derive one from the other: standard = WEB_IMAGE=scalenderplus-web + EDITION=standard
+  # (the defaults), poly = WEB_IMAGE=scalenderplus-poly-web + EDITION=poly (EDITION only matters for
+  # `--build`). The image refuses to start when it isn't the WEB_IMAGE asked for (web-start.sh).
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/${WEB_IMAGE:-scalenderplus-web}:${IMAGE_TAG:-local}
     build:
@@ -112,6 +114,7 @@ services:
         EDITION: ${EDITION:-standard}
     environment:
       API_UPSTREAM: api:8080
+      EXPECTED_WEB_IMAGE: ${WEB_IMAGE:-scalenderplus-web}
       PUBLIC_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       # White-label branding in /config.json (optional; unset = the edition's defaults).
       PUBLIC_BRAND_NAME: ${PUBLIC_BRAND_NAME:-}
