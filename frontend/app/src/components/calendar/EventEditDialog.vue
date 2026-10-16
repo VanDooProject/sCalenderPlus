@@ -54,8 +54,12 @@ const queryClient = useQueryClient()
 const rules = useValidators()
 const formRef = ref<HTMLFormElement>()
 
+/** The api's limit of cover titles (privacy-levels.md §5). */
+const coverTitleMax = 200
+
 const empty: EventFormValues = {
   title: '',
+  coverTitle: '',
   calendarId: '',
   allDay: false,
   startDate: '',
@@ -82,6 +86,10 @@ const form = useForm<EventFormValues>(
     formRef,
     validate: (v) => ({
       title: rules.required(v.title),
+      coverTitle:
+        v.coverTitle.trim().length > coverTitleMax
+          ? t('validation.maxLength', { max: coverTitleMax })
+          : undefined,
       calendarId: v.calendarId ? undefined : t('validation.required'),
       endDate: endBeforeStart(v) ? t('event.form.endBeforeStart') : undefined,
     }),
@@ -343,6 +351,19 @@ const textareaClass =
             autocomplete="off"
             data-autofocus
             data-testid="event-title"
+          />
+        </UiField>
+        <UiField
+          :label="t('event.form.coverTitle')"
+          :hint="t('event.form.coverTitleHint')"
+          :errors="form.errors('coverTitle')"
+        >
+          <UiInput
+            v-model="form.values.coverTitle"
+            name="coverTitle"
+            :maxlength="coverTitleMax"
+            autocomplete="off"
+            data-testid="event-cover-title"
           />
         </UiField>
         <UiField :label="t('event.form.calendar')" :errors="form.errors('calendarId')" required>

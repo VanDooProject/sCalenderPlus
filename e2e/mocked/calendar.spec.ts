@@ -3,9 +3,9 @@ import { expect, test, type Page } from '@playwright/test'
 /**
  * Calendar views against the stateful MSW calendar mocks
  * (frontend/packages/api-client/src/mocks/calendars.ts): the seed is anchored to the current week —
- * "Lunch with Max" (Mia, Monday), busy blocks of Adam's calendar (Wednesday, Friday), "Dentist"
- * (Mia, Thursday), "Parents’ evening" (shared with me), "Book club" (read-only, Friday) and the
- * "League match" (FC Lions – Club, Saturday).
+ * "Lunch with Max" (Mia, Monday), busy blocks of Adam's calendar (Wednesday; Friday with the cover
+ * title "Out of office"), "Dentist" (Mia, Thursday), "Parents’ evening" (shared with me), "Book
+ * club" (read-only, Friday) and the "League match" (FC Lions – Club, Saturday).
  */
 const calendars = {
   lions: '0192f2c4-0000-7000-8000-000000000301',
@@ -71,9 +71,16 @@ test('shows busy blocks without a title and without opening them', async ({ page
   await page.goto('/calendar?view=week')
   const busy = page.getByTestId('busy-event')
   await expect(busy.first()).toBeVisible()
+  // Adam gave one of them a cover title: it replaces "Busy" (and still says busy to screen readers).
+  const covered = busy.filter({ hasText: 'Out of office' })
+  await expect(covered).toHaveCount(1)
+  await expect(covered).toHaveAttribute('aria-label', 'Out of office (busy)')
   for (const block of await busy.all()) {
+    if ((await block.textContent())?.includes('Out of office')) continue
     await expect(block).toHaveText('Busy')
     await expect(block).toHaveAttribute('aria-label', 'Busy')
+  }
+  for (const block of await busy.all()) {
     await expect(block).not.toHaveAttribute('tabindex', /.*/)
   }
   await busy.first().click({ force: true })

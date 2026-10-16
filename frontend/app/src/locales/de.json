@@ -71,6 +71,7 @@
     },
     "allDay": "Ganztägig",
     "busy": "Belegt",
+    "busyCover": "{title} (belegt)",
     "readOnly": "nur lesen",
     "sharedWithMe": "Mit mir geteilt",
     "emptyRange": "Keine Termine in diesem Zeitraum.",
@@ -107,7 +108,8 @@
       "createdByName": "Erstellt von {name}",
       "access": "Dein Zugriff",
       "description": "Beschreibung",
-      "recurring": "Wiederholt sich"
+      "recurring": "Wiederholt sich",
+      "coverTitle": "Wer nur belegte Zeiten sieht, sieht: {coverTitle}"
     },
     "settings": "Kalendereinstellungen",
     "settingsOf": "Einstellungen von {name}"
@@ -554,7 +556,8 @@
     "email": "Gib eine gültige E-Mail-Adresse ein.",
     "passwordLength": "Verwende mindestens {min} Zeichen.",
     "passwordMismatch": "Die Passwörter stimmen nicht überein.",
-    "code": "Gib den 6-stelligen Code ein."
+    "code": "Gib den 6-stelligen Code ein.",
+    "maxLength": "Höchstens {max} Zeichen."
   },
   "errors": {
     "unexpected": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
@@ -638,7 +641,9 @@
       "more": "Weitere Optionen",
       "timeZone": "Zeitzone",
       "timeZoneHint": "Der Termin behält die Uhrzeit dieser Zone.",
-      "endBeforeStart": "Das Ende muss nach dem Beginn liegen."
+      "endBeforeStart": "Das Ende muss nach dem Beginn liegen.",
+      "coverTitle": "Ersatztitel",
+      "coverTitleHint": "Optional. Wird statt „Belegt“ angezeigt: für alle, die nur sehen dürfen, dass du belegt bist, und in Kalender-Feeds, die nur belegte Zeiten zeigen."
     },
     "scope": {
       "label": "Änderung anwenden auf",
@@ -747,7 +752,8 @@
       "result": "{name}: {level}",
       "resultMe": "Dein Zugriff: {level}",
       "hiddenAsTransparent": "{name}: Verborgen (der Termin ist als frei markiert, darum sehen ihn „Nur belegt“-Leser nicht)",
-      "decisive": "Entscheidet"
+      "decisive": "Entscheidet",
+      "busySees": "Sieht „{title}“ statt des Titels und keine Details."
     },
     "steps": {
       "share_link": "Zugriff über einen Freigabelink: {calendarLevel}.",
@@ -769,6 +775,12 @@
       "link_ceiling": "Ein Freigabelink gibt höchstens, was der Link erlaubt: {level}.",
       "result": "Ergebnis: {level}.",
       "unknown": "Schritt „{kind}“."
-    }
+    },
+    "busyPreview": "Wer „Nur belegt“ hat, sieht „{title}“ statt des Titels und keine Details."
+  },
+  "trial": {
+    "daysLeft": "Pro-Testphase: noch {n} Tag | Pro-Testphase: noch {n} Tage",
+    "until": "Dein Konto hat bis {date} die Limits des Pro-Plans, danach die des Free-Plans.",
+    "dismiss": "Hinweis zur Testphase ausblenden"
   }
 }

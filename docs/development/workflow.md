@@ -71,7 +71,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 - **Single product version** for the whole monorepo: api, worker, web (and landing from M7) ship together as one tested set. [`release-please-config.json`](../../release-please-config.json) has one package (`.`, `release-type: simple`, tags `vX.Y.Z` without component); [`.release-please-manifest.json`](../../.release-please-manifest.json) holds the last released version. The version is written to `version.txt`, `backend/Directory.Build.props` (`<Version>` line with the `x-release-please-version` marker, generic updater) and `frontend/app/package.json` (`json` updater, `$.version`) via `extra-files`.
 - Pre-1.0: `bump-minor-pre-major: true` and `bump-patch-for-minor-pre-major: true` (matches the table in §1). The manifest starts at `0.0.0`, which release-please treats as "never released", so the first release PR uses `initial-version` **0.1.0**; afterwards versions are bumped from the last tag. To force a version, put `Release-As: X.Y.Z` in a commit body.
 - Changelog sections: Features, Bug Fixes, Performance Improvements, Reverts, Code Refactoring, Documentation; `build`, `ci`, `test`, `style`, `chore` are hidden. The release PR title passes the `pr-title` check (`pull-request-title-pattern: chore: release ${version}`) and its branch is exempt from `branch-name`.
-- Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the `images` job runs inside `release-please.yml`, gated on the action's `release_created` output. It calls the reusable [`build-images.yml`](../../.github/workflows/build-images.yml), which builds `linux/amd64` + `linux/arm64` and pushes `ghcr.io/vandooproject/scalenderplus-{api,worker,web}` tagged `X.Y.Z`, `X.Y` and `latest` (plus `landing` from M7), with OCI labels and index annotations (title, description, source, version, revision, created), SBOM and provenance attestations. Deploying a release to production (Coolify webhook) is added with the production environment (M4).
+- Merging the release PR creates tag `vX.Y.Z` + GitHub Release. Because tags/releases created with the default `GITHUB_TOKEN` **do not trigger other workflows**, the `images` job runs inside `release-please.yml`, gated on the action's `release_created` output. It calls the reusable [`build-images.yml`](../../.github/workflows/build-images.yml), which builds `linux/amd64` + `linux/arm64` and pushes `ghcr.io/vandooproject/scalenderplus-{api,worker,web,poly-web}` tagged `X.Y.Z`, `X.Y` and `latest` (plus `landing` from M7), with OCI labels and index annotations (title, description, source, version, revision, created), SBOM and provenance attestations. Deploying a release to production (Coolify webhook) is added with the production environment (M4).
 - Every push to `main` whose `ci` run succeeded publishes `:main-<sha>` (full commit SHA, immutable) and `:main` (moving) via [`images.yml`](../../.github/workflows/images.yml) (`workflow_run` after `ci`, also runnable manually on `main`); these tags feed **staging**: the job `deploy-staging` in the same workflow deploys `main-<sha>` to Coolify (secrets `COOLIFY_WEBHOOK_URL`, `COOLIFY_TOKEN`, variable `STAGING_URL`; each part is skipped with a notice while not configured), see [coolify.md §11](../deployment/coolify.md#11-staging-on-coolify-step-by-step).
 - **Release PR checks**: pull requests opened with the default `GITHUB_TOKEN` do not trigger `ci`/`pr-checks`, so the release PR would never get its required checks. Set the repository secret `RELEASE_PLEASE_TOKEN` (fine-grained PAT or GitHub App installation token with *Contents* and *Pull requests* read/write) and the workflow uses it instead. Without it, close and reopen the release PR (as a human) to trigger the checks.
 
@@ -80,7 +80,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
 1. Create `main` from the current default branch and make it the **default branch** (Settings → General). Until then `release-please.yml`, `images.yml` and the staging deploy never run (they trigger on `main` only; `workflow_run` workflows must exist on the default branch).
 2. Settings → Actions → General → *Workflow permissions*: allow GitHub Actions to **create and approve pull requests** (needed for the release PR when `RELEASE_PLEASE_TOKEN` is not set).
 3. Optional but recommended: secret `RELEASE_PLEASE_TOKEN` (see above).
-4. After the first image push: make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web` **public** (Package settings → Change visibility) or give the deploy servers a read token, and link them to the repository (done automatically by the `org.opencontainers.image.source` label).
+4. After the first image push: make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web`, `scalenderplus-poly-web` **public** (Package settings → Change visibility) or give the deploy servers a read token, and link them to the repository (done automatically by the `org.opencontainers.image.source` label).
 5. Branch protection / ruleset for `main` as in §3 (required checks in §5).
 6. Staging: Coolify resources and the secrets `COOLIFY_WEBHOOK_URL`, `COOLIFY_TOKEN` and variable `STAGING_URL` per [coolify.md §11](../deployment/coolify.md#11-staging-on-coolify-step-by-step).
 7. Settings → Code security: keep CodeQL **default setup disabled** (`codeql.yml` is the advanced setup; uploads fail while default setup is on). Enable *Dependabot alerts* and *Dependabot security updates*; version updates come from `.github/dependabot.yml`.
@@ -98,16 +98,19 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
             │                                               └─ openapi export + diff check + oasdiff breaking
             │
             ├── frontend ─ install (pnpm cache) ─ lint (eslint, prettier) ─ typecheck (vue-tsc) ─ unit (vitest) ─ build app + landing
-            │                                     └─ api-client regenerate + diff check
+            │              │                      └─ api-client regenerate + diff check
+            │              └─ edition builds: standard build + leak check, VITE_EDITION=poly build + leak check
             │
             ├── e2e-mocked ── (parallel to frontend) Playwright vs Vite dev server in mock mode with MSW (chromium on PR; webkit + mobile viewport nightly)
             │
-            ├── docker ── build api/worker/web images (landing from M7; linux/amd64, loaded, no push), trivy scan (fixable CRITICAL fail, HIGH/CRITICAL in job summary)
+            ├── docker ── build api/worker/web/poly-web images (landing from M7; linux/amd64, loaded, no push), trivy scan (fixable CRITICAL fail, HIGH/CRITICAL in job summary)
             │
             └── e2e-fullstack ── (needs docker; images handed over as artifact and `docker load`ed) docker compose up --wait
                                   (postgres, migrate, api, worker, web; mailpit, fake LLM from M6) ─ Playwright fullstack suite (chromium)
  ci-ok ── needs all ── single required status check
 ```
+
+**Editions** ([editions.md](../product/editions.md)): the frontend job builds the standard edition (the default, also the white-label build) and runs the edition leak check on its `dist/` (`pnpm --filter app check:edition-leak`: fails when strings or files of `src/editions/poly` appear in it, with a self-test that the built edition's own markers are present), then builds `VITE_EDITION=poly` and checks it the other way round (`check:edition-leak --edition poly`). The docker job builds `poly-web` from `web.Dockerfile` with the build arg `EDITION=poly` next to `web`; the fullstack suite runs the standard `web` image. `build-images.yml` publishes `scalenderplus-poly-web` with the same tags as the other images.
 
 Other workflows:
 

@@ -90,6 +90,19 @@ function coverTitle(
   return { coverTitle: value || undefined }
 }
 
+/**
+ * The `coverTitle` of an occurrence's exception after a patch, like the api: `""` means "no cover
+ * title for this occurrence" (null or empty in the patch), `undefined` inherits the series' (a
+ * value equal to the series' one).
+ */
+function occurrenceCoverTitle(
+  value: string | null | undefined,
+  series: string | null | undefined,
+): string | undefined {
+  const trimmed = value?.trim() ?? ''
+  return trimmed === (series ?? '') ? undefined : trimmed
+}
+
 function findSeries(id: string): SeriesRecord | undefined {
   return mockCalendars.series.find((s) => s.master.id === id)
 }
@@ -234,11 +247,15 @@ export function eventHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
       const exception: Partial<CalendarEvent> = {
         ...series.exceptions?.[params.recurrenceId],
         ...(patch.title != null ? { title: patch.title } : {}),
-        ...('coverTitle' in patch ? coverTitle(patch, undefined) : {}),
         ...(patch.description != null ? { description: patch.description || null } : {}),
         ...(patch.location != null ? { location: patch.location || null } : {}),
         ...(patch.start ? { start: resolveTime(patch.start, zone, 'start', warnings) } : {}),
         ...(patch.end ? { end: resolveTime(patch.end, zone, 'end', warnings) } : {}),
+      }
+      if ('coverTitle' in patch) {
+        const value = occurrenceCoverTitle(patch.coverTitle, series.master.coverTitle)
+        if (value === undefined) delete exception.coverTitle
+        else exception.coverTitle = value
       }
       series.exceptions = { ...series.exceptions, [params.recurrenceId]: exception }
       series.version = (series.version ?? 1) + 1

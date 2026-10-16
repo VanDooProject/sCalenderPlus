@@ -68,6 +68,14 @@ const summary = computed(() => {
     level: levelLabel(t, data.level),
   })
 })
+/** Busy-only viewers: what they see in place of the title (the cover title, else "Busy"). */
+const busySees = computed(() => {
+  const data = explanation.data.value
+  if (!data || data.hiddenAsTransparent || data.level !== 'free_busy') return ''
+  return t('permissions.explain.busySees', {
+    title: props.event.coverTitle || t('calendar.busy'),
+  })
+})
 </script>
 
 <template>
@@ -84,6 +92,9 @@ const summary = computed(() => {
     />
     <template v-else>
       <p class="font-medium" role="status" data-testid="explain-result">{{ summary }}</p>
+      <p v-if="busySees" class="-mt-2 text-on-surface-muted" data-testid="explain-busy-sees">
+        {{ busySees }}
+      </p>
       <ol class="flex flex-col border-l-2 border-border pl-4" data-testid="explain-steps">
         <li
           v-for="(step, index) in steps"

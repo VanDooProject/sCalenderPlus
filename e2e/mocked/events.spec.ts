@@ -48,6 +48,33 @@ test('creates an event by clicking a slot', async ({ page }) => {
   await expect(page.getByTestId('event-details')).toContainText('Room 4')
 })
 
+test('a cover title is shown to editors, changed and removed', async ({ page }) => {
+  await page.goto('/calendar?view=week')
+  // Seeded: the league match shows "Football" to busy-only viewers.
+  await event(page, 'League match').click()
+  const coverLine = page.getByTestId('event-details-cover-title')
+  await expect(coverLine).toHaveText('Others who only see busy time see: Football')
+
+  await page.getByTestId('event-details-edit').click()
+  const dialog = page.getByTestId('event-dialog')
+  const cover = page.getByTestId('event-cover-title')
+  await expect(cover).toHaveValue('Football')
+  await expect(cover).toHaveAccessibleDescription(/instead of “Busy”/)
+  await cover.fill('Match day')
+  await page.getByTestId('event-save').click()
+  await expect(dialog).toBeHidden()
+  await event(page, 'League match').click()
+  await expect(coverLine).toHaveText('Others who only see busy time see: Match day')
+
+  await page.getByTestId('event-details-edit').click()
+  await cover.fill('')
+  await page.getByTestId('event-save').click()
+  await expect(dialog).toBeHidden()
+  await event(page, 'League match').click()
+  await expect(page.getByTestId('event-details')).toBeVisible()
+  await expect(coverLine).toHaveCount(0)
+})
+
 test('n opens a new event; a time in a DST gap is reported after saving', async ({ page }) => {
   await page.goto('/calendar?view=week')
   await expect(event(page, 'Lunch with Max')).toBeVisible()

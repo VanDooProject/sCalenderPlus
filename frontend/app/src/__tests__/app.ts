@@ -85,9 +85,16 @@ export async function submit(formId: string) {
   await settle()
 }
 
-export function resetDom() {
+/** Unmounts the app like a page reload: browser storage stays. */
+export function unmountApp() {
   mounted.splice(0).forEach((wrapper) => wrapper.unmount())
   document.body.innerHTML = ''
   useToast().clear()
+}
+
+/** Unmounts the app and forgets the browser storage. */
+export function resetDom() {
+  unmountApp()
   localStorage.clear()
+  sessionStorage.clear()
 }

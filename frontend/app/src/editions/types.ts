@@ -17,7 +17,11 @@ export interface EditionDefinition {
   id: EditionId
   /** A string unique to this edition that stays in its bundle (the leak check looks for it). */
   marker: string
-  /** Defaults of the runtime branding (`brand` in /config.json overrides them per deployment). */
+  /**
+   * Defaults of the runtime branding (`brand` in /config.json overrides them per deployment), from
+   * the edition's `brand.json`: the build also writes the name into index.html's `<title>`. An
+   * edition may ship a `favicon.svg` next to it (else `src/assets/favicon.svg`; vite.config.ts).
+   */
   brand: {
     name: string
     /** OKLCH hue (0–360) of the brand palette. */

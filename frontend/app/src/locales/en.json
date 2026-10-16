@@ -71,6 +71,7 @@
     },
     "allDay": "All day",
     "busy": "Busy",
+    "busyCover": "{title} (busy)",
     "readOnly": "read-only",
     "sharedWithMe": "Shared with me",
     "emptyRange": "No events in this period.",
@@ -107,7 +108,8 @@
       "createdByName": "Created by {name}",
       "access": "Your access",
       "description": "Description",
-      "recurring": "Repeats"
+      "recurring": "Repeats",
+      "coverTitle": "Others who only see busy time see: {coverTitle}"
     },
     "settings": "Calendar settings",
     "settingsOf": "Settings of {name}"
@@ -554,7 +556,8 @@
     "email": "Enter a valid email address.",
     "passwordLength": "Use at least {min} characters.",
     "passwordMismatch": "The passwords don't match.",
-    "code": "Enter the 6-digit code."
+    "code": "Enter the 6-digit code.",
+    "maxLength": "Use at most {max} characters."
   },
   "errors": {
     "unexpected": "Something went wrong. Please try again.",
@@ -638,7 +641,9 @@
       "more": "More options",
       "timeZone": "Time zone",
       "timeZoneHint": "The event keeps this zone's wall-clock time.",
-      "endBeforeStart": "The end must be after the start."
+      "endBeforeStart": "The end must be after the start.",
+      "coverTitle": "Cover title",
+      "coverTitleHint": "Optional. Shown instead of “Busy” to people who may only see that you're busy, and in busy-only calendar feeds."
     },
     "scope": {
       "label": "Apply the change to",
@@ -747,7 +752,8 @@
       "result": "{name}: {level}",
       "resultMe": "Your access: {level}",
       "hiddenAsTransparent": "{name}: Hidden (the event is marked as free, so busy-only viewers don't see it)",
-      "decisive": "Decides"
+      "decisive": "Decides",
+      "busySees": "Sees “{title}” instead of the title, and no details."
     },
     "steps": {
       "share_link": "Access through a share link: {calendarLevel}.",
@@ -769,6 +775,12 @@
       "link_ceiling": "A share link gives at most what the link allows: {level}.",
       "result": "Result: {level}.",
       "unknown": "Step “{kind}”."
-    }
+    },
+    "busyPreview": "People with “Busy only” see “{title}” instead of the title, and no details."
+  },
+  "trial": {
+    "daysLeft": "Pro trial: {n} day left | Pro trial: {n} days left",
+    "until": "Your account has the Pro plan's limits until {date}, then the Free plan's.",
+    "dismiss": "Hide the trial notice"
   }
 }

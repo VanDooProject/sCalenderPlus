@@ -200,7 +200,8 @@ export interface MappedEvent {
 /**
  * An api event as a FullCalendar event, or null when there is nothing to draw: a busy item without
  * times (a "free" exception of the busy projection) and transparent busy items are free time.
- * Busy items never carry a title (the projection has none; the UI renders the localized "Busy").
+ * Busy items never carry the real title (the projection has none): their title is the event's
+ * cover title when set (an occurrence's `""`: none), else empty and the UI renders "Busy".
  */
 export function toCalendarEvent(
   event: EventResponse,
@@ -215,7 +216,7 @@ export function toCalendarEvent(
   const color = event.sharedWithMe ? sharedColor : colorOf(event.calendarId)
   return {
     id: event.occurrenceId ?? event.id,
-    title: busy ? '' : (event.title ?? ''),
+    title: busy ? event.coverTitle || '' : (event.title ?? ''),
     start,
     end,
     allDay: event.allDay,
