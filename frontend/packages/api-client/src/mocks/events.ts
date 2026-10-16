@@ -78,6 +78,18 @@ const json = (body: unknown, status = 200, etag?: string) =>
 const text = (value: string | null | undefined, current: string | null | undefined) =>
   value === '' ? null : (value ?? current ?? null)
 
+/**
+ * The `coverTitle` member after a merge patch, like the api: absent keeps it, `null` or empty
+ * removes it (the member is then left out of the representation).
+ */
+function coverTitle(
+  patch: { coverTitle?: string | null },
+  current: string | null | undefined,
+): { coverTitle?: string } {
+  const value = 'coverTitle' in patch ? patch.coverTitle?.trim() : (current ?? undefined)
+  return { coverTitle: value || undefined }
+}
+
 function findSeries(id: string): SeriesRecord | undefined {
   return mockCalendars.series.find((s) => s.master.id === id)
 }
@@ -106,6 +118,7 @@ export function eventHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
         uid: body.uid ?? `${id}@scalenderplus`,
         calendarId: calendar.id,
         title: body.title ?? '',
+        ...(body.coverTitle?.trim() ? { coverTitle: body.coverTitle.trim() } : {}),
         description: body.description || null,
         location: body.location || null,
         url: body.url ?? null,
@@ -164,6 +177,7 @@ export function eventHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
       const updated: CalendarEvent = {
         ...event,
         title: patch.title ?? event.title,
+        ...coverTitle(patch, event.coverTitle),
         description: text(patch.description, event.description),
         location: text(patch.location, event.location),
         start,
@@ -220,6 +234,7 @@ export function eventHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
       const exception: Partial<CalendarEvent> = {
         ...series.exceptions?.[params.recurrenceId],
         ...(patch.title != null ? { title: patch.title } : {}),
+        ...('coverTitle' in patch ? coverTitle(patch, undefined) : {}),
         ...(patch.description != null ? { description: patch.description || null } : {}),
         ...(patch.location != null ? { location: patch.location || null } : {}),
         ...(patch.start ? { start: resolveTime(patch.start, zone, 'start', warnings) } : {}),
@@ -265,6 +280,7 @@ export function eventHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
         uid: `${id}@scalenderplus`,
         relatedTo: series.master.uid,
         title: body.title ?? series.master.title,
+        ...coverTitle(body, series.master.coverTitle),
         description: text(body.description, series.master.description),
         location: text(body.location, series.master.location),
         start: body.start ? resolveTime(body.start, zone, 'start', warnings) : occurrence.start,

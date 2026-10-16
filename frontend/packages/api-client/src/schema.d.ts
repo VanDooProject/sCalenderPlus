@@ -656,7 +656,7 @@ export interface paths {
     }
     /**
      * Events in a time window, as I see them (not paged)
-     * @description Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. Series: without expand their master (with recurrence and exceptions) when an occurrence overlaps the window (sync clients); with expand=occurrences each occurrence in the window (occurrenceId, recurrenceId, exceptions applied, cancelled ones left out; etag = the series' ETag) for calendar views. At most 5,000 items (truncated: true when more matched; at most 1,000 occurrences per series).
+     * @description Events of every calendar I see (or only calendarIds; unknown or invisible ids are ignored) plus events shared with me, overlapping [from, to) (RFC 3339 instants; at most 13 months), ordered by start; each with myLevel. free_busy events come as the busy projection (title null, times and coverTitle only); transparent events are left out for free_busy, and none-level events never appear. All-day events are dates: with timeZone (IANA) they are placed by their dates in that zone, without it every all-day event whose dates overlap the window in some zone (UTC−12 … UTC+14) is returned. Series: without expand their master (with recurrence and exceptions) when an occurrence overlaps the window (sync clients); with expand=occurrences each occurrence in the window (occurrenceId, recurrenceId, exceptions applied, cancelled ones left out; etag = the series' ETag) for calendar views. At most 5,000 items (truncated: true when more matched; at most 1,000 occurrences per series).
      */
     get: operations['ListEvents']
     put?: never
@@ -680,7 +680,7 @@ export interface paths {
     }
     /**
      * An event I see (with ETag)
-     * @description free_busy callers get the busy projection (times only, title null). 404 for events the caller has no level on, and for transparent events at free_busy (no existence leaks).
+     * @description free_busy callers get the busy projection (times and coverTitle only, title null). 404 for events the caller has no level on, and for transparent events at free_busy (no existence leaks).
      */
     get: operations['GetEvent']
     put?: never
@@ -694,7 +694,7 @@ export interface paths {
     head?: never
     /**
      * Change an event, or all occurrences of a series (edit; JSON Merge Patch, requires If-Match)
-     * @description Absent or null members stay unchanged; an empty description, location, url or color, or empty categories, remove the value. recurrence: a new rule (or null to stop recurring). Series: when the first occurrence moves, the exceptions (and rdates/exdates unless recurrence is given) shift with it; exceptions that no longer match an occurrence are dropped and listed in droppedExceptions. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.
+     * @description Absent or null members stay unchanged (except coverTitle: null removes it); an empty coverTitle, description, location, url or color, or empty categories, remove the value. recurrence: a new rule (or null to stop recurring). Series: when the first occurrence moves, the exceptions (and rdates/exdates unless recurrence is given) shift with it; exceptions that no longer match an occurrence are dropped and listed in droppedExceptions. Below edit: 403. Frozen calendars: 409 calendar_frozen. If-Match: the ETag of GET /events/{id} (or *); stale: 412.
      */
     patch: operations['UpdateEvent']
     trace?: never
@@ -718,7 +718,7 @@ export interface paths {
     head?: never
     /**
      * Change one occurrence of a series (edit; JSON Merge Patch, requires If-Match of the series)
-     * @description This occurrence only: title, description, location, status, transparency and its times (same kind and zone as the series) — stored as an exception keyed by recurrenceId (the occurrence's original start: UTC instant, or date for all-day series). Values equal to the series' follow the series again. 404: not a series, or no such occurrence (cancelled ones included). Below edit on the series: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *); stale: 412. The response is the occurrence; its ETag header the series' new ETag.
+     * @description This occurrence only: title, coverTitle (null or empty: none for this occurrence), description, location, status, transparency and its times (same kind and zone as the series) — stored as an exception keyed by recurrenceId (the occurrence's original start: UTC instant, or date for all-day series). Values equal to the series' follow the series again. 404: not a series, or no such occurrence (cancelled ones included). Below edit on the series: 403. Frozen calendars: 409. If-Match: the ETag of GET /events/{id} (or *); stale: 412. The response is the occurrence; its ETag header the series' new ETag.
      */
     patch: operations['UpdateOccurrence']
     trace?: never
@@ -888,6 +888,7 @@ export interface components {
       end: null | components['schemas']['EventTimeRequest']
       uid?: null | string
       title?: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       url?: null | string
@@ -980,6 +981,7 @@ export interface components {
       recurrenceId: string
       cancelled?: null | boolean
       title?: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       status?: null | string
@@ -1010,6 +1012,7 @@ export interface components {
       calendarId: string
       uid?: null | string
       title: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       url?: null | string
@@ -1331,6 +1334,7 @@ export interface components {
       start?: null | components['schemas']['EventTimeRequest']
       end?: null | components['schemas']['EventTimeRequest']
       title?: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       url?: null | string
@@ -1366,6 +1370,7 @@ export interface components {
       start?: null | components['schemas']['EventTimeRequest']
       end?: null | components['schemas']['EventTimeRequest']
       title?: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       url?: null | string
@@ -1385,6 +1390,7 @@ export interface components {
     }
     UpdateOccurrenceRequest: {
       title?: null | string
+      coverTitle?: null | string
       description?: null | string
       location?: null | string
       status?: null | string

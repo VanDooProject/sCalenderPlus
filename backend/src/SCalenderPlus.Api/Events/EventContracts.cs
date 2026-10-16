@@ -53,16 +53,19 @@ public sealed record EventRecurrenceResponse(
 
 /// <summary>
 /// A modified or cancelled occurrence of a series ("exception", keyed by RECURRENCE-ID). Members that are absent
-/// inherit the series' values. The busy projection lists only exceptions that change busy time — cancelled, moved
-/// or with their own transparency — with recurrenceId, cancelled, start, end and transparency; a transparent
-/// ("free") occurrence comes without its times, as free_busy viewers never see transparent events.
+/// inherit the series' values. The busy projection lists only exceptions that change what busy viewers see —
+/// cancelled, moved, with their own transparency or their own cover title — with recurrenceId, cancelled, coverTitle,
+/// start, end and transparency; a transparent ("free") occurrence comes without its times and cover title, as
+/// free_busy viewers never see transparent events.
 /// </summary>
+/// <param name="CoverTitle">The occurrence's own cover title; empty: none for this occurrence ("Busy").</param>
 /// <param name="RecurrenceId">The occurrence's original start: a UTC instant (timed) or a date (all-day).</param>
 /// <param name="Start">Where the occurrence moved to (absent: not moved).</param>
 public sealed record EventExceptionResponse(
     string RecurrenceId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Cancelled,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CoverTitle,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Description,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Location,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Status,
@@ -85,21 +88,23 @@ public sealed record EventExceptionResponse(
             var moved = x.MovedTimes(series.TimeZone) is { } times ? EventTimeResponse.From(times) : ((EventTimeResponse, EventTimeResponse)?)null;
             var transparency = x.Transparency is { } t ? EventResponse.Format(t) : null;
             var id = EventRecurrences.Format(set.At(x.RecurrenceId));
+            var coverTitle = x.CoverTitle;
             if (busy && !x.Cancelled && (x.Transparency ?? series.Transparency) == EventTransparency.Transparent)
             {
                 moved = null; // free: hidden from free_busy viewers like a transparent event, so not where it moved to
+                coverTitle = null;
             }
 
             return busy
-                ? new EventExceptionResponse(id, x.Cancelled ? true : null, null, null, null, null, transparency, moved?.Item1, moved?.Item2)
-                : new EventExceptionResponse(id, x.Cancelled ? true : null, x.Title, x.Description, x.Location, x.Status is { } s ? EventResponse.Format(s) : null, transparency, moved?.Item1, moved?.Item2);
+                ? new EventExceptionResponse(id, x.Cancelled ? true : null, null, coverTitle, null, null, null, transparency, moved?.Item1, moved?.Item2)
+                : new EventExceptionResponse(id, x.Cancelled ? true : null, x.Title, x.CoverTitle, x.Description, x.Location, x.Status is { } s ? EventResponse.Format(s) : null, transparency, moved?.Item1, moved?.Item2);
         })];
         return items.Count == 0 ? null : items;
     }
 
-    /// <summary>Whether the exception changes when the series is busy: cancelled, moved or with its own transparency (not title-like fields).</summary>
+    /// <summary>Whether busy viewers see the exception: cancelled, moved, with its own transparency or cover title (not the other title-like fields).</summary>
     private static bool ChangesBusyTime(EventExceptionEntry exception) =>
-        exception.Cancelled || exception.IsMoved || exception.Transparency is not null;
+        exception.Cancelled || exception.IsMoved || exception.Transparency is not null || exception.CoverTitle is not null;
 }
 
 /// <summary>A requested time was resolved differently (data-model.md §10): show it to the user.</summary>
@@ -127,11 +132,13 @@ public sealed record EventWarningResponse(string Code, string Field, string Mess
 /// <summary>
 /// An event as the caller sees it (api.md §4 "Event representation"). Callers below <c>read</c>
 /// (<c>myLevel: free_busy</c>) get the busy projection only — <c>id</c>, <c>calendarId</c>, <c>title: null</c>
-/// (render a localized "Busy"), <c>start</c>, <c>end</c>, <c>allDay</c>, <c>transparency</c>, <c>myLevel</c>:
-/// every other member is omitted server-side. Members that are null are omitted too.
+/// (render <c>coverTitle</c> when present, else a localized "Busy"), <c>coverTitle</c>, <c>start</c>, <c>end</c>,
+/// <c>allDay</c>, <c>transparency</c>, <c>myLevel</c>: every other member is omitted server-side. Members that are
+/// null are omitted too.
 /// </summary>
 /// <param name="Uid">iCalendar UID (stable; native events <c>{id}@scalenderplus</c>).</param>
 /// <param name="Title">Null in the busy projection.</param>
+/// <param name="CoverTitle">What free_busy viewers see instead of "Busy" (absent: none); read and above see it next to the title.</param>
 /// <param name="Status"><c>confirmed</c>, <c>tentative</c> or <c>cancelled</c>.</param>
 /// <param name="Transparency"><c>opaque</c> (busy) or <c>transparent</c> (free).</param>
 /// <param name="Color"><c>#rrggbb</c>; absent = the calendar's color.</param>
@@ -151,6 +158,7 @@ public sealed record EventResponse(
     Guid CalendarId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Uid,
     string? Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CoverTitle,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Description,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Location,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url,
@@ -215,6 +223,7 @@ public sealed record EventResponse(
         var shared = view.SharedWithMe ? true : (bool?)null;
         var busy = EventVisibility.IsBusyOnly(view.Level);
         var recurrenceId = occurrence is null ? null : EventRecurrences.Format(occurrence.Original);
+        var coverTitle = occurrence is null ? ev.CoverTitle : occurrence.CoverTitle;
         var series = new
         {
             Recurrence = EventRecurrenceResponse.From(ev),
@@ -224,7 +233,7 @@ public sealed record EventResponse(
         if (busy)
         {
             return new EventResponse(
-                ev.Id, ev.CalendarId, null, null, null, null, null, null, null, null, start, end, times.AllDay, transparency,
+                ev.Id, ev.CalendarId, null, null, coverTitle, null, null, null, null, null, null, start, end, times.AllDay, transparency,
                 null, null, null, null, null, level, shared, null, null)
             {
                 Recurrence = series.Recurrence,
@@ -239,6 +248,7 @@ public sealed record EventResponse(
             ev.CalendarId,
             ev.Uid,
             occurrence?.Title ?? ev.Title,
+            coverTitle,
             occurrence is null ? ev.Description : occurrence.Description,
             occurrence is null ? ev.Location : occurrence.Location,
             ev.Url,
@@ -345,6 +355,25 @@ public abstract class EventDetailsRequest
     [StringLength(Event.TitleMaxLength)]
     public string? Title { get; init; }
 
+    /// <summary>
+    /// Cover title: what viewers with free_busy see instead of "Busy" (they never get the title), 1–200 characters
+    /// (trimmed). On PATCH, <c>null</c> or empty removes it (JSON Merge Patch); absent leaves it unchanged.
+    /// </summary>
+    [StringLength(Event.CoverTitleMaxLength)]
+    public string? CoverTitle
+    {
+        get => _coverTitle;
+        init
+        {
+            _coverTitle = value;
+            CoverTitleGiven = true;
+        }
+    }
+
+    /// <summary>The request carried <c>coverTitle</c> (also as an explicit <c>null</c>).</summary>
+    [JsonIgnore]
+    public bool CoverTitleGiven { get; private init; }
+
     /// <summary>Markdown subset, at most 20,000 characters.</summary>
     [StringLength(Event.DescriptionMaxLength)]
     public string? Description { get; init; }
@@ -388,8 +417,11 @@ public abstract class EventDetailsRequest
     public bool RecurrenceGiven { get; private init; }
 
     private readonly EventRecurrenceRequest? _recurrence;
+    private readonly string? _coverTitle;
 
-    public EventDetails Details() => new(Title, Description, Location, Url, ParseStatus(Status), ParseTransparency(Transparency), Color, Categories);
+    /// <summary>The details; an explicit <c>null</c> cover title becomes empty, which removes it.</summary>
+    public EventDetails Details() =>
+        new(Title, Description, Location, Url, ParseStatus(Status), ParseTransparency(Transparency), Color, Categories, CoverTitle ?? (CoverTitleGiven ? string.Empty : null));
 
     internal static EventStatus? ParseStatus(string? value) => value switch
     {
@@ -428,8 +460,8 @@ public sealed class CreateEventRequest : EventDetailsRequest
 
 /// <summary>
 /// JSON Merge Patch of an event (<c>application/merge-patch+json</c>): absent or <c>null</c> members stay
-/// unchanged; an empty <c>description</c>, <c>location</c>, <c>url</c> or <c>color</c> and an empty
-/// <c>categories</c> list remove the value. Times: give <c>start</c> and/or <c>end</c> (switching between timed
+/// unchanged (except <c>coverTitle</c>, which <c>null</c> removes); an empty <c>coverTitle</c>, <c>description</c>,
+/// <c>location</c>, <c>url</c> or <c>color</c> and an empty <c>categories</c> list remove the value. Times: give <c>start</c> and/or <c>end</c> (switching between timed
 /// and all-day needs both).
 /// </summary>
 public sealed class UpdateEventRequest : EventDetailsRequest
@@ -441,14 +473,33 @@ public sealed class UpdateEventRequest : EventDetailsRequest
 
 /// <summary>
 /// JSON Merge Patch of one occurrence of a series ("this occurrence"): absent or <c>null</c> members stay unchanged;
-/// values equal to the series' make the occurrence follow the series again; an empty <c>description</c> or
-/// <c>location</c> removes it for this occurrence. Times move the occurrence (same kind and zone as the series).
+/// values equal to the series' make the occurrence follow the series again; an empty <c>coverTitle</c>,
+/// <c>description</c> or <c>location</c> removes it for this occurrence (<c>coverTitle</c> also with <c>null</c>).
+/// Times move the occurrence (same kind and zone as the series).
 /// </summary>
 public sealed class UpdateOccurrenceRequest
 {
+    private readonly string? _coverTitle;
+
     /// <summary>1–500 characters (trimmed).</summary>
     [StringLength(Event.TitleMaxLength)]
     public string? Title { get; init; }
+
+    /// <summary>This occurrence's cover title (what free_busy viewers see), at most 200 characters; <c>null</c> or empty: none for this occurrence.</summary>
+    [StringLength(Event.CoverTitleMaxLength)]
+    public string? CoverTitle
+    {
+        get => _coverTitle;
+        init
+        {
+            _coverTitle = value;
+            CoverTitleGiven = true;
+        }
+    }
+
+    /// <summary>The request carried <c>coverTitle</c> (also as an explicit <c>null</c>).</summary>
+    [JsonIgnore]
+    public bool CoverTitleGiven { get; private init; }
 
     [StringLength(Event.DescriptionMaxLength)]
     public string? Description { get; init; }
@@ -467,7 +518,7 @@ public sealed class UpdateOccurrenceRequest
     public EventTimeRequest? End { get; init; }
 
     public OccurrenceChanges ToChanges() =>
-        new(Title, Description, Location, EventDetailsRequest.ParseStatus(Status), EventDetailsRequest.ParseTransparency(Transparency), Start?.ToInput(), End?.ToInput());
+        new(Title, Description, Location, EventDetailsRequest.ParseStatus(Status), EventDetailsRequest.ParseTransparency(Transparency), Start?.ToInput(), End?.ToInput(), CoverTitle ?? (CoverTitleGiven ? string.Empty : null));
 }
 
 /// <summary>
