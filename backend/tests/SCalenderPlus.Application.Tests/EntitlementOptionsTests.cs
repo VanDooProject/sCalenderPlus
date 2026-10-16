@@ -40,6 +40,27 @@ public sealed class EntitlementOptionsTests
         Assert.Contains("Plans:TrialDays", ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("3651")]
+    [InlineData("2147483647")]
+    public void Trial_days_above_ten_years_fail_startup_validation(string days)
+    {
+        using var provider = BuildProvider(new() { ["Plans:TrialDays"] = days });
+
+        var ex = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+
+        Assert.Contains("Plans:TrialDays", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Ten_years_of_trial_are_allowed()
+    {
+        using var provider = BuildProvider(new() { ["Plans:TrialDays"] = "3650" });
+
+        provider.GetRequiredService<IStartupValidator>().Validate();
+        Assert.Equal(3650, provider.GetRequiredService<IOptions<PlansOptions>>().Value.TrialDays);
+    }
+
     [Fact]
     public void Single_limits_and_the_provider_are_configurable()
     {
