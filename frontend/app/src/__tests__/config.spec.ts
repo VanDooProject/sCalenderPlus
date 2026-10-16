@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { edition } from '@edition'
+import caddyfile from '../../../../deploy/caddy/web.Caddyfile?raw'
 import {
   applyBrand,
+  cspLogoUrlPattern,
   defaultBrand,
   defaultConfig,
   loadConfig,
   parseBrand,
+  parseBrandUrl,
   parseConfig,
 } from '@/config'
 
@@ -109,6 +112,50 @@ describe('parseBrand', () => {
   it('keeps the valid fields when others are invalid', () => {
     const brand = parseBrand({ name: 'Ok', hue: 999, logoUrl: 'ftp://x' })
     expect(brand).toMatchObject({ name: 'Ok', hue: defaultBrand.hue, logoUrl: null })
+  })
+})
+
+describe('logo URL and the CSP', () => {
+  // The `brand_logo_origin` map of the web server, as a JS RegExp (Go's `(?i)` is the `i` flag).
+  const caddyMap = /map \{env\.PUBLIC_BRAND_LOGO_URL\} \{brand_logo_origin\} \{\s*~(\S+) "\$\{1\}"/
+  const [, goPattern] = caddyMap.exec(caddyfile) ?? []
+  const caddyOrigin = (url: string) => {
+    const caseless = goPattern!.startsWith('(?i)')
+    return new RegExp(goPattern!.replace(/^\(\?i\)/, ''), caseless ? 'i' : '').exec(url)?.[1] ?? ''
+  }
+
+  it('reads the map from the Caddyfile', () => {
+    expect(goPattern).toMatch(/^\(\?i\)\^/)
+  })
+
+  it.each([
+    ['https://cdn.example.com/logo.svg', 'https://cdn.example.com'],
+    ['https://cdn.example.com:8443/brand/logo.png?v=2', 'https://cdn.example.com:8443'],
+    ['https://cdn.example.com', 'https://cdn.example.com'],
+    ['HTTPS://CDN.Example.com/logo.svg', 'HTTPS://CDN.Example.com'],
+    ['Https://cdn.example.com#x', 'Https://cdn.example.com'],
+  ])('keeps %s, whose origin the CSP allows', (url, origin) => {
+    expect(parseBrand({ logoUrl: url }).logoUrl).toBe(url)
+    expect(cspLogoUrlPattern.test(url)).toBe(true)
+    expect(caddyOrigin(url)).toBe(origin)
+  })
+
+  it.each([
+    ['a unicode host', 'https://bücher.example/logo.svg'],
+    ['an IPv6 literal', 'https://[2001:db8::1]/logo.svg'],
+    ['an IPv6 literal with port', 'https://[::1]:8443/logo.svg'],
+    ['an underscore', 'https://my_cdn.example.com/logo.svg'],
+    ['a port without digits', 'https://cdn.example.com:/logo.svg'],
+  ])('falls back to the built-in mark for %s, which the CSP would block', (_, url) => {
+    expect(parseBrandUrl(url)).toBe(url) // a valid link (imprint, privacy, terms) all the same
+    expect(parseBrand({ logoUrl: url }).logoUrl).toBeNull()
+    expect(cspLogoUrlPattern.test(url)).toBe(false)
+    expect(caddyOrigin(url)).toBe('')
+  })
+
+  it('keeps same-origin paths (no CSP entry needed)', () => {
+    expect(parseBrand({ logoUrl: '/brand/logo.svg' }).logoUrl).toBe('/brand/logo.svg')
+    expect(caddyOrigin('/brand/logo.svg')).toBe('')
   })
 })
 

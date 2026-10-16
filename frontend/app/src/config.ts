@@ -82,6 +82,21 @@ export function parseBrandUrl(raw: unknown): string | null {
   }
 }
 
+/**
+ * The https logo URLs whose origin the web server adds to the CSP's img-src: the
+ * `brand_logo_origin` map in deploy/caddy/web.Caddyfile, same rule (config.spec.ts checks both
+ * against the same cases). An ASCII host name and an optional port only, so no IDN (`bücher.de`),
+ * IPv6 literal or underscore: a logo the CSP would block falls back to the built-in mark instead
+ * of showing as a broken image.
+ */
+export const cspLogoUrlPattern = /^https:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?(?:[/?#]|$)/i
+
+/** `parseBrandUrl`, limited to what the CSP allows for images (a same-origin path or see above). */
+export function parseBrandLogoUrl(raw: unknown): string | null {
+  const value = parseBrandUrl(raw)
+  return value === null || value.startsWith('/') || cspLogoUrlPattern.test(value) ? value : null
+}
+
 export function parseBrandEmail(raw: unknown): string | null {
   const value = text(raw, maxEmailLength)
   return value !== null && /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/.test(value)
@@ -98,7 +113,7 @@ export function parseBrand(raw: unknown): BrandConfig {
   const source = record(raw)
   return {
     name: text(source.name, maxNameLength) ?? defaultBrand.name,
-    logoUrl: parseBrandUrl(source.logoUrl),
+    logoUrl: parseBrandLogoUrl(source.logoUrl),
     hue: parseBrandHue(source.hue) ?? defaultBrand.hue,
     supportEmail: parseBrandEmail(source.supportEmail),
     imprintUrl: parseBrandUrl(source.imprintUrl),

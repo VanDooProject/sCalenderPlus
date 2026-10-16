@@ -129,7 +129,13 @@ const textPairs: Record<string, string[]> = {
     '--scal-surface-raised',
     '--scal-surface-hover',
   ],
-  '--scal-on-surface-muted': ['--scal-surface', '--scal-surface-muted', '--scal-surface-raised'],
+  // Secondary text also sits on hovered rows and buttons (`text-on-surface-muted hover:bg-surface-hover`).
+  '--scal-on-surface-muted': [
+    '--scal-surface',
+    '--scal-surface-muted',
+    '--scal-surface-raised',
+    '--scal-surface-hover',
+  ],
   // Links and the primary text color on page, sidebar, card and hovered rows.
   '--scal-primary': [
     '--scal-surface',

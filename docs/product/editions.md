@@ -31,16 +31,23 @@ The edition is chosen at **build time** so poly-only code, wording and assets **
 
 - Vite env `VITE_EDITION=standard|poly` (default `standard`).
 - Edition-specific code lives in `frontend/app/src/editions/<edition>/` and is imported only through the Vite alias `@edition`, which points at the selected folder. The other folder is never imported, so it is never bundled.
-- Shared code may import `@edition/…` but never `editions/poly/…` or `editions/standard/…` directly (lint rule).
+- Shared code imports the selected edition only as `@edition`, never `editions/poly/…`, `editions/standard/…` or an `@edition/…` subpath. The lint rule `scal/editions` (`frontend/eslint.config.js`, tested in `editionLint.spec.ts`) rejects all forms that make Vite bundle a folder: static imports, dynamic `import()` (also with a template string), `import.meta.glob()` and `new URL(…, import.meta.url)`; tests are exempt.
 - Static shell before `/config.json` loads: the build writes the edition's default name (`brand.json`) into `index.html`'s `<title>` and emits the edition's `favicon.svg` (default: `src/assets/favicon.svg`) as `/favicon.svg`. The poly favicon is a plain, discreet calendar glyph in the poly hue; the leak check matches it by content hash, so it can't end up in a standard build.
 
 ### 2.2 CI leak check
 
-A CI step builds the **standard** edition and fails if any poly marker appears anywhere in `dist/` (`frontend/app/scripts/check-edition-leak.mjs`). The markers are derived from the other edition's folder itself (every string literal and message not shared with the base locales, the folder path, and other files such as the favicon by content hash), so new poly wording is covered without maintaining a list. As a self-test the built edition's own markers must all be found in its build, so a change in how strings are bundled cannot make the check pass blindly. The poly build is checked the same way against the standard edition.
+A CI step builds the **standard** edition and fails if anything of the poly edition appears anywhere in `dist/` (`frontend/app/scripts/check-edition-leak.mjs`, unit tests in `editionLeak.spec.ts`). It combines:
+
+- **Derived markers.** The markers come from the other edition's folder itself, so new poly wording is covered without maintaining a list: every string literal of its code (`.ts`/`.js`/`.vue`) and stylesheets (`.css`: `content:` values, custom property strings), every message of its JSON and the text of its `.svg` files, cut at placeholders and kept when it is not shared with the base locales or the built edition. The folder path (`editions/poly/`) must not appear either.
+- **Assets in every encoding.** Asset files (`.svg`, `.css`, images, fonts) are matched as a whole: by content hash (copied files), as base64 and inside `data:` URIs, base64 or URL-encoded (Vite inlines small assets; SVGs also with collapsed whitespace and `'` quotes). Any other file type in an edition folder fails the check with an error, so nothing in it is skipped silently.
+- **Word denylist.** `src/editions/poly/leak-words.json` lists words that must never appear in the standard build (constellation, konstellation, metamour, polycule, polyamor, kink, swinger, bdsm and the edition marker). They are matched case-insensitively at the start of a word in the build's text files and decoded `data:` URIs: `polyamor` finds "Polyamorous", while "polyfill" or "polyline" don't trip. The list lives in the poly folder, so it never ships in the standard build itself, and it is not used as markers.
+- **Self-test.** The built edition's own markers must all be found in its build (and at least one of its own leak words, if it has a list), so a change in how strings are bundled cannot make the check pass blindly.
+
+The poly build is checked the same way against the standard edition (`check:edition-leak --edition poly`). The lint rule of §2.1 keeps edition folders from being imported in the first place; the leak check catches what slips through anyway.
 
 ### 2.3 Images
 
-- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly).
+- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
 - `scalenderplus-api` and `scalenderplus-worker` are shared until poly-only backend modules exist (event directory, adult add-on). Those then go into **separate assemblies** that only the edition-specific api/worker images (`scalenderplus-poly-api`, `scalenderplus-poly-worker`) reference. *Spec only; not built yet.*
 
 ## 3. Runtime branding (white-label, no rebuild)

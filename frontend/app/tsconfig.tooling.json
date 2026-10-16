@@ -1,0 +1,15 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tooling.tsbuildinfo",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noUncheckedIndexedAccess": true
+  },
+  // Specs of the build tooling (leak check, lint rules): Node APIs, no DOM and no app code.
+  "include": [
+    "scripts/**/*.d.mts",
+    "src/__tests__/editionLeak.spec.ts",
+    "src/__tests__/editionLint.spec.ts"
+  ]
+}

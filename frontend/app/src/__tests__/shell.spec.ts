@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { effectScope, nextTick, ref } from 'vue'
 import { http, mockEntitlements, mockUser, resetMockAuth } from '@scalenderplus/api-client/mocks'
-import { trialDaysLeft } from '@/composables/entitlements'
+import { trialDaysLeft, useTrialDaysLeft } from '@/composables/entitlements'
 import { sessionQueryKey } from '@/composables/session'
 import { defaultConfig } from '@/config'
 import { byTestId, click, mountApp, queryTestId, resetDom, settle, unmountApp } from './app'
@@ -197,8 +198,76 @@ describe('reverse trial notice', () => {
     expect(queryTestId('trial-notice')).toBeNull()
 
     resetDom()
-    server.use(entitlements({ plan: 'selfhost' }))
+    // A trial end still ahead (relative to now), so only the self-host rule hides the notice.
+    const trialEndsAt = new Date(Date.now() + 10 * day).toISOString()
+    server.use(entitlements({ plan: 'selfhost', trialEndsAt }))
     await mountApp('/calendar')
     expect(queryTestId('trial-notice')).toBeNull()
+  })
+
+  it("does not show the previous user's trial after the session changes", async () => {
+    server.use(entitlements({ trialEndsAt: new Date(Date.now() + 5 * day).toISOString() }))
+    const { queryClient } = await mountApp('/calendar')
+    expect(byTestId('trial-notice').textContent).toContain('Pro trial: 5 days left')
+
+    // Another account signs in in this tab (its plan has no trial); the cached entitlements of the
+    // first one are still fresh, so only a per-user cache keeps them off the screen.
+    server.use(entitlements({ trialEndsAt: null, plan: 'free' }))
+    queryClient.setQueryData(sessionQueryKey, {
+      user: { ...mockUser, id: '0191f0c4-0000-7000-8000-00000000abcd', email: 'kai@example.com' },
+      etag: null,
+    })
+    await nextTick()
+    expect(queryTestId('trial-notice')).toBeNull()
+    await settle()
+    expect(queryTestId('trial-notice')).toBeNull()
+  })
+
+  describe('days left while the page stays open', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function track(trialEndsAt: string | null) {
+      const source = ref<Pick<typeof mockEntitlements, 'plan' | 'trialEndsAt'> | null>({
+        plan: 'pro',
+        trialEndsAt,
+      })
+      const scope = effectScope()
+      const daysLeft = scope.run(() => useTrialDaysLeft(source))!
+      return { source, daysLeft, scope }
+    }
+
+    it('counts down at each whole day and hides the notice at the end', () => {
+      vi.useFakeTimers({ now: Date.parse('2026-10-16T12:00:00Z') })
+      const { daysLeft, scope } = track('2026-10-18T18:00:00Z')
+      expect(daysLeft.value).toBe(3)
+
+      vi.advanceTimersByTime(6 * 60 * 60 * 1000 - 1)
+      expect(daysLeft.value).toBe(3)
+      vi.advanceTimersByTime(1)
+      expect(daysLeft.value).toBe(2)
+      vi.advanceTimersByTime(day)
+      expect(daysLeft.value).toBe(1)
+      vi.advanceTimersByTime(day)
+      expect(daysLeft.value).toBeNull()
+
+      scope.stop()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('re-arms for a new trial end and catches up hourly', () => {
+      vi.useFakeTimers({ now: Date.parse('2026-10-16T12:00:00Z') })
+      const { source, daysLeft, scope } = track(null)
+      expect(daysLeft.value).toBeNull()
+
+      source.value = { plan: 'pro', trialEndsAt: '2026-10-16T14:30:00Z' }
+      expect(daysLeft.value).toBe(1)
+      // A clock that jumps (device asleep, timers held back) is caught by the hourly tick.
+      vi.setSystemTime(Date.parse('2026-10-16T15:00:00Z'))
+      vi.advanceTimersByTime(60 * 60 * 1000)
+      expect(daysLeft.value).toBeNull()
+      scope.stop()
+    })
   })
 })

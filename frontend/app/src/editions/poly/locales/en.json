@@ -32,6 +32,7 @@
   },
   "groups": {
     "title": "Constellations",
+    "description": "Partners, metamours and chosen family you share calendars with.",
     "create": "New constellation",
     "emptyTitle": "No constellations yet",
     "emptyText": "Create a constellation for your partners, metamours and chosen family, then invite people by email or link.",

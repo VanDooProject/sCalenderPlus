@@ -110,7 +110,7 @@ Database migrations: one EF migration per PR, named descriptively (`AddEventOver
  ci-ok ── needs all ── single required status check
 ```
 
-**Editions** ([editions.md](../product/editions.md)): the frontend job builds the standard edition (the default, also the white-label build) and runs the edition leak check on its `dist/` (`pnpm --filter app check:edition-leak`: fails when strings or files of `src/editions/poly` appear in it, with a self-test that the built edition's own markers are present), then builds `VITE_EDITION=poly` and checks it the other way round (`check:edition-leak --edition poly`). The docker job builds `poly-web` from `web.Dockerfile` with the build arg `EDITION=poly` next to `web`; the fullstack suite runs the standard `web` image. `build-images.yml` publishes `scalenderplus-poly-web` with the same tags as the other images.
+**Editions** ([editions.md](../product/editions.md)): the frontend job builds the standard edition (the default, also the white-label build) and runs the edition leak check on its `dist/` (`pnpm --filter app check:edition-leak`: fails when strings, files (also inlined as base64 or `data:` URIs) or denylisted words of `src/editions/poly` appear in it, with a self-test that the built edition's own markers are present; [editions.md §2.2](../product/editions.md#22-ci-leak-check)), then builds `VITE_EDITION=poly` and checks it the other way round (`check:edition-leak --edition poly`). The docker job builds `poly-web` from `web.Dockerfile` with the build arg `EDITION=poly` next to `web`; the fullstack suite runs the standard `web` image. `build-images.yml` publishes `scalenderplus-poly-web` with the same tags as the other images.
 
 Other workflows:
 

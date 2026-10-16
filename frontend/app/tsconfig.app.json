@@ -8,5 +8,7 @@
       "@edition": ["./src/editions/standard/index.ts"]
     }
   },
-  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"]
+  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"],
+  // Node-only specs of the build tooling: tsconfig.tooling.json.
+  "exclude": ["src/__tests__/editionLeak.spec.ts", "src/__tests__/editionLint.spec.ts"]
 }

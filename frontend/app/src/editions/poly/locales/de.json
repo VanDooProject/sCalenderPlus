@@ -32,6 +32,7 @@
   },
   "groups": {
     "title": "Konstellationen",
+    "description": "Liebste, Metamours und Wahlfamilie, mit denen du Kalender teilst.",
     "create": "Neue Konstellation",
     "emptyTitle": "Noch keine Konstellationen",
     "emptyText": "Lege eine Konstellation für deine Liebsten, Metamours und Wahlfamilie an und lade dann Leute per E-Mail oder Link ein.",
