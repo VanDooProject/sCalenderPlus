@@ -11,7 +11,8 @@ namespace SCalenderPlus.Application.Entitlements;
 /// <summary>
 /// Plan limits from configuration (<see cref="PlansOptions"/>). Plan resolution until billing lands
 /// (<see cref="PlanResolution"/>): <c>Billing__Provider=none</c> → <see cref="Plan.SelfHost"/>; otherwise
-/// <see cref="Plan.Pro"/> during the reverse trial of the billing owner's account, <see cref="Plan.Free"/> after it.
+/// <see cref="Plan.Pro"/> during the reverse trial of the billing owner's account (for a group's resources: of the
+/// older of account and group, <see cref="PlanSubject"/>), <see cref="Plan.Free"/> after it.
 /// </summary>
 internal sealed class EntitlementService(
     IAppDbContext db,
@@ -20,14 +21,25 @@ internal sealed class EntitlementService(
     IOptions<BillingOptions> billing,
     IOptions<PlansOptions> plans) : IEntitlementService
 {
-    public async Task<PlanEntitlements> GetAsync(Guid billingOwnerId, CancellationToken cancellationToken = default)
+    public Task<PlanEntitlements> GetAsync(Guid billingOwnerId, CancellationToken cancellationToken = default) =>
+        GetAsync(PlanSubject.User(billingOwnerId), cancellationToken);
+
+    public async Task<PlanEntitlements> GetAsync(PlanSubject subject, CancellationToken cancellationToken = default)
     {
         var provider = billing.Value.Provider;
         var options = plans.Value;
-        var createdAt = PlanResolution.HasTrial(provider, options)
-            ? await users.CreatedAtAsync(billingOwnerId, cancellationToken).ConfigureAwait(false)
-            : null;
-        return PlanResolution.Resolve(provider, options, createdAt, clock.GetCurrentInstant());
+        Instant? anchor = null;
+        if (PlanResolution.HasTrial(provider, options))
+        {
+            var ownerCreatedAt = await users.CreatedAtAsync(subject.BillingOwnerId, cancellationToken).ConfigureAwait(false);
+            var groupCreatedAt = subject.GroupId is { } groupId
+                ? await db.Groups.AsNoTracking().Where(g => g.Id == groupId).Select(g => (Instant?)g.CreatedAt)
+                    .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false)
+                : null;
+            anchor = PlanResolution.TrialAnchor(ownerCreatedAt, groupCreatedAt);
+        }
+
+        return PlanResolution.Resolve(provider, options, anchor, clock.GetCurrentInstant());
     }
 
     public async Task EnsureCanCreateGroupAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -44,7 +56,7 @@ internal sealed class EntitlementService(
 
     public async Task EnsureCanAddGroupMemberAsync(Guid groupId, Guid billingOwnerId, CancellationToken cancellationToken = default)
     {
-        var entitlements = await GetAsync(billingOwnerId, cancellationToken).ConfigureAwait(false);
+        var entitlements = await GetAsync(PlanSubject.Group(groupId, billingOwnerId), cancellationToken).ConfigureAwait(false);
         if (entitlements.Limits.MembersPerGroup is null)
         {
             return;
@@ -54,15 +66,15 @@ internal sealed class EntitlementService(
         Throw(entitlements, PlanLimits.CheckAdd(PlanLimit.MembersPerGroup, entitlements.Limits.MembersPerGroup, members));
     }
 
-    public async Task EnsureCanCreateCalendarAsync(Guid billingOwnerId, int ownedCalendars, CancellationToken cancellationToken = default)
+    public async Task EnsureCanCreateCalendarAsync(PlanSubject subject, int ownedCalendars, CancellationToken cancellationToken = default)
     {
-        var entitlements = await GetAsync(billingOwnerId, cancellationToken).ConfigureAwait(false);
+        var entitlements = await GetAsync(subject, cancellationToken).ConfigureAwait(false);
         Throw(entitlements, PlanLimits.CheckAdd(PlanLimit.OwnedCalendars, entitlements.Limits.OwnedCalendars, ownedCalendars));
     }
 
-    public async Task EnsureCanChangeEventOverridesAsync(Guid billingOwnerId, OverrideUsage usage, CancellationToken cancellationToken = default)
+    public async Task EnsureCanChangeEventOverridesAsync(PlanSubject subject, OverrideUsage usage, CancellationToken cancellationToken = default)
     {
-        var entitlements = await GetAsync(billingOwnerId, cancellationToken).ConfigureAwait(false);
+        var entitlements = await GetAsync(subject, cancellationToken).ConfigureAwait(false);
         Throw(entitlements, PlanLimits.CheckOverrideChange(entitlements.Limits, usage));
     }
 
@@ -93,7 +105,15 @@ public static class PlanResolution
     public static Instant? TrialEndsAt(BillingProvider provider, PlansOptions plans, Instant? createdAt) =>
         HasTrial(provider, plans) && createdAt is { } created ? created + Duration.FromDays(plans.TrialDays) : null;
 
-    /// <param name="createdAt">Creation of the billing owner's account (null: unknown, e.g. deleted — no trial).</param>
+    /// <summary>
+    /// When the trial of a plan subject starts: the billing owner's account creation, or for a group's resources the
+    /// earlier of it and the group's creation — a billing transfer to a new account must not restart the group's
+    /// trial. Null (no trial) when the owner's account is unknown.
+    /// </summary>
+    public static Instant? TrialAnchor(Instant? ownerCreatedAt, Instant? groupCreatedAt) =>
+        ownerCreatedAt is { } owner && groupCreatedAt is { } group && group < owner ? group : ownerCreatedAt;
+
+    /// <param name="createdAt">Start of the trial: the billing owner's account creation, for a group's resources <see cref="TrialAnchor"/> (null: unknown, e.g. deleted — no trial).</param>
     public static PlanEntitlements Resolve(BillingProvider provider, PlansOptions plans, Instant? createdAt, Instant now)
     {
         ArgumentNullException.ThrowIfNull(plans);

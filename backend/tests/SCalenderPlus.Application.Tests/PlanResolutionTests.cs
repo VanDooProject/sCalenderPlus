@@ -58,6 +58,17 @@ public sealed class PlanResolutionTests
         Assert.Equal(Plan.Free, PlanResolution.Resolve(BillingProvider.Stripe, new PlansOptions(), null, _created).Plan);
 
     [Fact]
+    public void A_groups_trial_counts_from_the_older_of_billing_owner_and_group()
+    {
+        var older = _created - Duration.FromDays(400);
+
+        Assert.Equal(older, PlanResolution.TrialAnchor(_created, older)); // billing transferred to a new account
+        Assert.Equal(older, PlanResolution.TrialAnchor(older, _created)); // a new group of an old account
+        Assert.Equal(_created, PlanResolution.TrialAnchor(_created, null)); // personal resources
+        Assert.Null(PlanResolution.TrialAnchor(null, older)); // unknown billing owner: no trial
+    }
+
+    [Fact]
     public void Self_host_is_unaffected_by_the_trial()
     {
         var plans = new PlansOptions();
