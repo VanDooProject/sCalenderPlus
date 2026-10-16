@@ -981,6 +981,7 @@ export interface components {
       recurrenceId: string
       cancelled?: null | boolean
       title?: null | string
+      /** @description The occurrence's own cover title. "" (empty): explicitly no cover title for this occurrence (overrides the series; busy viewers see "Busy"). Absent or null: inherits the series' coverTitle. */
       coverTitle?: null | string
       description?: null | string
       location?: null | string

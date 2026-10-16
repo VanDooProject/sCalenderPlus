@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using NodaTime.Text;
@@ -65,7 +66,9 @@ public sealed record EventExceptionResponse(
     string RecurrenceId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Cancelled,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Title,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CoverTitle,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [property: Description("The occurrence's own cover title. \"\" (empty): explicitly no cover title for this occurrence (overrides the series; busy viewers see \"Busy\"). Absent or null: inherits the series' coverTitle.")]
+    string? CoverTitle,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Description,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Location,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Status,

@@ -3547,7 +3547,8 @@
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "The occurrence's own cover title. \"\" (empty): explicitly no cover title for this occurrence (overrides the series; busy viewers see \"Busy\"). Absent or null: inherits the series' coverTitle."
           },
           "description": {
             "type": [

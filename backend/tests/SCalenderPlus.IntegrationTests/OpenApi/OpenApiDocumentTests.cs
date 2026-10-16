@@ -36,6 +36,18 @@ public sealed class OpenApiDocumentTests
         Assert.True(mixed.Count == 0, "Integer schemas also allow strings (lenient JSON number handling): " + string.Join(", ", mixed.Select(s => s.GetPath())));
     }
 
+    [Fact]
+    public async Task An_exceptions_cover_title_explains_empty_versus_absent()
+    {
+        var document = JsonNode.Parse(await File.ReadAllTextAsync(CommittedDocumentPath(), TestContext.Current.CancellationToken))!;
+
+        var description = (string?)document["components"]?["schemas"]?["EventExceptionResponse"]?["properties"]?["coverTitle"]?["description"];
+
+        Assert.NotNull(description);
+        Assert.Contains("\"\" (empty): explicitly no cover title for this occurrence (overrides the series", description, StringComparison.Ordinal);
+        Assert.Contains("Absent or null: inherits", description, StringComparison.Ordinal);
+    }
+
     private static IEnumerable<JsonObject> Schemas(JsonNode? node) => node switch
     {
         JsonObject obj => new[] { obj }.Concat(obj.SelectMany(p => Schemas(p.Value))),
