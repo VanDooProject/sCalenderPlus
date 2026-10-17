@@ -24,7 +24,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 COPY frontend/ ./
 ARG EDITION
-RUN VITE_EDITION="$EDITION" pnpm --filter app build
+# The leak check runs on exactly the assets this image ships (docs/product/editions.md §2.2).
+RUN VITE_EDITION="$EDITION" pnpm --filter app build \
+    && pnpm --filter app check:edition-leak --edition "$EDITION"
 
 FROM caddy:2-alpine AS runtime-base
 

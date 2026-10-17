@@ -48,7 +48,7 @@ The poly build is checked the same way against the standard edition (`check:edit
 
 ### 2.3 Images
 
-- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
+- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). Its build stage runs the leak check of §2.2 on exactly the assets the image ships. The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
 - `scalenderplus-api` and `scalenderplus-worker` are shared until poly-only backend modules exist (event directory, adult add-on). Those then go into **separate assemblies** that only the edition-specific api/worker images (`scalenderplus-poly-api`, `scalenderplus-poly-worker`) reference. *Spec only; not built yet.*
 
 ## 3. Runtime branding (white-label, no rebuild)
