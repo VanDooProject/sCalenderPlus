@@ -52,6 +52,7 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'backend/openapi/**'
+              - 'backend/tests/SCalenderPlus.Application.Tests/Feeds/Golden/**' # parsed by ical.js
               - '.github/workflows/ci.yml'
             openapi:
               - 'backend/openapi/**'
@@ -267,6 +268,10 @@ jobs:
             echo "::error::expected exit code 64 for a mismatched WEB_IMAGE, got $rc"
             exit 1
           fi
+      # No iCal feed secret in the proxy's access or error log (ical-caldav.md §1.1).
+      - name: Web image redacts feed secrets in its logs
+        if: ${{ matrix.image == 'web' || matrix.dockerfile == 'web' }}
+        run: deploy/caddy/test-log-redaction.sh "$IMAGE"
       - name: Trivy (fail on fixable CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
