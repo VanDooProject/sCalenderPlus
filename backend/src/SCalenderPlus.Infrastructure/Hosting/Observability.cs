@@ -21,7 +21,8 @@ public static class Observability
     /// <summary>
     /// Logging and telemetry shared by the Api and Worker hosts:
     /// JSON console logs (one object per line, UTC timestamps) everywhere except Development, where the
-    /// readable simple formatter is used; override with <c>Logging__Console__FormatterName</c>.
+    /// readable simple formatter is used; override with <c>Logging__Console__FormatterName</c>. Feed secrets in
+    /// request paths are masked in logs and traces (<see cref="SecretRedaction"/>).
     /// OpenTelemetry traces and metrics (ASP.NET Core, HttpClient, Npgsql), exported via OTLP only when
     /// <c>Otel__Endpoint</c> is set.
     /// </summary>
@@ -31,6 +32,7 @@ public static class Observability
 
         ConfigureConsoleLogging(builder);
         ConfigureOpenTelemetry(builder, serviceName);
+        builder.Services.AddLogRedaction();
 
         return builder;
     }
@@ -84,7 +86,11 @@ public static class Observability
         var otel = builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName, serviceVersion: version))
             .WithTracing(tracing => tracing
-                .AddAspNetCoreInstrumentation(o => o.Filter = IsNotHealthProbe)
+                .AddAspNetCoreInstrumentation(o =>
+                {
+                    o.Filter = IsNotHealthProbe;
+                    o.EnrichWithHttpRequest = RedactFeedPath;
+                })
                 .AddHttpClientInstrumentation()
                 .AddNpgsql()
                 .AddSource(Jobs.JobRunner.ActivitySourceName))
@@ -99,6 +105,16 @@ public static class Observability
         {
             var protocol = options!.Protocol == OtlpProtocol.HttpProtobuf ? OtlpExportProtocol.HttpProtobuf : OtlpExportProtocol.Grpc;
             otel.WithLogging().UseOtlpExporter(protocol, endpoint);
+        }
+    }
+
+    /// <summary>Feed URLs carry their secret in the path: the span keeps only <c>/ical/[REDACTED]</c> (the route template stays in its name).</summary>
+    private static void RedactFeedPath(System.Diagnostics.Activity activity, HttpRequest request)
+    {
+        if (SecretRedaction.Contains(request.Path.Value))
+        {
+            activity.SetTag("url.path", SecretRedaction.Redact(request.Path.Value!));
+            activity.SetTag("url.query", null);
         }
     }
 

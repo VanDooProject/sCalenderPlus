@@ -59,3 +59,8 @@ dotnet_naming_style.underscore_camel.required_prefix = _
 [backend/src/SCalenderPlus.Infrastructure/Persistence/Migrations/*.cs]
 generated_code = true
 dotnet_analyzer_diagnostic.severity = none
+
+[*.ics]
+end_of_line = crlf
+insert_final_newline = false
+trim_trailing_whitespace = false

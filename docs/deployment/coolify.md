@@ -72,6 +72,8 @@ Coolify does **not** use this file but [`deploy/coolify/docker-compose.yml`](../
 | `RateLimiting__InviteCreate__*`, `RateLimiting__InviteAccept__*` | api | | `50`, `01:00:00` and `10`, `00:01:00` — per signed-in user: invites created, invite acceptances |
 | `RateLimiting__InvitePreview__PermitLimit`, `RateLimiting__InvitePreview__Window` | api | | `30`, `00:01:00` — per client IP: invite previews (invite page before sign-in) |
 | `RateLimiting__Session__PermitLimit`, `RateLimiting__Session__Window` | api | | `600`, `00:01:00` — per signed-in user (web app sessions; abuse limit only) |
+| `RateLimiting__Feed__TokenLimit`, `__TokensPerPeriod`, `__ReplenishmentPeriod` | api | | `10`, `1`, `00:01:00` — per iCal feed URL (token bucket: 60/h, bursts of 10) |
+| `Feeds__CacheSizeMegabytes`, `Feeds__CacheDuration`, `Feeds__MaxEvents`, `Feeds__MaxTokensPerUser`, `Feeds__MaxShareLinksPerCalendar` | api | | `64`, `00:10:00`, `5000`, `50`, `20` — in-process cache of rendered feeds (per replica), VEVENT cap per feed, active feed links per user and share links per calendar ([ical-caldav.md §1](../architecture/ical-caldav.md#1-ical-subscription-feeds-mvp)) |
 | `RateLimiting__TokenPlans__Free`, `__Pro`, `__Team` | api | | `60`, `600`, `1200` requests/min per API token (v1, API tokens) |
 | `SignUp__BlockDisposableEmailDomains`, `SignUp__BlockedEmailDomains` | api | | `true` (bundled list of disposable-email providers), extra comma-separated domains (subdomains included) |
 | `Smtp__Host`, `Smtp__From` | worker | ✓ | `smtp.example.com`, `noreply@example.com`. The api only queues emails (`email.send` jobs) and needs no SMTP settings |

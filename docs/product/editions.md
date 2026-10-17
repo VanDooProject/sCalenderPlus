@@ -73,7 +73,7 @@ Caddy renders `brand: { name, logoUrl, hue, supportEmail, imprintUrl, privacyUrl
 
 | Variable | Default | Used for |
 |---|---|---|
-| `Brand__ProductName` | "sCalenderPlus" | Email subjects and bodies, any product name rendered server-side (later: iCal `PRODID`, feed footer) |
+| `Brand__ProductName` | "sCalenderPlus" | Email subjects and bodies, any product name rendered server-side, iCal feeds (the aggregate feed's calendar name, the description footer; `PRODID` stays unbranded, §3.3) |
 | `Brand__SupportEmail` | none | Support contact in emails |
 
 ### 3.3 Identifiers that stay unbranded
@@ -84,6 +84,7 @@ Branding covers what people read. Technical identifiers that clients, other cale
 |---|---|---|
 | Problem `type` URIs | `https://scalenderplus.app/problems/{code}` | Part of the error contract ([api.md §2](../architecture/api.md#2-errors--rfc-9457-problem-details)); clients may match on them. Users see the localized `title`/`detail`, never the URI. |
 | iCalendar UID domain of native events | `{id}@scalenderplus` | UIDs must never change: calendar apps de-duplicate and update subscribed events by UID, so a rename would duplicate every event. |
+| iCalendar `PRODID` and extension properties of feeds | `-//sCalenderPlus//EN`, `X-SCALENDERPLUS-ACCESS`, `X-SCALENDERPLUS-EVENT-ID` | Generator and property names clients may log, compare or parse (our own native apps read the `X-` properties); not shown in calendar apps. The texts users read in a feed — the aggregate feed's calendar name and the description footer — use `Brand__ProductName` ([ical-caldav.md §1.2](../architecture/ical-caldav.md#12-content-rules)). |
 | Data Protection application name | `scalenderplus` | Isolates the key ring and the cookies/tokens it protects; changing it invalidates every session and protected token. |
 | OpenTelemetry service names | `scalenderplus-api`, `scalenderplus-worker` | Operator-facing; dashboards and alerts key on them. |
 | OpenAPI document title | `sCalenderPlus API` | The document is exported at build time and committed (`backend/openapi/v1.json`), before any deployment's `Brand__*` exists; a per-deployment title would make it drift. Developer-facing only. |
@@ -110,7 +111,7 @@ Status: **built** = on the current branch; otherwise the roadmap priority.
 | Per-event permissions, groups, iCal feeds, imports (core) | ✓ | ✓ | per [features.md](features.md) |
 | Runtime branding (`PUBLIC_BRAND_*`, `Brand__*`) | ✓ | ✓ | built |
 | Edition build + leak check | ✓ | ✓ | built |
-| Cover titles ([privacy-levels.md §5](../architecture/privacy-levels.md#5-cover-titles)) | ✓ | ✓ | built (API + web) |
+| Cover titles ([privacy-levels.md §5](../architecture/privacy-levels.md#5-cover-titles)) | ✓ | ✓ | built (API + web + iCal feeds) |
 | Reverse trial + `GET /me/entitlements` ([plans.md](plans.md)) | ✓ | ✓ | built |
 | Poly wording overlay ("constellation") | – | ✓ | planned (ME) |
 | More generous Free limits (`Plans__Free__*`, §9) | – | ✓ | configuration only |
@@ -144,7 +145,7 @@ Market analysis of the target group (size, willingness to pay) is the customer's
 | Discreet notification and email texts | "You have 1 new update" instead of event titles or names on lock screens and in inboxes. |
 | Quick-hide | One tap/shortcut switches to a neutral screen and locks the session. |
 | Session revoke | List and revoke sessions (shared core feature, M7), prominent in poly settings. |
-| Feed token rotation | Rotate all feed URLs at once (core feature, M4), prominent after a breakup or lost device. |
+| Feed token rotation | Rotate all feed URLs at once (core feature, M4: API built — `POST /feed-tokens/rotate-all`, optional on password reset), prominent after a breakup or lost device. |
 
 ## 7. Legal and platform obligations (poly)
 

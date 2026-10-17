@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Events;
+using SCalenderPlus.Core.Feeds;
 using SCalenderPlus.Core.Groups;
 
 namespace SCalenderPlus.Application.Persistence;
@@ -42,6 +43,12 @@ public interface IAppDbContext
 
     /// <summary>Event permission overrides (<c>event_overrides</c>), changed only by the override use cases and the membership lifecycle.</summary>
     DbSet<EventOverrideEntry> EventOverrides { get; }
+
+    /// <summary>Anonymous share links of calendars (<c>share_links</c>): only the hash of the secret is stored.</summary>
+    DbSet<ShareLink> ShareLinks { get; }
+
+    /// <summary>Personal iCal feed tokens (<c>feed_tokens</c>): only the hash of the secret is stored.</summary>
+    DbSet<FeedToken> FeedTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

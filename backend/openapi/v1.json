@@ -340,7 +340,7 @@
           "Auth"
         ],
         "summary": "Set a new password with the token from the reset link",
-        "description": "Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions.",
+        "description": "Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions. rotateFeedTokens: true also replaces the secrets of all the account's iCal feed links (old URLs 404 at once; get new ones by rotating, needsNewLink).",
         "operationId": "ResetPassword",
         "requestBody": {
           "content": {
@@ -2113,6 +2113,110 @@
         ]
       }
     },
+    "/api/v1/calendars/{id}/share-links": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "The calendar's share links (manage; without secrets)",
+        "description": "Links that are not revoked, ordered by creation (expired ones too, with expiresAt). Below manage: 403; no level: 404.",
+        "operationId": "ListShareLinks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareLinkListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Create an anonymous share link (manage; the URL is shown once)",
+        "description": "level: free_busy or read — a ceiling for everyone holding the link (event overrides for everyone/anonymous only restrict further). expiresInDays: 1–3650, absent = never. The response carries the secret and the feed URLs (https and webcal); only the hash is stored. Needs a verified email (403 email_not_verified). Frozen calendars: 409 calendar_frozen; at most 20 active links (409 conflict).",
+        "operationId": "CreateShareLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShareLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedShareLinkResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/me/calendar-prefs": {
       "get": {
         "tags": [
@@ -2131,6 +2235,47 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/share-links/{id}": {
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Revoke a share link (manage on its calendar; idempotent)",
+        "description": "The link's feed answers 404 at once. Allowed in frozen calendars. Unknown links and calendars without a level: 404.",
+        "operationId": "RevokeShareLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "Error (RFC 9457 problem details with a stable `code`).",
@@ -2902,6 +3047,427 @@
           }
         ]
       }
+    },
+    "/api/v1/feed-tokens": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "My iCal feed links (without secrets)",
+        "description": "Active links, ordered by creation. The URLs are shown only when created or rotated.",
+        "operationId": "ListFeedTokens",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedTokenListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Create an iCal feed link (the URL is shown once)",
+        "description": "scope: calendar (with calendarId of a calendar I see, else 404), aggregate (every calendar I see and have not hidden, plus Shared with me — recommended) or shared_with_me. labelMode default prefix_emoji, includePastDays 0–365 (default 90). The response carries the secret, the https URL and the webcal URL — they cannot be read again (only the hash is stored). At most 50 active links (409 conflict).",
+        "operationId": "CreateFeedToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedFeedTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/feed-tokens/rotate-all": {
+      "post": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "New secrets for all my feed links (each URL shown once)",
+        "description": "Every old URL stops working at once (404); settings stay. For a lost device or after a password reset.",
+        "operationId": "RotateAllFeedTokens",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedFeedTokenListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/feed-tokens/{id}": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "One of my feed links (without the secret, with ETag)",
+        "operationId": "GetFeedToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Change a feed link's name, label mode or past days (JSON Merge Patch, requires If-Match)",
+        "description": "Absent or null members stay unchanged; an empty name removes it. The URL stays the same. If-Match: the etag of the link (or *).",
+        "operationId": "UpdateFeedToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeedTokenRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeedTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Revoke a feed link",
+        "description": "Its URL answers 404 from now on, also where a render of it is cached. Calendar apps keep what they already synced until their next poll.",
+        "operationId": "RevokeFeedToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/feed-tokens/{id}/rotate": {
+      "post": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "A new secret for a feed link (the new URL is shown once)",
+        "description": "The old URL stops working at once (404); settings stay. Clears needsNewLink.",
+        "operationId": "RotateFeedToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedFeedTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/ical/v1/{token}.ics": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Personal iCal feed (the token is the credential)",
+        "description": "What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10), then 429 with Retry-After.",
+        "operationId": "GetFeed",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ical/v1/s/{token}.ics": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Anonymous share-link iCal feed (the token is the credential)",
+        "description": "The calendar as the anonymous principal sees it, the link's level (free_busy or read) as ceiling: no event is ever more than the link allows. No access labels or app links. 404 for unknown, revoked and expired links. Same caching and rate limit as personal feeds.",
+        "operationId": "GetShareLinkFeed",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3326,6 +3892,47 @@
           }
         }
       },
+      "CreateFeedTokenRequest": {
+        "required": [
+          "scope"
+        ],
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "calendarId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "labelMode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "includePastDays": {
+            "maximum": 365,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateGrantRequest": {
         "required": [
           "principal",
@@ -3413,6 +4020,34 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CreateShareLinkRequest": {
+        "required": [
+          "level"
+        ],
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiresInDays": {
+            "maximum": 3650,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -4082,6 +4717,94 @@
           }
         }
       },
+      "FeedTokenListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedTokenResponse"
+            }
+          }
+        }
+      },
+      "FeedTokenResponse": {
+        "required": [
+          "id",
+          "scope",
+          "calendarId",
+          "name",
+          "labelMode",
+          "includePastDays",
+          "needsNewLink",
+          "lastUsedAt",
+          "rotatedAt",
+          "createdAt",
+          "updatedAt",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "calendarId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "labelMode": {
+            "type": "string"
+          },
+          "includePastDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "needsNewLink": {
+            "type": "boolean"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rotatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "etag": {
+            "type": "string"
+          }
+        }
+      },
       "ForgotPasswordRequest": {
         "required": [
           "email"
@@ -4449,6 +5172,70 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "IssuedFeedTokenListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssuedFeedTokenResponse"
+            }
+          }
+        }
+      },
+      "IssuedFeedTokenResponse": {
+        "required": [
+          "feedToken",
+          "token",
+          "url",
+          "webcalUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "feedToken": {
+            "$ref": "#/components/schemas/FeedTokenResponse"
+          },
+          "token": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "webcalUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "IssuedShareLinkResponse": {
+        "required": [
+          "shareLink",
+          "token",
+          "url",
+          "webcalUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "shareLink": {
+            "$ref": "#/components/schemas/ShareLinkResponse"
+          },
+          "token": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "webcalUrl": {
+            "type": "string",
+            "format": "uri"
           }
         }
       },
@@ -4967,6 +5754,12 @@
             "maxLength": 128,
             "minLength": 0,
             "type": "string"
+          },
+          "rotateFeedTokens": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -5009,6 +5802,74 @@
           },
           "viewer": {
             "type": "string"
+          }
+        }
+      },
+      "ShareLinkListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareLinkResponse"
+            }
+          }
+        }
+      },
+      "ShareLinkResponse": {
+        "required": [
+          "id",
+          "calendarId",
+          "level",
+          "label",
+          "expiresAt",
+          "createdBy",
+          "createdAt",
+          "lastUsedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -5333,6 +6194,34 @@
           }
         }
       },
+      "UpdateFeedTokenRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "labelMode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "includePastDays": {
+            "maximum": 365,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "UpdateGrantRequest": {
         "type": "object",
         "properties": {
@@ -5499,6 +6388,9 @@
     },
     {
       "name": "Events"
+    },
+    {
+      "name": "Feeds"
     }
   ]
 }

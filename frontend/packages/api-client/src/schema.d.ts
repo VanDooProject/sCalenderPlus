@@ -180,7 +180,7 @@ export interface paths {
     put?: never
     /**
      * Set a new password with the token from the reset link
-     * @description Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions.
+     * @description Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions. rotateFeedTokens: true also replaces the secrets of all the account's iCal feed links (old URLs 404 at once; get new ones by rotating, needsNewLink).
      */
     post: operations['ResetPassword']
     delete?: never
@@ -607,6 +607,30 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/calendars/{id}/share-links': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The calendar's share links (manage; without secrets)
+     * @description Links that are not revoked, ordered by creation (expired ones too, with expiresAt). Below manage: 403; no level: 404.
+     */
+    get: operations['ListShareLinks']
+    put?: never
+    /**
+     * Create an anonymous share link (manage; the URL is shown once)
+     * @description level: free_busy or read — a ceiling for everyone holding the link (event overrides for everyone/anonymous only restrict further). expiresInDays: 1–3650, absent = never. The response carries the secret and the feed URLs (https and webcal); only the hash is stored. Needs a verified email (403 email_not_verified). Frozen calendars: 409 calendar_frozen; at most 20 active links (409 conflict).
+     */
+    post: operations['CreateShareLink']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/me/calendar-prefs': {
     parameters: {
       query?: never
@@ -622,6 +646,26 @@ export interface paths {
     put?: never
     post?: never
     delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/share-links/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Revoke a share link (manage on its calendar; idempotent)
+     * @description The link's feed answers 404 at once. Allowed in frozen calendars. Unknown links and calendars without a level: 404.
+     */
+    delete: operations['RevokeShareLink']
     options?: never
     head?: never
     patch?: never
@@ -807,6 +851,135 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/feed-tokens': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My iCal feed links (without secrets)
+     * @description Active links, ordered by creation. The URLs are shown only when created or rotated.
+     */
+    get: operations['ListFeedTokens']
+    put?: never
+    /**
+     * Create an iCal feed link (the URL is shown once)
+     * @description scope: calendar (with calendarId of a calendar I see, else 404), aggregate (every calendar I see and have not hidden, plus Shared with me — recommended) or shared_with_me. labelMode default prefix_emoji, includePastDays 0–365 (default 90). The response carries the secret, the https URL and the webcal URL — they cannot be read again (only the hash is stored). At most 50 active links (409 conflict).
+     */
+    post: operations['CreateFeedToken']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/feed-tokens/rotate-all': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * New secrets for all my feed links (each URL shown once)
+     * @description Every old URL stops working at once (404); settings stay. For a lost device or after a password reset.
+     */
+    post: operations['RotateAllFeedTokens']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/feed-tokens/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** One of my feed links (without the secret, with ETag) */
+    get: operations['GetFeedToken']
+    put?: never
+    post?: never
+    /**
+     * Revoke a feed link
+     * @description Its URL answers 404 from now on, also where a render of it is cached. Calendar apps keep what they already synced until their next poll.
+     */
+    delete: operations['RevokeFeedToken']
+    options?: never
+    head?: never
+    /**
+     * Change a feed link's name, label mode or past days (JSON Merge Patch, requires If-Match)
+     * @description Absent or null members stay unchanged; an empty name removes it. The URL stays the same. If-Match: the etag of the link (or *).
+     */
+    patch: operations['UpdateFeedToken']
+    trace?: never
+  }
+  '/api/v1/feed-tokens/{id}/rotate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * A new secret for a feed link (the new URL is shown once)
+     * @description The old URL stops working at once (404); settings stay. Clears needsNewLink.
+     */
+    post: operations['RotateFeedToken']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/ical/v1/{token}.ics': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Personal iCal feed (the token is the credential)
+     * @description What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10), then 429 with Retry-After.
+     */
+    get: operations['GetFeed']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/ical/v1/s/{token}.ics': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Anonymous share-link iCal feed (the token is the credential)
+     * @description The calendar as the anonymous principal sees it, the link's level (free_busy or read) as ceiling: no event is ever more than the link allows. No access labels or app links. 404 for unknown, revoked and expired links. Same caching and rate limit as personal feeds.
+     */
+    get: operations['GetShareLinkFeed']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -898,6 +1071,15 @@ export interface components {
       categories?: null | string[]
       recurrence?: null | components['schemas']['EventRecurrenceRequest']
     }
+    CreateFeedTokenRequest: {
+      scope: string
+      /** Format: uuid */
+      calendarId?: null | string
+      name?: null | string
+      labelMode?: null | string
+      /** Format: int32 */
+      includePastDays?: null | number
+    }
     CreateGrantRequest: {
       principal: components['schemas']['GrantPrincipalRequest']
       level: string
@@ -917,6 +1099,12 @@ export interface components {
     CreateInviteResponse: {
       invite: components['schemas']['InviteResponse']
       url: null | string
+    }
+    CreateShareLinkRequest: {
+      level: string
+      label?: null | string
+      /** Format: int32 */
+      expiresInDays?: null | number
     }
     EnableTwoFactorRequest: {
       code: string
@@ -1088,6 +1276,30 @@ export interface components {
       id: string
       displayName?: null | string
     }
+    FeedTokenListResponse: {
+      items: components['schemas']['FeedTokenResponse'][]
+    }
+    FeedTokenResponse: {
+      /** Format: uuid */
+      id: string
+      scope: string
+      /** Format: uuid */
+      calendarId: null | string
+      name: null | string
+      labelMode: string
+      /** Format: int32 */
+      includePastDays: number
+      needsNewLink: boolean
+      /** Format: date-time */
+      lastUsedAt: null | string
+      /** Format: date-time */
+      rotatedAt: null | string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      updatedAt: string
+      etag: string
+    }
     ForgotPasswordRequest: {
       email: string
     }
@@ -1190,6 +1402,25 @@ export interface components {
       createdBy: string
       /** Format: date-time */
       createdAt: string
+    }
+    IssuedFeedTokenListResponse: {
+      items: components['schemas']['IssuedFeedTokenResponse'][]
+    }
+    IssuedFeedTokenResponse: {
+      feedToken: components['schemas']['FeedTokenResponse']
+      token: string
+      /** Format: uri */
+      url: string
+      /** Format: uri */
+      webcalUrl: string
+    }
+    IssuedShareLinkResponse: {
+      shareLink: components['schemas']['ShareLinkResponse']
+      token: string
+      /** Format: uri */
+      url: string
+      /** Format: uri */
+      webcalUrl: string
     }
     LoginRequest: {
       email: string
@@ -1319,6 +1550,7 @@ export interface components {
       userId: string
       token: string
       newPassword: string
+      rotateFeedTokens?: null | boolean
     }
     RoleDefaultsRequest: {
       admin?: null | string
@@ -1329,6 +1561,25 @@ export interface components {
       admin: string
       member: string
       viewer: string
+    }
+    ShareLinkListResponse: {
+      items: components['schemas']['ShareLinkResponse'][]
+    }
+    ShareLinkResponse: {
+      /** Format: uuid */
+      id: string
+      /** Format: uuid */
+      calendarId: string
+      level: string
+      label: null | string
+      /** Format: date-time */
+      expiresAt: null | string
+      /** Format: uuid */
+      createdBy: string
+      /** Format: date-time */
+      createdAt: string
+      /** Format: date-time */
+      lastUsedAt: null | string
     }
     SplitEventRequest: {
       recurrenceId: null | string
@@ -1380,6 +1631,12 @@ export interface components {
       color?: null | string
       categories?: null | string[]
       recurrence?: null | components['schemas']['EventRecurrenceRequest']
+    }
+    UpdateFeedTokenRequest: {
+      name?: null | string
+      labelMode?: null | string
+      /** Format: int32 */
+      includePastDays?: null | number
     }
     UpdateGrantRequest: {
       level?: null | string
@@ -2832,6 +3089,72 @@ export interface operations {
       }
     }
   }
+  ListShareLinks: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ShareLinkListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateShareLink: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateShareLinkRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IssuedShareLinkResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
   ListMyCalendarPrefs: {
     parameters: {
       query?: never
@@ -2849,6 +3172,35 @@ export interface operations {
         content: {
           'application/json': components['schemas']['CalendarPrefsListResponse']
         }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RevokeShareLink: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */
       default: {
@@ -3300,6 +3652,311 @@ export interface operations {
         }
         content: {
           'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  ListFeedTokens: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedTokenListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CreateFeedToken: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateFeedTokenRequest']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IssuedFeedTokenResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RotateAllFeedTokens: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IssuedFeedTokenListResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetFeedToken: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedTokenResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RevokeFeedToken: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UpdateFeedToken: {
+    parameters: {
+      query?: never
+      header?: {
+        'If-Match'?: string
+      }
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/merge-patch+json': components['schemas']['UpdateFeedTokenRequest']
+        'application/json': components['schemas']['UpdateFeedTokenRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedTokenResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  RotateFeedToken: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IssuedFeedTokenResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetFeed: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        token: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/calendar': string
+        }
+      }
+      /** @description Not Modified */
+      304: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/plain': string
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/plain': string
+        }
+      }
+    }
+  }
+  GetShareLinkFeed: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        token: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/calendar': string
+        }
+      }
+      /** @description Not Modified */
+      304: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/plain': string
         }
       }
     }

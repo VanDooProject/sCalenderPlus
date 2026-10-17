@@ -4,6 +4,7 @@ import {
   handlers,
   resetMockAuth,
   resetMockCalendars,
+  resetMockFeeds,
   resetMockGroups,
 } from '@scalenderplus/api-client/mocks'
 /**
@@ -42,5 +43,6 @@ export async function startMockWorker() {
   resetMockAuth({ signedIn: !initialSession() })
   resetMockGroups()
   resetMockCalendars()
+  resetMockFeeds()
   await worker.start({ onUnhandledFrame: 'bypass', quiet: true })
 }

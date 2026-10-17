@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Calendars;
 using SCalenderPlus.Core.Events;
+using SCalenderPlus.Core.Feeds;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Infrastructure.Identity;
 
@@ -39,6 +40,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<EventOverrideEntry> EventOverrides => Set<EventOverrideEntry>();
 
     public DbSet<EventExceptionEntry> EventExceptions => Set<EventExceptionEntry>();
+
+    public DbSet<ShareLink> ShareLinks => Set<ShareLink>();
+
+    public DbSet<FeedToken> FeedTokens => Set<FeedToken>();
 
     public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
     {

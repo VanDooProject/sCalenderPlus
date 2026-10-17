@@ -40,6 +40,7 @@ internal static class CalendarEndpoints
             .WithSummary("Delete the calendar with its grants (owners only, requires If-Match)");
         calendars.MapGrantEndpoints();
         calendars.MapPrefsEndpoints(v1);
+        calendars.MapShareLinkEndpoints(v1);
 
         return calendars;
     }

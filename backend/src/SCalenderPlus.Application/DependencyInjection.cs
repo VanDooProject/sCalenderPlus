@@ -8,6 +8,7 @@ using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Events;
+using SCalenderPlus.Application.Feeds;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Jobs;
 
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<CalendarGrantService>();
         services.AddScoped<CalendarPrefsService>();
         services.AddScoped<CalendarGroupLifecycle>();
+        services.AddScoped<ShareLinkService>();
 
         services.TryAddScoped<IEventOverrideSource, EventOverrideSource>();
         services.AddScoped<EventQueryService>();
@@ -69,6 +71,14 @@ public static class DependencyInjection
         services.AddScoped<EventOccurrenceService>();
         services.AddScoped<EventShareRevocation>();
         services.AddScoped<IGroupMembershipObserver>(sp => sp.GetRequiredService<EventShareRevocation>());
+
+        services.AddOptions<FeedOptions>()
+            .Bind(configuration.GetSection(FeedOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<FeedCache>();
+        services.AddScoped<FeedTokenService>();
+        services.AddScoped<FeedService>();
 
         return services;
     }

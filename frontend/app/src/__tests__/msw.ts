@@ -4,6 +4,7 @@ import {
   handlers,
   resetMockAuth,
   resetMockCalendars,
+  resetMockFeeds,
   resetMockGroups,
 } from '@scalenderplus/api-client/mocks'
 
@@ -19,6 +20,7 @@ export function useMockApi() {
     resetMockAuth()
     resetMockGroups()
     resetMockCalendars()
+    resetMockFeeds()
   })
   afterAll(() => server.close())
   return server

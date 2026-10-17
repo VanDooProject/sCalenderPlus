@@ -5,10 +5,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using SCalenderPlus.Application.Calendars;
 using SCalenderPlus.Application.Events;
+using SCalenderPlus.Application.Feeds;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Calendars;
+using SCalenderPlus.Core.Feeds;
 using SCalenderPlus.Core.Groups;
 using SCalenderPlus.Core.Permissions;
 using SCalenderPlus.Infrastructure.Identity;
@@ -144,7 +147,40 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         {
             await SeedEventAsync(name, "lions", Actors.GroupAdmin.Name, new EventRecurrenceInput("FREQ=WEEKLY;COUNT=10"));
         }
+
+        // Feeds (M4): feed links of "user" (one read by the anonymous feed case, one each for revoke and rotate) and
+        // share links of "lions" (one read by the anonymous share-link feed case, one per successful revoke).
+        foreach (var name in new[] { "user", "user-revoked", "user-rotated" })
+        {
+            await SeedFeedTokenAsync(name, Actors.User.Name);
+        }
+
+        foreach (var name in new[] { "lions", "lions-revoked-by-admin", "lions-revoked-by-owner" })
+        {
+            await SeedShareLinkAsync(name, "lions");
+        }
     }
+
+    /// <summary>An aggregate feed link of <paramref name="actor"/>: resources <c>feed-token:{name}</c> and <c>feed-secret:{name}</c>.</summary>
+    private async Task SeedFeedTokenAsync(string name, string actor)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var issued = await scope.ServiceProvider.GetRequiredService<FeedTokenService>()
+            .CreateAsync(Guid.Parse(Get("user:" + actor)), new NewFeedToken(FeedScope.Aggregate));
+        Set("feed-token:" + name, issued.Token.Id.ToString());
+        Set("feed-secret:" + name, issued.Secret);
+    }
+
+    /// <summary>A read share link of the calendar, created by the group admin: resources <c>share-link:{name}</c> and <c>share-secret:{name}</c>.</summary>
+    private async Task SeedShareLinkAsync(string name, string calendar)
+    {
+        await using var scope = Api.Services.CreateAsyncScope();
+        var issued = await scope.ServiceProvider.GetRequiredService<ShareLinkService>()
+            .CreateAsync(Guid.Parse(Get("user:" + Actors.GroupAdmin.Name)), Guid.Parse(Get("calendar:" + calendar)), CalendarLevel.Read, name, null);
+        Set("share-link:" + name, issued.Link.Id.ToString());
+        Set("share-secret:" + name, issued.Secret);
+    }
+
 
     /// <summary>A timed event (a series with <paramref name="recurrence"/>) created by <paramref name="actor"/> through the use case; resource <c>event:{name}</c>.</summary>
     private async Task SeedEventAsync(string name, string calendar, string actor, EventRecurrenceInput? recurrence = null)

@@ -2,6 +2,7 @@ using SCalenderPlus.Api.Auth;
 using SCalenderPlus.Api.Calendars;
 using SCalenderPlus.Api.Entitlements;
 using SCalenderPlus.Api.Events;
+using SCalenderPlus.Api.Feeds;
 using SCalenderPlus.Api.Groups;
 
 namespace SCalenderPlus.Api.Hosting;
@@ -27,6 +28,7 @@ internal static class ApiV1
         group.MapCalendarEndpoints();
         group.MapEventEndpoints();
         group.MapEntitlementEndpoints();
+        group.MapFeedTokenEndpoints();
 
         return group;
     }

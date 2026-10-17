@@ -266,9 +266,9 @@ Feeds are always personalised (token belongs to a user, or to an anonymous share
 | `read` | Full event; label "read-only" per feed label settings (default: title prefix `🔒` followed by a space). |
 | `edit` / `manage` | Full event; label "editable" (default: no title marker, description footer only). |
 
-Every non-busy VEVENT gets a description footer line, e.g.
-`— sCalenderPlus: you can edit this event · https://app.example.com/e/{id}` or
-`— sCalenderPlus: read-only for you`. A machine-readable `X-SCALENDERPLUS-ACCESS:read|edit|manage` property is added for our own native apps. Label modes and the CalDAV mapping are specified in [ical-caldav.md](ical-caldav.md).
+Every non-busy VEVENT of a personal feed gets a description footer (unless the token's label mode is `none`), e.g.
+`✏️ You can edit this event: https://app.example.com/e/{id}/edit` or
+`🔒 Read-only for you · View in sCalenderPlus: https://app.example.com/e/{id}`, and a machine-readable `X-SCALENDERPLUS-ACCESS:read|edit|manage` property for our own native apps; share-link feeds carry neither (their holders have no account). Busy exceptions that change nothing busy viewers see are dropped, transparent occurrences become EXDATEs. Built in M4 (`Application/Feeds/FeedRenderer`, golden files); label modes, caching and the CalDAV mapping are specified in [ical-caldav.md](ical-caldav.md).
 
 ## 8. Implementation notes
 

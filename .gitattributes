@@ -3,3 +3,5 @@
 *.jpg binary
 *.ico binary
 *.woff2 binary
+# iCalendar requires CRLF line endings (RFC 5545 §3.1): golden feed files are compared byte for byte.
+*.ics -text

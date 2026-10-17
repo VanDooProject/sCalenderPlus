@@ -47,6 +47,20 @@ public static class AuthorizationMatrix
             "/api/v1/invites/preview",
             "Invite page before sign-in; the token is the credential and reveals only group name, inviter, role, expiry.",
             s => JsonContent.Create(new { token = s.Get("token:acceptable") })),
+
+        // iCal feeds (M4): calendar apps cannot sign in; the secret in the path is the credential (stored hashed,
+        // rate limited per token, redacted from logs). The feed shows what the token's owner (or a share link's
+        // anonymous holder) may see, per event through the permission engine.
+        Anonymous(
+            "GET",
+            "/ical/v1/{token}.ics",
+            "Personal iCal feed for calendar apps; the token in the URL is the credential.",
+            routeValues: s => Route(s, "feed-secret:user", "token")),
+        Anonymous(
+            "GET",
+            "/ical/v1/s/{token}.ics",
+            "Anonymous share-link feed; the link's level is the ceiling for every event.",
+            routeValues: s => Route(s, "share-secret:lions", "token")),
     ];
 
     public static IReadOnlyList<MatrixCase> Cases { get; } =
@@ -551,6 +565,85 @@ public static class AuthorizationMatrix
             .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
             .WithRoute(s => Route(s, "event:lions-split-by-owner"))
             .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+
+        // Feed links (M4): every user manages only their own; others' are 404.
+        .. For("GET", "/api/v1/feed-tokens")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("POST", "/api/v1/feed-tokens")
+            .WithBody(_ => JsonContent.Create(new { scope = "aggregate" }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.Created)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Created)
+            .WithBody(s => JsonContent.Create(new { scope = "calendar", calendarId = s.Get("calendar:lions") }))
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound) // a calendar feed needs a calendar the caller sees
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Created),
+        .. For("POST", "/api/v1/feed-tokens/rotate-all")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.OK), // not "user": the anonymous feed case uses their secret
+        .. For("GET", "/api/v1/feed-tokens/{id}")
+            .WithRoute(s => Route(s, "feed-token:user"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
+            .Expect(Actors.User, HttpStatusCode.OK),
+        .. For("PATCH", "/api/v1/feed-tokens/{id}")
+            .WithRoute(s => Route(s, "feed-token:user"))
+            .WithBody(_ => JsonContent.Create(new { name = "Phone" }))
+            .WithHeaders(IfMatchAny)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
+            .Expect(Actors.User, HttpStatusCode.OK),
+        .. For("DELETE", "/api/v1/feed-tokens/{id}")
+            .WithRoute(s => Route(s, "feed-token:user-revoked"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
+            .Expect(Actors.User, HttpStatusCode.NoContent),
+        .. For("POST", "/api/v1/feed-tokens/{id}/rotate")
+            .WithRoute(s => Route(s, "feed-token:user-rotated"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
+            .Expect(Actors.User, HttpStatusCode.OK),
+
+        // Share links (M4): calendar manage (permissions.md §4.5); creating needs a verified email.
+        .. For("GET", "/api/v1/calendars/{id}/share-links")
+            .WithRoute(LionsCalendar)
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/calendars/{id}/share-links")
+            .WithRoute(LionsCalendar)
+            .WithBody(_ => JsonContent.Create(new { level = "free_busy" }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.Created)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Created),
+        .. For("DELETE", "/api/v1/share-links/{id}")
+            .WithRoute(s => Route(s, "share-link:lions"))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.Forbidden)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.Forbidden)
+            .WithRoute(s => Route(s, "share-link:lions-revoked-by-admin"))
+            .Expect(Actors.GroupAdmin, HttpStatusCode.NoContent)
+            .WithRoute(s => Route(s, "share-link:lions-revoked-by-owner"))
+            .Expect(Actors.GroupOwner, HttpStatusCode.NoContent),
     ];
 
     // A property, not a field: Cases is initialized first (static initializers run in declaration order).
@@ -582,8 +675,9 @@ public static class AuthorizationMatrix
         string path,
         string reason,
         Func<MatrixScenario, HttpContent?>? body = null,
-        HttpStatusCode? expected = null) =>
-        new(new ApiOperation(method, path), reason, body, expected);
+        HttpStatusCode? expected = null,
+        Func<MatrixScenario, IReadOnlyDictionary<string, string>>? routeValues = null) =>
+        new(new ApiOperation(method, path), reason, body, expected, routeValues);
 
     /// <summary>Starts the cases of one operation: <c>.. For("GET", "/api/v1/groups/{id}").Expect(...)</c>.</summary>
     internal static OperationCases For(string method, string path) => new(new ApiOperation(method, path));

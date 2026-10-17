@@ -18,6 +18,7 @@
 #   `/reset-password`, `/invite`): the value of every parameter whose name contains `token`.
 # Used by the access log and by the default logger, which receives the error logs (e.g. a 502 from
 # reverse_proxy) with the full request. Caddy already omits Cookie/Authorization header values.
+# Checked by deploy/caddy/test-log-redaction.sh (CI job docker, web images).
 (redacted_json) {
 	format filter {
 		wrap json

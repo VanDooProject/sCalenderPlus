@@ -44,10 +44,12 @@ public sealed record MatrixCase(
 /// <summary>
 /// An operation that is deliberately public (no authentication, no permission check). <see cref="Body"/> is a
 /// valid request body; <see cref="Expected"/> the status an anonymous caller gets (default: any 2xx), e.g. 400
-/// for token-based operations where the token in the body is the credential.
+/// for token-based operations where the token in the body is the credential; <see cref="RouteValues"/> fill path
+/// parameters (e.g. the secret of an iCal feed URL).
 /// </summary>
 public sealed record AnonymousOperation(
     ApiOperation Operation,
     string Reason,
     Func<MatrixScenario, HttpContent?>? Body = null,
-    HttpStatusCode? Expected = null);
+    HttpStatusCode? Expected = null,
+    Func<MatrixScenario, IReadOnlyDictionary<string, string>>? RouteValues = null);

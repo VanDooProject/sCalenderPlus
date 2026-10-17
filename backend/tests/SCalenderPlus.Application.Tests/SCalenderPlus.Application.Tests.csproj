@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ical.Net" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="xunit.v3" />
@@ -16,6 +17,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Golden feed files: committed fixtures (CRLF, see .gitattributes), also parsed by ical.js in the frontend tests. -->
+  <ItemGroup>
+    <None Include="Feeds/Golden/*.ics" />
   </ItemGroup>
 
 </Project>

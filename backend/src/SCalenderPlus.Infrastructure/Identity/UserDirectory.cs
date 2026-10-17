@@ -37,6 +37,12 @@ internal sealed class UserDirectory(AppDbContext db) : IUserDirectory
             .Select(u => (Instant?)u.CreatedAt)
             .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
+    public async Task<FeedOwner?> FeedOwnerAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await db.Users.AsNoTracking()
+            .Where(u => u.Id == id)
+            .Select(u => new FeedOwner(u.Id, u.Locale, u.TimeZone, u.AclVersion, u.DeletedAt != null))
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
     /// <summary>Same as Identity's <c>UpperInvariantLookupNormalizer</c> (the user manager's default).</summary>
     public string NormalizeEmail(string email)
     {
