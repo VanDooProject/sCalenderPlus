@@ -31,6 +31,7 @@ import EventDetailsDialog from '@/components/calendar/EventDetailsDialog.vue'
 import EventMoveDialog from '@/components/calendar/EventMoveDialog.vue'
 import EventEditDialog from '@/components/calendar/EventEditDialog.vue'
 import { useCalendarLayers, useSharedWithMe } from '@/composables/calendars'
+import { useLinkedEvent } from '@/composables/eventLink'
 import { useSession } from '@/composables/session'
 import { api } from '@/api'
 import { call } from '@/lib/apiError'
@@ -40,6 +41,7 @@ import { levelAtLeast } from '@/lib/calendarLevels'
 import { droppedTimes, newEventValues, type EventFormValues } from '@/lib/eventForm'
 import {
   calendarViews,
+  isEditable,
   eventsQueryKey,
   eventsQueryParams,
   firstDayOf,
@@ -196,6 +198,18 @@ function openEdit() {
   detailsOpen.value = false
   editOpen.value = true
 }
+
+/** `/e/{id}` and `/e/{id}/edit` (EventLinkView) arrive as `?event={id}[&edit=1]`. */
+useLinkedEvent((event, edit) => {
+  if (edit && isEditable(event)) {
+    editEvent.value = event
+    editInitial.value = null
+    editOpen.value = true
+  } else {
+    selected.value = event
+    detailsOpen.value = true
+  }
+})
 
 const moveOpen = ref(false)
 const moveEvent = ref<EventResponse | null>(null)

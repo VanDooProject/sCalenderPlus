@@ -52,3 +52,16 @@ export const calendars = {
   eve: '0192f2c4-0000-7000-8000-000000000005',
   planLimitName: 'Over the limit',
 } as const
+
+/**
+ * Feed links and share links of the stateful MSW feed mocks
+ * (frontend/packages/api-client/src/mocks/feeds.ts): the aggregate link "iPhone", a calendar link
+ * of "FC Lions – Club" that a password reset broke (`needsNewLink`) and the share link "Club
+ * website". `trainingEvent` is the seeded "Training" on 2026-11-02 (target of `/e/{id}` links).
+ */
+export const feeds = {
+  token: '0192f2c4-0000-7000-8000-000000000701',
+  resetToken: '0192f2c4-0000-7000-8000-000000000702',
+  shareLink: '0192f2c4-0000-7000-8000-000000000711',
+  trainingEvent: '0192f2c4-0000-7000-8000-000000000401',
+} as const

@@ -1,7 +1,7 @@
 import type { createOpenApiHttp } from 'openapi-msw'
 import type { components, paths } from '../schema'
 import type { ErrorCode } from '../index'
-import { mockProblem } from './auth'
+import { mockAuth, mockProblem } from './auth'
 import { mockCalendar, mockCalendars } from './calendars'
 
 type FeedToken = components['schemas']['FeedTokenResponse']
@@ -102,7 +102,8 @@ function touch(token: FeedToken): void {
 /**
  * Feed links (`/api/v1/feed-tokens`) and calendar share links (`/api/v1/calendars/{id}/share-links`,
  * `/api/v1/share-links/{id}`) like the api: secrets only in create/rotate responses, If-Match on PATCH,
- * share links for calendar managers (the mock user manages {@link mockCalendar} and their personal calendar).
+ * share links for calendar managers with a verified email, not on frozen calendars (the mock user
+ * manages {@link mockCalendar} and their personal calendar).
  */
 export function feedHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>) {
   const problem = (code: ErrorCode, status: number, instance: string) =>
@@ -219,6 +220,10 @@ export function feedHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>) 
       const allowed = manages(params.id)
       if (allowed === undefined) return problem('not_found', 404, instance)
       if (!allowed) return problem('insufficient_permission', 403, instance)
+      if (!mockAuth.user.emailVerified) return problem('email_not_verified', 403, instance)
+      if (mockCalendars.calendars.find((c) => c.id === params.id)?.frozen) {
+        return problem('calendar_frozen', 409, instance)
+      }
       const body = await request.json()
       if (!['free_busy', 'read'].includes(body.level))
         return problem('validation_failed', 400, instance)

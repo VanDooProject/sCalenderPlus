@@ -630,7 +630,10 @@
       "doneText": "You can now sign in with your new password.",
       "toLogin": "Sign in",
       "invalidText": "The reset link is invalid, expired or was already used. Request a new one.",
-      "requestNew": "Request a new link"
+      "requestNew": "Request a new link",
+      "rotateFeeds": "Also rotate my calendar feed links",
+      "rotateFeedsHint": "Gives every feed link a new secret address, in case someone else has one. Afterwards, get the new addresses under Settings → Calendar feeds.",
+      "feedsRotated": "Your feed links got new addresses. After signing in, get them under Settings → Calendar feeds and update your calendar apps."
     },
     "verify": {
       "title": "Confirm email address",
@@ -934,6 +937,183 @@
     "comingSoon": "Upgrades are coming soon: there is no checkout during the beta.",
     "notNow": "Not now",
     "ok": "OK"
+  },
+  "feeds": {
+    "title": "Calendar feeds",
+    "description": "Personal links that show your calendars in Apple Calendar, Google Calendar, Outlook and other apps, exactly as you may see them in {app}. Treat each link like a password.",
+    "help": "How to subscribe in your calendar app",
+    "latency": "Revoking a link or giving it a new address stops the old address at once; calendar apps notice at their next refresh.",
+    "scope": {
+      "aggregate": "All my calendars",
+      "calendarNamed": "Calendar: {name}",
+      "calendarGone": "A calendar you no longer see",
+      "shared_with_me": "Shared with me"
+    },
+    "labelModes": {
+      "prefix_emoji": {
+        "label": "🔒 before read-only events (recommended)",
+        "example": "Read-only: “🔒 Board meeting”; events you can edit stay unmarked."
+      },
+      "prefix_emoji_both": {
+        "label": "🔒 read-only and ✏️ editable",
+        "example": "“🔒 Board meeting”, “✏️ Training”."
+      },
+      "suffix_text": {
+        "label": "A word after the title",
+        "example": "“Board meeting [read-only]”, “Training [editable]”."
+      },
+      "description_only": {
+        "label": "Only in the description",
+        "example": "Titles stay unchanged; the description says whether you can edit the event."
+      },
+      "none": {
+        "label": "No marks",
+        "example": "Titles and descriptions stay unchanged."
+      }
+    },
+    "list": {
+      "emptyTitle": "No feed links yet",
+      "emptyText": "Create one link for all your calendars and add it to your calendar app.",
+      "empty": "No feed links.",
+      "lastUsed": "Last used {when}",
+      "neverUsed": "Not used yet",
+      "created": "created {when}",
+      "pastDays": "Upcoming events only | Includes the past day | Includes the past {n} days"
+    },
+    "needsNew": {
+      "title": "A feed link stopped working | {n} feed links stopped working",
+      "text": "Your password reset gave them new secret addresses. Get a new address for each and update the subscription in your calendar app.",
+      "badge": "Needs a new address",
+      "action": "Get new address"
+    },
+    "create": {
+      "action": "New link",
+      "title": "New feed link",
+      "description": "Choose what the link shows. You'll see its address once.",
+      "scope": "Shows",
+      "scopes": {
+        "aggregate": "All my calendars (recommended)",
+        "calendar": "One calendar",
+        "shared_with_me": "Only events shared with me"
+      },
+      "scopeHints": {
+        "aggregate": "Every calendar you see and haven't hidden, plus events shared with you: one subscription for everything.",
+        "calendar": "The events of one calendar, as you see them.",
+        "shared_with_me": "Events people shared with you personally, from calendars you don't see otherwise."
+      },
+      "calendar": "Calendar",
+      "calendarPlaceholder": "Choose a calendar",
+      "pickCalendar": "Choose a calendar first.",
+      "labelMode": "Mark events by what you may do",
+      "name": "Name",
+      "nameHint": "Optional, e.g. the device you use it on.",
+      "pastDays": "Past events",
+      "pastDaysOption": "Upcoming only | The past day too | The past {n} days too",
+      "submit": "Create link"
+    },
+    "reveal": {
+      "title": "Your feed link",
+      "newTitle": "New address",
+      "once": "Copy the address now: it is shown only this once. Anyone who has it sees what the link shows, so keep it private.",
+      "address": "Feed address",
+      "copyFailed": "Copying didn't work: select the address and copy it yourself.",
+      "openApp": "Open in calendar app",
+      "qrLabel": "QR code of the feed address",
+      "qrHint": "Scan with your phone's camera to subscribe.",
+      "done": "Done"
+    },
+    "rotate": {
+      "action": "New address",
+      "actionFor": "New address for {name}",
+      "title": "New address for {name}?",
+      "text": "The current address stops working at once. Update the subscription in your calendar apps with the new one."
+    },
+    "revoke": {
+      "action": "Revoke",
+      "actionFor": "Revoke {name}",
+      "title": "Revoke {name}?",
+      "text": "The address stops working at once and calendar apps stop receiving updates.",
+      "done": "{name} revoked."
+    },
+    "rotateAll": {
+      "title": "New addresses for all links",
+      "description": "If a link may have got into the wrong hands, replace every address at once. Each new address is shown once.",
+      "action": "Replace all addresses",
+      "confirmTitle": "Replace all feed addresses?",
+      "confirmText": "Every current address stops working at once. Update each subscription in your calendar apps afterwards.",
+      "revealTitle": "New addresses"
+    },
+    "subscribe": {
+      "action": "Subscribe in calendar app",
+      "title": "Subscribe to {name}",
+      "text": "Get a personal address for {name} and add it to your calendar app. It shows the calendar exactly as you see it here.",
+      "existing": "You already have a link for this calendar (last used: {when}). Its address was shown only when it was created.",
+      "notYet": "not yet",
+      "existingBroken": "Your link for this calendar stopped working after a password reset. Get a new address for it.",
+      "existingChoices": "Give that link a new address (the old one stops working), or create another link, e.g. for a second device.",
+      "another": "Create another link",
+      "renew": "New address",
+      "create": "Create link",
+      "aggregateTip": "Tip: one link can show all your calendars at once.",
+      "allLinks": "All feed links",
+      "cardTitle": "Calendar apps",
+      "cardDescription": "See this calendar in Apple Calendar, Google Calendar, Outlook or another app."
+    },
+    "errors": {
+      "limit": "You have reached the maximum number of feed links. Revoke one you no longer use."
+    }
+  },
+  "shareLinks": {
+    "title": "Share links",
+    "description": "Anyone with such a link can subscribe to this calendar in a calendar app, without an account.",
+    "empty": "No share links.",
+    "verifyFirst": "Confirm your email address to create share links.",
+    "frozenHint": "Frozen: share links can be revoked, not created.",
+    "levels": {
+      "free_busy": {
+        "label": "Busy times only",
+        "hint": "Shows when the calendar is busy (with cover titles where set), no titles or details."
+      },
+      "read": {
+        "label": "Events with details",
+        "hint": "Shows events with their titles and details, except events whose own permissions hide them from people with the link."
+      }
+    },
+    "list": {
+      "expires": "expires {when}",
+      "expired": "expired {when}",
+      "noExpiry": "never expires"
+    },
+    "create": {
+      "action": "New share link",
+      "title": "New share link",
+      "description": "The link works without signing in. You'll see its address once.",
+      "level": "Shows",
+      "label": "Label",
+      "labelHint": "Optional, e.g. where you publish it.",
+      "expiry": "Expires",
+      "never": "Never",
+      "days": "After one day | After {n} days",
+      "submit": "Create link",
+      "createdTitle": "Your share link"
+    },
+    "revoke": {
+      "action": "Revoke",
+      "actionFor": "Revoke {name}",
+      "title": "Revoke {name}?",
+      "text": "The address stops working at once.",
+      "done": "{name} revoked."
+    },
+    "errors": {
+      "limit": "This calendar has the maximum number of share links. Revoke one first."
+    }
+  },
+  "eventLink": {
+    "title": "Event",
+    "opening": "Opening the event…",
+    "goneTitle": "Event not available",
+    "goneText": "It may have been deleted, or you no longer have access to it.",
+    "toCalendar": "Go to the calendar"
   },
   "help": {
     "calendarApps": {

@@ -23,6 +23,8 @@ import TimeZonePicker from '@/components/TimeZonePicker.vue'
 import CalendarColorPicker from '@/components/calendar/CalendarColorPicker.vue'
 import GrantsCard from '@/components/calendar/GrantsCard.vue'
 import LevelHelp from '@/components/calendar/LevelHelp.vue'
+import CalendarAppsCard from '@/components/feeds/CalendarAppsCard.vue'
+import ShareLinksCard from '@/components/feeds/ShareLinksCard.vue'
 import { calendarsQueryKey } from '@/composables/calendars'
 import { calendarKeys, useCalendar, useCalendarChange } from '@/composables/calendarSettings'
 import { useForm, useValidators } from '@/composables/form'
@@ -452,6 +454,8 @@ async function deleteCalendar() {
       </form>
 
       <GrantsCard v-if="manageable" :calendar="calendar" :my-level="myLevel" :run="run" />
+      <ShareLinksCard v-if="manageable" :calendar-id="calendar.id" :frozen="frozen" />
+      <CalendarAppsCard :calendar-id="calendar.id" :calendar-name="calendar.name" />
 
       <SettingsCard
         v-if="canDeleteCalendar(myLevel)"

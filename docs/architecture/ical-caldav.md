@@ -6,7 +6,7 @@ Which clients support what, real-time updates and Google/Microsoft API sync: [sy
 
 ## 1. iCal subscription feeds (MVP)
 
-Status: **built** (M4) — `Application/Feeds` (`FeedService`, `FeedRenderer`, `VTimeZoneBuilder`, `FeedTokenService`), share links in `Application/Calendars/ShareLinkService`, endpoints in `Api/Feeds` and `Api/Calendars/ShareLinkEndpoints`; management API in [api.md "Feeds"](api.md#feeds-implemented-m4). The web UI for feed links (list, webcal link, QR code) follows separately.
+Status: **built** (M4) — `Application/Feeds` (`FeedService`, `FeedRenderer`, `VTimeZoneBuilder`, `FeedTokenService`), share links in `Application/Calendars/ShareLinkService`, endpoints in `Api/Feeds` and `Api/Calendars/ShareLinkEndpoints`; management API in [api.md "Feeds"](api.md#feeds-implemented-m4); web UI in §1.6.
 
 ### 1.1 Feed types
 
@@ -70,7 +70,7 @@ or
 ✏️ You can edit this event: https://app.example.com/e/0192f…/edit
 ```
 
-(`sCalenderPlus` is `Brand__ProductName`, the links start with `App__PublicBaseUrl`; the web app's `/e/{id}` routes come with the feed UI.)
+(`sCalenderPlus` is `Brand__ProductName`, the links start with `App__PublicBaseUrl`; the web app's `/e/{id}` routes are described in §1.6.)
 
 Machine-readable: `X-SCALENDERPLUS-ACCESS:read|edit|manage` and `X-SCALENDERPLUS-EVENT-ID:<uuid>` on every non-busy VEVENT of personal feeds.
 
@@ -98,6 +98,17 @@ Cross-parser validation (CI fails on unparsable or inconsistent output):
 - **Ical.Net** (`CrossParserTests`): every golden file parses with the same events, times and texts; every generated `VTIMEZONE`, evaluated by Ical.Net's recurrence engine, reproduces exactly the tzdb transitions 2023–2035 for Berlin, New York, Sydney, Kolkata, Casablanca, São Paulo, Chatham and UTC. (Ical.Net 5.2 decodes an escaped backslash before `n` as a newline; the fixtures avoid that sequence, ical.js decodes it correctly.)
 - **ical.js** in Vitest (`frontend/packages/api-client/src/__tests__/icalGolden.spec.ts`): parses every golden file, checks line length and the absence of `ATTENDEE`/`ORGANIZER`/`VALARM`, resolves every TZID through the file's own VTIMEZONEs (ical.js has no zone database) to the sidecar's instants, and expands every series to the same occurrences across DST. The frontend CI job also runs when the golden files change.
 - End to end (`IntegrationTests/Feeds`): projection per level through HTTP, scopes, hidden calendars, Shared with me, ETag/304 without event query, ETag changes on override and event changes, revocation over a cached render, share-link ceilings, rate limit and log capture.
+
+### 1.6 Web UI
+
+Built in `frontend/app` (`components/feeds`, `views/settings/FeedsView.vue`, `composables/feeds.ts`, `composables/eventLink.ts`, en/de under `feeds`, `shareLinks`, `eventLink`):
+
+- **Settings → Calendar feeds** (`/settings/feeds`): the user's links (name or what it shows — all calendars, one calendar, shared with me —, label mode, past days, last used, created); never a secret. "New link" chooses the scope (aggregate preselected as the recommendation), the calendar for `calendar`, the label mode (with an example per mode), an optional name and how far back (0/30/90/365 days). "New address" (rotate) and "Revoke" ask first and repeat the recall caveat of the calendar apps guide; "Replace all addresses" (rotate-all) lists every new address once. Links with `needsNewLink` (after a password reset with rotation) show a warning and a "Get new address" button that rotates without asking (the old address is dead already).
+- **Shown once**: create and rotate open the address in a dialog — the https URL with a copy button, an "Open in calendar app" `webcal://` link and a QR code drawn locally (`QrCode.vue`). The QR code encodes the `webcal://` URL: phone cameras hand that scheme to the calendar app's subscribe flow, while an https `.ics` link would only download a one-time import. Closing the dialog drops the secret; the list query never contains it.
+- **Per calendar**: "Subscribe in calendar app" in the sidebar menu of each calendar and as a "Calendar apps" card in calendar settings. Without a calendar link for it, it creates one (defaults); with one — whose address cannot be shown again — it offers a new address for the newest such link (rotate) or another link. Both link to `/help/calendar-apps`.
+- **Share links** (calendar settings, `manage` only): list (level, expiry or expired, last used), create (busy times only / events with details, optional label, expiry never/7/30/90/365 days; address shown once like above), revoke with the recall caveat. Unverified users see why they cannot create one (`email_not_verified` is also mapped from the api); frozen calendars allow revoking only.
+- **Event links** `/e/{id}` and `/e/{id}/edit` (signed-in routes; signed-out visitors log in first and come back): load `GET /events/{id}` and replace themselves with `/calendar?date=…` at the event's start in the user's zone (a series that started before today opens at today); the calendar opens the details dialog, or the edit dialog for `/edit` when the user may edit (otherwise the details). `404`/`403` show "Event not available" with a link to the calendar.
+- **Password reset**: the reset page has an opt-in "Also rotate my calendar feed links" (`rotateFeedTokens: true`) and, after it, says where to get the new addresses.
 
 ## 2. ICS import
 

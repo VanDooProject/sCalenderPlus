@@ -7,6 +7,7 @@ const { t } = useI18n()
 const tabs = [
   { to: { name: 'settings-profile' }, label: 'settings.profile.title', testid: 'tab-profile' },
   { to: { name: 'settings-security' }, label: 'settings.security.title', testid: 'tab-security' },
+  { to: { name: 'settings-feeds' }, label: 'feeds.title', testid: 'tab-feeds' },
 ] as const
 </script>
 

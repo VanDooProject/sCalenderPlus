@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useQueryClient } from '@tanstack/vue-query'
 import { CircleCheck, Unlink } from '@lucide/vue'
-import { UiButton, UiField } from '@scalenderplus/ui'
+import { UiButton, UiCheckbox, UiField } from '@scalenderplus/ui'
 import { api } from '@/api'
 import AuthHeading from '@/components/AuthHeading.vue'
 import FormAlert from '@/components/FormAlert.vue'
@@ -21,6 +21,9 @@ const queryClient = useQueryClient()
 const rules = useValidators()
 const formRef = ref<HTMLFormElement>()
 const state = ref<'form' | 'done' | 'invalid-link'>('form')
+/** Opt-in: new secrets for every feed link (shown nowhere: they are renewed in the settings). */
+const rotateFeedTokens = ref(false)
+const rotatedFeeds = ref(false)
 
 const userId = computed(() => (typeof route.query.userId === 'string' ? route.query.userId : ''))
 const token = computed(() => (typeof route.query.token === 'string' ? route.query.token : ''))
@@ -47,11 +50,17 @@ async function submit() {
     try {
       await call(
         api.POST('/api/v1/auth/reset-password', {
-          body: { userId: userId.value, token: token.value, newPassword: v.newPassword },
+          body: {
+            userId: userId.value,
+            token: token.value,
+            newPassword: v.newPassword,
+            ...(rotateFeedTokens.value ? { rotateFeedTokens: true } : {}),
+          },
         }),
       )
       // A reset ends every session (security stamp), this browser's too.
       queryClient.setQueryData(sessionQueryKey, null)
+      rotatedFeeds.value = rotateFeedTokens.value
       state.value = 'done'
     } catch (error) {
       if (isApiError(error, 'token_invalid')) {
@@ -69,6 +78,13 @@ async function submit() {
     <AuthHeading :title="t('auth.reset.doneTitle')" :description="t('auth.reset.doneText')">
       <template #icon><CircleCheck aria-hidden="true" /></template>
     </AuthHeading>
+    <p
+      v-if="rotatedFeeds"
+      class="mb-6 text-sm text-on-surface-muted"
+      data-testid="reset-feeds-rotated"
+    >
+      {{ t('auth.reset.feedsRotated') }}
+    </p>
     <UiButton as-child size="lg" block>
       <RouterLink :to="{ name: 'login' }" data-testid="reset-to-login">
         {{ t('auth.reset.toLogin') }}
@@ -116,6 +132,12 @@ async function submit() {
           data-testid="reset-confirm"
         />
       </UiField>
+      <UiCheckbox
+        v-model="rotateFeedTokens"
+        :label="t('auth.reset.rotateFeeds')"
+        :description="t('auth.reset.rotateFeedsHint')"
+        data-testid="reset-rotate-feeds"
+      />
       <UiButton
         type="submit"
         size="lg"

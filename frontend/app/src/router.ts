@@ -87,6 +87,20 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
               },
             ],
           },
+          // Event links (feed descriptions link here): open the calendar at the event.
+          {
+            path: 'e/:eventId',
+            name: 'event-link',
+            component: () => import('./views/calendar/EventLinkView.vue'),
+            meta: { title: 'eventLink.title' },
+          },
+          {
+            path: 'e/:eventId/edit',
+            name: 'event-link-edit',
+            component: () => import('./views/calendar/EventLinkView.vue'),
+            props: { edit: true },
+            meta: { title: 'eventLink.title' },
+          },
           {
             path: 'help/calendar-apps',
             name: 'help-calendar-apps',
@@ -109,6 +123,12 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
                 name: 'settings-security',
                 component: () => import('./views/settings/SecurityView.vue'),
                 meta: { title: 'settings.security.title' },
+              },
+              {
+                path: 'feeds',
+                name: 'settings-feeds',
+                component: () => import('./views/settings/FeedsView.vue'),
+                meta: { title: 'feeds.title' },
               },
             ],
           },
