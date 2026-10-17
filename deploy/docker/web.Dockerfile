@@ -40,6 +40,7 @@ RUN apk add --no-cache libcap \
 
 COPY deploy/caddy/web.Caddyfile /etc/caddy/Caddyfile
 COPY deploy/caddy/config.json.tmpl /srv/config.json
+COPY deploy/caddy/manifest.webmanifest.tmpl /srv/manifest.webmanifest.tmpl
 COPY --chmod=0555 deploy/docker/web-start.sh /usr/local/bin/web-start
 
 # The image name per edition (docs/product/editions.md §2.3); only the selected stage is built.

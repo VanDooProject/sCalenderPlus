@@ -64,7 +64,7 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 - [ ] **feat(web): event permission editor** — Override list editor (user/group+role/everyone/anonymous → level ≤ edit), preview "who sees what", explain dialog, plan usage meter, "already-synced feeds can't be recalled" hint. *AC:* fullstack e2e: Mia hides event, Vic sees busy, Adam still manages.
 - [ ] **feat(web): calendar settings and sharing** — Grants, role defaults, share links, creator toggles, move event. *AC:* changes reflect in `myLevel` of other users (fullstack).
 - [ ] **feat(web): groups and members management** — Create group, invite (email/link/QR), roles, leave/transfer, revoke-shares option on removal. *AC:* invite link flow e2e.
-- [ ] **feat(web): PWA install and offline shell** — Manifest, icons, service worker for shell. *AC:* Lighthouse PWA installable.
+- [x] **feat(web): PWA install and offline shell** — Edition manifest (runtime brand name via Caddy), icons, service worker precaching the app shell only (never api or `/ical/`), update prompt. *AC:* installable — Chromium reports no installability errors under the production CSP (the check behind Lighthouse's former PWA audit, removed in Lighthouse 12); shell loads offline.
 - [ ] **feat(web): paywall and limit UX** — Map `plan_limit_reached`/`feature_not_in_plan` to contextual upgrade dialogs (beta: "coming soon" instead of checkout). *AC:* mocked e2e shows dialog with correct numbers.
 
 ## M4 — iCal feeds, ICS upload and beta readiness

@@ -1,5 +1,6 @@
 import { inject, type InjectionKey } from 'vue'
 import { edition } from '@edition'
+import { brandThemeColor } from '@/lib/webManifest'
 
 /**
  * Runtime branding (white-label per deployment, no rebuild). Unset or invalid values fall back to
@@ -152,11 +153,15 @@ export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<AppConf
 
 /**
  * Applies the brand outside the Vue tree: the palette hue as a custom property on <html> (CSSOM,
- * allowed by the strict CSP, unlike a `style` attribute in markup) and the initial document title
+ * allowed by the strict CSP, unlike a `style` attribute in markup), the browser's theme colour
+ * (the build writes the edition's into index.html and the manifest) and the initial document title
  * (App.vue keeps it in step with the route).
  */
 export function applyBrand(brand: BrandConfig, root: HTMLElement = document.documentElement) {
   root.style.setProperty('--scal-brand-hue', String(brand.hue))
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', brandThemeColor(brand.hue))
   document.title = brand.name
 }
 

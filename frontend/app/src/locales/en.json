@@ -782,5 +782,10 @@
     "daysLeft": "Pro trial: {n} day left | Pro trial: {n} days left",
     "until": "Your account has the Pro plan's limits until {date}, then the Free plan's.",
     "dismiss": "Hide the trial notice"
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available.",
+    "reload": "Reload",
+    "later": "Later"
   }
 }

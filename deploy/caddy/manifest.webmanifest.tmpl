@@ -1,0 +1,14 @@
+{{- /*
+  /manifest.webmanifest of the installable app, rendered by Caddy on each request: the build's own
+  manifest (the edition's name, theme colour and icons; frontend/app/src/lib/webManifest.ts) with
+  `name` and `short_name` replaced by PUBLIC_BRAND_NAME when it is set and at most 60 characters
+  (the app's limit, frontend/app/src/config.ts; JSON-escaped with toJson).
+  The theme colour stays the edition's; the app applies a PUBLIC_BRAND_HUE at runtime.
+*/ -}}
+{{- $manifest := include "/manifest.webmanifest" -}}
+{{- $name := env "PUBLIC_BRAND_NAME" | trim -}}
+{{- if and $name (le (len (splitList "" $name)) 60) -}}
+{{- $manifest = regexReplaceAllLiteral `"name": "[^"\\]*"` $manifest (printf `"name": %s` ($name | toJson)) -}}
+{{- $manifest = regexReplaceAllLiteral `"short_name": "[^"\\]*"` $manifest (printf `"short_name": %s` ($name | toJson)) -}}
+{{- end -}}
+{{ $manifest }}

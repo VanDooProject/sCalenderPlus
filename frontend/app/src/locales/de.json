@@ -782,5 +782,10 @@
     "daysLeft": "Pro-Testphase: noch {n} Tag | Pro-Testphase: noch {n} Tage",
     "until": "Dein Konto hat bis {date} die Limits des Pro-Plans, danach die des Free-Plans.",
     "dismiss": "Hinweis zur Testphase ausblenden"
+  },
+  "pwa": {
+    "updateAvailable": "Eine neue Version ist verfügbar.",
+    "reload": "Neu laden",
+    "later": "Später"
   }
 }
