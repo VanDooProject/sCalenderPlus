@@ -82,6 +82,7 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | Responsive mobile-first layout, installable PWA | MVP | Cross-platform first. |
 | ★ Access indicators in UI (lock, pencil, busy, eye-off) | MVP | Users must see why they can't edit. |
 | ★ Keyboard shortcuts, quick-add | v1 | Power users. |
+| ★ Onboarding checklist (first calendar, invite a group, subscribe a feed; optional: an event with a cover title) | v1 | New users reach the "shared and in my calendar app" moment in under two minutes. |
 | ★ Search (title, description, location; within permissions) | v1 | Grows essential with imports; Postgres full-text search. |
 | ★ Free/busy availability view across members/groups | later (M8) | "When does the team have time?" — natural next step of free/busy level. |
 | ★ i18n (English, German at launch) | MVP | Primary market DACH; adding later is costly. |
@@ -89,6 +90,8 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Dark mode / system theme | MVP | Cheap with design tokens from the start. |
 | ★ Offline read cache (PWA) | later (M8) | Check today's schedule without network. |
 | ★ Real-time updates in our own clients (SSE/websocket on the change log) | later (M8) | Shared editing feels live; builds on the incremental changes endpoint (M8). Feeds stay polling ([sync.md](../architecture/sync.md)). |
+
+**Onboarding checklist.** Shown above every page of the signed-in app for an account that is not set up yet: create a calendar (there is no default calendar — registration creates none; the name is prefilled with the display name), invite a group (create one and an invite link with its QR code; *constellation* in the poly edition), subscribe a feed (the aggregate feed link, with the calendar-apps help), and optionally add an event with a cover title or its own permissions. Each tick is derived from the account's real state through the existing endpoints (a calendar at `contribute` or above; a group with another member or a pending invite; a feed link; an own event in the coming year with a cover title or overrides), so doing a step elsewhere ticks it too — nothing is stored server-side (there is no UI-preferences endpoint). Hiding it is remembered per user in the browser (`localStorage`); an account that is already set up when the checklist first loads never sees it. "Getting started" in the account menu reopens it. The mocked e2e measures the flow: 9 interactions for the three required steps, 13 with the optional event.
 
 ## 6. Native app integration
 

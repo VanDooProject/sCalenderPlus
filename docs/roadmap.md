@@ -147,7 +147,7 @@ Later in this track:
 - [x] **feat(landing): legal pages and bot page** — Full terms, DPA download, importer bot page. *AC:* linked from footer of app and landing.
 - [ ] **feat(api): GDPR export** — Async export zip (JSON + ICS). *AC:* export contains all own events and memberships, no events of others below `read`.
 - [ ] **feat(api): calendar transfer between user and group** — `POST /calendars/{id}/transfer` with plan check and warning. *AC:* transfer to Free owner over limit → frozen per downgrade rules.
-- [ ] **feat(web): onboarding flow** — First calendar, invite group, subscribe feed checklist. *AC:* new user completes in < 2 min in usability test.
+- [x] **feat(web): onboarding flow** — First calendar, invite group, subscribe feed checklist. *AC:* new user completes in < 2 min in usability test.
 - [ ] **feat(api): reminders** — Per-user reminders (email), `reminder.dispatch` job, only `Le ≥ read`. *AC:* reminder fires within 1 min of due time in fullstack test.
 - [ ] **feat(web): web push for reminders** — VAPID, push subscriptions. *AC:* push delivered in Chromium e2e with mocked push service.
 - [ ] **feat(api): in-app notifications and email digests** — Permission evaluated at send time. *AC:* user who lost access gets no digest entry for that event.
