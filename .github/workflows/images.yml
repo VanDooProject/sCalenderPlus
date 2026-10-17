@@ -1,5 +1,5 @@
 # Images and staging deployment, see docs/development/workflow.md §4–5 and docs/deployment/coolify.md §11.
-# After `ci` succeeded for a push to main, publish ghcr.io/vandooproject/scalenderplus-{api,worker,web,poly-web}
+# After `ci` succeeded for a push to main, publish ghcr.io/vandooproject/scalenderplus-{api,worker,web,poly-web,landing,poly-landing}
 # as `main-<sha>` (immutable, used to pin staging) and `main` (moving), then deploy them to staging.
 # Release images (X.Y.Z, X.Y, latest) are published by release-please.yml.
 name: images

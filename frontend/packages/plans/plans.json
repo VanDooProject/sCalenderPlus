@@ -1,0 +1,71 @@
+{
+  "$comment": "Prices and limits of docs/product/plans.md for marketing (landing pricing table). null = unlimited. The limits listed in backendLimits are enforced by the api and must equal the defaults of PlansOptions (backend/src/SCalenderPlus.Application/Entitlements/EntitlementOptions.cs); src/__tests__/backend.spec.ts checks it. The others are documented in plans.md and enforced once their features exist.",
+  "currency": "EUR",
+  "trialDays": 90,
+  "backendLimits": [
+    "ownedCalendars",
+    "ownedGroups",
+    "membersPerGroup",
+    "eventsWithOverrides",
+    "overridesPerEvent"
+  ],
+  "plans": [
+    {
+      "id": "free",
+      "price": { "monthly": 0, "yearly": 0, "perSeat": false, "minSeats": null },
+      "limits": {
+        "ownedCalendars": 3,
+        "ownedGroups": 1,
+        "membersPerGroup": 15,
+        "eventsWithOverrides": 10,
+        "overridesPerEvent": 3,
+        "importSources": 1,
+        "importInterval": "weekly",
+        "llmRunsPerMonth": 8,
+        "historyDays": 7,
+        "apiTokens": 1,
+        "webhooks": 0,
+        "autoPublish": false,
+        "support": "community"
+      }
+    },
+    {
+      "id": "pro",
+      "price": { "monthly": 12, "yearly": 120, "perSeat": false, "minSeats": null },
+      "limits": {
+        "ownedCalendars": 30,
+        "ownedGroups": 10,
+        "membersPerGroup": 150,
+        "eventsWithOverrides": null,
+        "overridesPerEvent": 25,
+        "importSources": 10,
+        "importInterval": "daily",
+        "llmRunsPerMonth": 300,
+        "historyDays": 365,
+        "apiTokens": 10,
+        "webhooks": 5,
+        "autoPublish": true,
+        "support": "email"
+      }
+    },
+    {
+      "id": "team",
+      "price": { "monthly": 8, "yearly": 80, "perSeat": true, "minSeats": 3 },
+      "limits": {
+        "ownedCalendars": 300,
+        "ownedGroups": null,
+        "membersPerGroup": 1000,
+        "eventsWithOverrides": null,
+        "overridesPerEvent": 100,
+        "importSources": 50,
+        "importInterval": "hourly",
+        "llmRunsPerMonth": 2000,
+        "historyDays": 1095,
+        "apiTokens": 100,
+        "webhooks": 50,
+        "autoPublish": true,
+        "support": "priority"
+      }
+    }
+  ]
+}

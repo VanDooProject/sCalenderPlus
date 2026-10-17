@@ -1,5 +1,8 @@
-# Reusable workflow: build and push the multi-arch (linux/amd64 + linux/arm64) images api, worker, web and
-# poly-web (the web image of the poly edition: web.Dockerfile with EDITION=poly) to GHCR. Called by release-please.yml (release tags X.Y.Z, X.Y, latest) and images.yml (main, main-<sha>).
+# Reusable workflow: build and push the multi-arch (linux/amd64 + linux/arm64) images api, worker, web,
+# poly-web (the web image of the poly edition: web.Dockerfile with EDITION=poly), landing and poly-landing
+# to GHCR. The landing's site settings are build args from repository variables (LANDING_SITE_URL,
+# LANDING_APP_URL, LANDING_SUPPORT_EMAIL and POLY_LANDING_* for the poly edition; unset = placeholders),
+# see docs/deployment/coolify.md §13. Called by release-please.yml (release tags X.Y.Z, X.Y, latest) and images.yml (main, main-<sha>).
 # See docs/development/workflow.md §4 and docs/deployment/coolify.md §2.
 name: build-images
 
@@ -49,6 +52,18 @@ jobs:
             dockerfile: web
             edition: poly
             description: sCalenderPlus web app, poly edition (Caddy serving the SPA and proxying the api)
+          - image: landing
+            description: sCalenderPlus landing page (Caddy serving the prerendered marketing site)
+            site-url: ${{ vars.LANDING_SITE_URL }}
+            app-url: ${{ vars.LANDING_APP_URL }}
+            support-email: ${{ vars.LANDING_SUPPORT_EMAIL }}
+          - image: poly-landing
+            dockerfile: landing
+            edition: poly
+            description: sCalenderPlus landing page, poly edition (Caddy serving the prerendered marketing site)
+            site-url: ${{ vars.POLY_LANDING_SITE_URL }}
+            app-url: ${{ vars.POLY_LANDING_APP_URL }}
+            support-email: ${{ vars.POLY_LANDING_SUPPORT_EMAIL }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -99,6 +114,9 @@ jobs:
             VERSION=${{ inputs.version }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             ${{ matrix.edition && format('EDITION={0}', matrix.edition) || '' }}
+            ${{ matrix.site-url && format('SITE_URL={0}', matrix.site-url) || '' }}
+            ${{ matrix.app-url && format('APP_URL={0}', matrix.app-url) || '' }}
+            ${{ matrix.support-email && format('SUPPORT_EMAIL={0}', matrix.support-email) || '' }}
           provenance: mode=max
           sbom: true
           # Reuse the amd64 layers cached by ci.yml (scope <image>) and keep a multi-arch cache of our own.

@@ -12,7 +12,7 @@ Target: a self-managed [Coolify](https://coolify.io) v4 instance (Docker + Traef
 | └ `api` | `scalenderplus-api` | internal (proxied by `web`) | Port 8080. |
 | └ `worker` | `scalenderplus-worker` | – | No public port; health on 8081 internal. |
 | └ `web` | `scalenderplus-web` (Caddy + SPA) | `app.example.com` | Port 8080 (non-root). Proxies `/api`, `/ical`, `/dav`, `/.well-known`, `/health`, `/openapi` to `api:8080`. |
-| **Landing** (separate resource) | `scalenderplus-landing` (Caddy, static) | `www.example.com`, apex redirect | Deployed independently (marketing changes don't redeploy the app). |
+| **Landing** (separate resource) | `scalenderplus-landing` (Caddy, static; poly: `scalenderplus-poly-landing`) | `www.example.com`, apex redirect | Deployed independently (marketing changes don't redeploy the app), [`deploy/coolify/landing.yml`](../../deploy/coolify/landing.yml), §13. |
 
 Environments: **staging** (deployed by GitHub Actions after every green push to `main`, image tag `main-<sha>`, see §11) and **production** (deploy on release tag `vX.Y.Z`, set up in M4), each a separate Coolify environment with its own database.
 
@@ -25,7 +25,7 @@ Same-origin via `web` keeps cookies simple and hides the api container from Trae
 | `api.Dockerfile` | `mcr.microsoft.com/dotnet/sdk:10.0` → locked `dotnet restore`, `dotnet publish -c Release` (framework-dependent, RID-neutral, no apphost, OpenAPI export off) | `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`, non-root `app` user (UID 1654), `ASPNETCORE_HTTP_PORTS=8080` |
 | `worker.Dockerfile` | same SDK | `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled` (needs Kestrel only for health endpoint), `ASPNETCORE_HTTP_PORTS=8081` |
 | `web.Dockerfile` | `node:22-alpine` + pnpm (corepack, version from `frontend/package.json`) → `vite build` (app) | `caddy:2-alpine` with `deploy/caddy/web.Caddyfile`, non-root UID 10001 on port 8080 (the binary's `cap_net_bind_service` is removed so `no-new-privileges` works); build arg `EDITION=standard\|poly` selects the edition and the image name (`scalenderplus-web`/`scalenderplus-poly-web`: OCI title, `SCAL_WEB_IMAGE`; an unknown edition fails the build), entry point `web-start.sh` |
-| `landing.Dockerfile` | `node:22-alpine` → `vite-ssg build` | `caddy:2-alpine` with `landing.Caddyfile` |
+| `landing.Dockerfile` | `node:22-alpine` + pnpm → `vite-ssg build` (landing), dist check and edition leak check; build args `EDITION` and the site settings of §13 | `caddy:2-alpine` with `deploy/caddy/landing.Caddyfile` (static files, strict CSP, prerendered `404.html`), non-root UID 10001 on port 8080 (`LANDING_PORT`), `HEALTHCHECK` on `/healthz`; image `scalenderplus-landing`/`scalenderplus-poly-landing` by `EDITION` (OCI title) |
 
 All images: multi-stage, non-root, `HEALTHCHECK` defined, OCI labels (version, revision via build args `VERSION`/`REVISION`), pushed to GHCR. Build context is the repository root (`.dockerignore` keeps it small). The build stages run on `$BUILDPLATFORM` and produce architecture-neutral output, so `linux/amd64` and `linux/arm64` images build without emulation; CI (`ci.yml` job `docker`) builds `linux/amd64` only, loads the images, checks each image's OCI title against its name (and that a web image refuses a mismatched `WEB_IMAGE`), scans them with Trivy (fails on CRITICAL vulnerabilities that have a fix; HIGH/CRITICAL report in the job summary) and hands them to `e2e-fullstack`; multi-arch builds and pushes happen in the release/staging workflows. The SPA reads runtime config from `/config.json`, rendered by Caddy's `templates` directive from environment variables on each request (`deploy/caddy/config.json.tmpl`, whitelisted keys only, JSON-escaped) so one image works for staging and prod.
 
@@ -118,6 +118,7 @@ All backend options are bound to typed options classes with `ValidateDataAnnotat
 | `GET /health/ready` | DB reachable, migrations at expected version, required config valid. | Coolify/Traefik routing, deploy gating, uptime monitor. |
 | Worker `:8081/health/ready` | DB reachable + job loop heartbeat < 2 min old. | Container healthcheck. |
 | `web` `:8080/healthz` | Caddy static 200. | Container healthcheck. |
+| `landing` `:8080/healthz` | Caddy static 200. | Container healthcheck. |
 
 Health responses contain no secrets: only the overall status and each check's name and status (`{"status":"Unhealthy","checks":{"database":"Unhealthy"}}`), never descriptions or exceptions. HTTP 200 when healthy, 503 otherwise. Health requests are excluded from tracing.
 
@@ -149,7 +150,7 @@ Health responses contain no secrets: only the overall status and each check's na
 
 ## 11. Staging on Coolify (step by step)
 
-Written against Coolify **v4.3.23** (single server with Traefik v3.6 and Docker Compose v5; resources from GitHub through a Coolify GitHub App). Pipeline: a push to `main` → `ci` green → [`images.yml`](../../.github/workflows/images.yml) publishes `ghcr.io/vandooproject/scalenderplus-{api,worker,web,poly-web}:main-<sha>` and `:main` (multi-arch) → job `deploy-staging` runs [`.github/scripts/coolify-deploy.sh`](../../.github/scripts/coolify-deploy.sh): pin `IMAGE_TAG=main-<sha>` on the Coolify resource (API, needs a token with `write`), trigger the deploy webhook (`POST /api/v1/deploy?uuid=…`), follow the Coolify deployment until `finished` (needs `read`), then poll `https://<STAGING_URL>/health/ready` until it returns 200. Missing secrets/variables skip the corresponding part with a notice instead of failing.
+Written against Coolify **v4.3.23** (single server with Traefik v3.6 and Docker Compose v5; resources from GitHub through a Coolify GitHub App). Pipeline: a push to `main` → `ci` green → [`images.yml`](../../.github/workflows/images.yml) publishes `ghcr.io/vandooproject/scalenderplus-{api,worker,web,poly-web,landing,poly-landing}:main-<sha>` and `:main` (multi-arch) → job `deploy-staging` runs [`.github/scripts/coolify-deploy.sh`](../../.github/scripts/coolify-deploy.sh): pin `IMAGE_TAG=main-<sha>` on the Coolify resource (API, needs a token with `write`), trigger the deploy webhook (`POST /api/v1/deploy?uuid=…`), follow the Coolify deployment until `finished` (needs `read`), then poll `https://<STAGING_URL>/health/ready` until it returns 200. Missing secrets/variables skip the corresponding part with a notice instead of failing.
 
 1. **Images reachable.** After the first `images.yml` run, make the GHCR packages `scalenderplus-api`, `scalenderplus-worker`, `scalenderplus-web` and `scalenderplus-poly-web` public (GitHub → Packages → package settings → *Change visibility*). Private alternative: on the Coolify server run `docker login ghcr.io` with a token that has `read:packages`. GHCR creates every new package **private**, including `scalenderplus-poly-web` the first time it is published: make it public too, or give the poly deployment registry credentials (§12).
 2. **Project and environment.** Coolify → *Projects* → *+ Add* `scalenderplus`; it gets the environment `production`; add an environment `staging` (production is configured the same way in M4).
@@ -190,3 +191,28 @@ Each edition ([editions.md](../product/editions.md)) is a separate tenant; nothi
 5. **Branding**: `BRAND_PRODUCT_NAME`, `BRAND_SUPPORT_EMAIL` (→ `Brand__*`) and the `PUBLIC_BRAND_*` variables (§4) with the poly brand; legal URLs point to the poly operator's imprint, privacy policy and terms.
 6. **Plans**: poly Free limits via `Plans__Free__*` ([plans.md §Per-edition defaults](../product/plans.md#per-edition-defaults)); `Plans__TrialDays` as decided.
 7. **Own deploy webhook and API token**; the `deploy-staging` job and its secrets are per deployment (a second GitHub environment, e.g. `staging-poly`, once the pipeline deploys both).
+
+## 13. Landing page
+
+The marketing site (`frontend/landing`, [overview.md §4.2](../architecture/overview.md#42-landing-structure-implemented-m7)) is a separate image and Coolify resource, so marketing changes never redeploy the app and the app never depends on it.
+
+**Build-time settings (decision).** The landing is prerendered static HTML whose canonical URLs, `hreflang` links, Open Graph tags and `sitemap.xml` must be absolute URLs, and whose pages show the product name. Rendering them at container start (like the web app's `/config.json`) would mean rewriting every HTML file and the hydrating JavaScript, or a templating proxy in front; both are fragile for SEO-relevant markup. So these are **build args** of `landing.Dockerfile` (→ `VITE_*`, validated by `frontend/landing/src/lib/siteConfig.ts`; an invalid value fails the build), and a white-label deployment builds its own landing image (or forks the content). All are optional:
+
+| Build arg | Default | Used for |
+|---|---|---|
+| `EDITION` | `standard` | `standard` or `poly` content (`src/editions/<edition>`), image name |
+| `SITE_URL` | `https://www.example.com` | origin of the landing: canonical URLs, hreflang, OG images, sitemap, robots.txt, default bot user agent |
+| `APP_URL` | `https://app.example.com` | sign-in (`/login`) and sign-up (`/register`) links |
+| `BRAND_NAME`, `BRAND_HUE` | the edition's `brand.json` | product name in the pages, palette hue (0–360) |
+| `SUPPORT_EMAIL` | none (placeholder shown) | contact on the legal and bot pages, footer |
+| `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | none: the built-in templates `/legal/*` | the operator's own legal pages (footer links there; the template page then links out) |
+| `DPA_URL` | none: `/downloads/dpa-template.pdf` (placeholder) | the operator's data processing agreement (download on `/legal/dpa`) |
+| `BOT_USER_AGENT` | `sCalenderPlusBot/1.0 (+<SITE_URL>/bot)` | user agent shown on the bot page; keep it equal to the importer's ([llm-import.md §4](../architecture/llm-import.md#4-fetching-safely-and-politely)) |
+
+The published images get `SITE_URL`, `APP_URL` and `SUPPORT_EMAIL` from repository variables (`LANDING_SITE_URL`, `LANDING_APP_URL`, `LANDING_SUPPORT_EMAIL`; poly: `POLY_LANDING_*`) in [`build-images.yml`](../../.github/workflows/build-images.yml); unset, they carry the placeholders above. The legal pages are **templates** with `[placeholders]`, clearly marked for the operator and without invented company data; complete them (fork) or point the `*_URL` args to the operator's pages before going live. The DPA download is a placeholder PDF until `DPA_URL` is set (`pnpm --filter landing render:assets` re-renders it and the OG images).
+
+**Legal links of the app.** The web app's footer links its own template pages unless `PUBLIC_BRAND_IMPRINT_URL`, `PUBLIC_BRAND_PRIVACY_URL` and `PUBLIC_BRAND_TERMS_URL` are set (§4). With a landing, set them to the landing's pages (`https://www.example.com/legal/imprint`, `…/legal/privacy`, `…/legal/terms`), so app and landing link the same documents. The importer bot page (`/bot`) is for operators of websites the importer fetches; its user agent links it, and the app links it from the import source form once the importer UI exists (M6).
+
+**Coolify setup.** In the same project and environment as the stack (or the poly project for `scalenderplus-poly-landing`): *+ New* → *Docker Compose* from the repository with *Docker Compose Location* `/deploy/coolify/landing.yml`, Auto Deploy off; environment `IMAGE_TAG` (`main`, or a release `X.Y.Z`), `IMAGE_PREFIX`, `LANDING_IMAGE` (`scalenderplus-landing` or `scalenderplus-poly-landing`); domain on the `landing` service `https://www.example.com:8080`. Make the GHCR packages `scalenderplus-landing`/`scalenderplus-poly-landing` public (or give the server registry credentials) as in §11 step 1. The apex domain redirects to `www` in Traefik (Coolify *Redirect to www* setting or a redirect label); the container itself redirects `/de/` → `/de` and serves `404.html` for unknown paths. Deploy manually or with the resource's webhook; the staging pipeline does not deploy the landing yet.
+
+**Local / self-hosting.** `docker compose -f deploy/docker-compose.yml --profile with-landing up -d --build landing` builds and serves it on `127.0.0.1:${LANDING_PORT:-8090}` (`LANDING_IMAGE` + `EDITION` as a pair, `LANDING_SITE_URL`, see `deploy/.env.example`). The marketing site is not part of the self-host distribution ([plans.md](../product/plans.md#self-host-stance)); the profile exists for local checks and white-label builds.

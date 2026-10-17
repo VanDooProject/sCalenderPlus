@@ -35,6 +35,8 @@ The edition is chosen at **build time** so poly-only code, wording and assets **
 - Static shell before `/config.json` loads: the build writes the edition's default name (`brand.json`) into `index.html`'s `<title>` and emits the edition's `favicon.svg` (default: `src/assets/favicon.svg`) as `/favicon.svg`. The poly favicon is a plain, discreet calendar glyph in the poly hue; the leak check matches it by content hash, so it can't end up in a standard build.
 - Installable app (PWA): the build also emits the edition's PNG icons (`icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, renderings of its favicon; default: `src/assets/icons/`) and `/manifest.webmanifest` with the edition's name, the theme colour of its hue (palette step 600) and those icons (`src/lib/webManifest.ts`). No description, so the home screen doesn't say what the app is for. The poly icons are matched by hash like the favicon; the manifest is one of the build's text files the leak check searches.
 
+The landing (`frontend/landing`) follows the same pattern: `VITE_EDITION`, `src/editions/<edition>/` behind `@edition` (the `scal/editions` lint rule covers it), a locale overlay per edition (the poly one replaces hero, demo, features, FAQ and pricing taglines and adds the Art. 9 section to the privacy template), the edition's favicon, OG images and hue, its plan overrides and whether it markets the importer. Poly landing content is discreet: a calendar for partners, metamours, constellations and co-parents, no explicit content and no mention of the adult add-on (§7.2; a unit test rejects explicit words in the poly overlay).
+
 ### 2.2 CI leak check
 
 A CI step builds the **standard** edition and fails if anything of the poly edition appears anywhere in `dist/` (`frontend/app/scripts/check-edition-leak.mjs`, unit tests in `editionLeak.spec.ts`). It combines:
@@ -44,16 +46,17 @@ A CI step builds the **standard** edition and fails if anything of the poly edit
 - **Word denylist.** `src/editions/poly/leak-words.json` lists words that must never appear in the standard build (constellation, konstellation, metamour, polycule, polyamor, kink, swinger, bdsm and the edition marker). They are matched case-insensitively at the start of a word in the build's text files and decoded `data:` URIs: `polyamor` finds "Polyamorous", while "polyfill" or "polyline" don't trip. The list lives in the poly folder, so it never ships in the standard build itself, and it is not used as markers.
 - **Self-test.** The built edition's own markers must all be found in its build (and at least one of its own leak words, if it has a list), so a change in how strings are bundled cannot make the check pass blindly.
 
-The poly build is checked the same way against the standard edition (`check:edition-leak --edition poly`). The lint rule of §2.1 keeps edition folders from being imported in the first place; the leak check catches what slips through anyway.
+The poly build is checked the same way against the standard edition (`check:edition-leak --edition poly`). The landing runs the same script on its own build with `--root` (`node ../app/scripts/check-edition-leak.mjs --root .`, in CI and in `landing.Dockerfile`); its poly folder has its own `leak-words.json`, a superset of the app's (unit-tested). String literals in an edition folder are markers, so edition code uses flags rather than shared identifiers (e.g. `importer: false`, not a list of pricing row keys). The lint rule of §2.1 keeps edition folders from being imported in the first place; the leak check catches what slips through anyway.
 
 ### 2.3 Images
 
 - The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). Its build stage runs the leak check of §2.2 on exactly the assets the image ships. The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
+- The landing image is built per edition the same way: `scalenderplus-landing` and `scalenderplus-poly-landing` (`landing.Dockerfile`, leak check in its build stage).
 - `scalenderplus-api` and `scalenderplus-worker` are shared until poly-only backend modules exist (event directory, adult add-on). Those then go into **separate assemblies** that only the edition-specific api/worker images (`scalenderplus-poly-api`, `scalenderplus-poly-worker`) reference. *Spec only; not built yet.*
 
 ## 3. Runtime branding (white-label, no rebuild)
 
-Per deployment, without rebuilding the image. All keys are optional; unset keys fall back to the edition defaults.
+Per deployment, without rebuilding the image (web app and backend). The landing is the exception: it is static HTML with absolute URLs, so its name, hue, URLs and legal links are build args and a white-label deployment builds its own landing image ([coolify.md §13](../deployment/coolify.md#13-landing-page)). All keys are optional; unset keys fall back to the edition defaults.
 
 ### 3.1 Web (`/config.json`)
 

@@ -57,6 +57,8 @@ A seat is a distinct user who can **create or change content** in any org-owned 
 
 All numbers live in a single configuration, so marketing can tune them without a release: `PlansOptions` (`Application/Entitlements`) carries the numbers of this table as defaults, and every limit can be overridden per plan with `Plans__{Plan}__{Limit}` (empty = unlimited). Enforced so far: owned calendars, owned groups, members per group, events with overrides, override entries per event, and the reverse trial (Pro limits until `trialEndsAt`). `GET /api/v1/me/entitlements` returns `{ plan, trialEndsAt, limits }` (`null` = unlimited; [api.md](../architecture/api.md#me-implemented-m1)); usage counts follow in M5. A DB table `plan_limits` may replace the configuration with billing.
 
+**Marketing copy of the numbers:** [`frontend/packages/plans/plans.json`](../../frontend/packages/plans/plans.json) holds the prices and limits of this page as data; the landing's pricing table is generated from it. Its unit test reads the defaults of `PlansOptions` from `EntitlementOptions.cs` and fails when an enforced limit, the set of enforced limits or `TrialDays` differs, so a changed backend default can't silently diverge from the published prices page (the CI `frontend` job runs when that file changes). The not yet enforced limits (imports, history, API tokens, …) are checked by review against this page. A deployment that overrides `Plans__*` builds its landing with the same numbers (edition overrides in `frontend/landing/src/editions/<edition>/index.ts`).
+
 ## Per-edition defaults
 
 Each edition is an independent deployment ([editions.md](editions.md)) and tunes limits through its own `Plans__*` environment; prices and Stripe products are per deployment too.
@@ -68,7 +70,7 @@ Each edition is an independent deployment ([editions.md](editions.md)) and tunes
 | Members per owned group | 15 | 15 | Constellations are small; same as standard. |
 | Trial | `Plans__TrialDays=90` | same | |
 
-Set via `Plans__Free__EventsWithOverrides`, `Plans__Free__OverridesPerEvent`, `Plans__Free__MembersPerGroup` in the poly deployment ([coolify.md §4](../deployment/coolify.md#4-environment-variables)).
+The poly landing advertises 50 and 10 (its plan overrides), so the poly deployment must set the same values. Set via `Plans__Free__EventsWithOverrides`, `Plans__Free__OverridesPerEvent`, `Plans__Free__MembersPerGroup` in the poly deployment ([coolify.md §4](../deployment/coolify.md#4-environment-variables)).
 
 ## Upgrade triggers (where the paywall appears)
 

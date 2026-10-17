@@ -146,6 +146,38 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Marketing site (`--profile with-landing`; separate Coolify resource in production, deploy/coolify/landing.yml).
+  # Static: its site settings are build args (docs/deployment/coolify.md §13), set here for local builds.
+  landing:
+    profiles: ['with-landing']
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/${LANDING_IMAGE:-scalenderplus-landing}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/docker/landing.Dockerfile
+      args:
+        EDITION: ${EDITION:-standard}
+        SITE_URL: ${LANDING_SITE_URL:-}
+        APP_URL: ${APP_URL:-}
+        SUPPORT_EMAIL: ${BRAND_SUPPORT_EMAIL:-}
+    ports:
+      - '127.0.0.1:${LANDING_PORT:-8090}:8080'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /data:uid=10001,gid=10001
+      - /config:uid=10001,gid=10001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   # SMTP sink for local runs and e2e tests (no mail leaves the machine): web UI and API on 127.0.0.1:8025.
   mailpit:
     profiles: ['with-mailpit']

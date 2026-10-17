@@ -1,0 +1,15 @@
+{
+  "description": "Words that must never appear in another edition's landing build (frontend/app/scripts/check-edition-leak.mjs --root landing): matched case-insensitively at the start of a word. Contains every word of the app's list (frontend/app/src/editions/poly/leak-words.json, checked by editions.spec.ts) plus the landing's edition marker. Lives in this folder, so the list itself never ships in the standard build.",
+  "words": [
+    "constellation",
+    "konstellation",
+    "metamour",
+    "polycule",
+    "polyamor",
+    "kink",
+    "swinger",
+    "bdsm",
+    "scalenderplus-edition-poly",
+    "scalenderplus-landing-edition-poly"
+  ]
+}

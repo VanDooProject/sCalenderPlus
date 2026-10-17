@@ -39,6 +39,12 @@ describe('scal/editions lint rule', () => {
     expect(await editionErrors(code)).toEqual([])
   })
 
+  it('applies to the landing too', async () => {
+    const code = "import { edition } from '@/editions/poly'"
+    expect(await editionErrors(code, 'landing/src/probe.ts')).toEqual([1])
+    expect(await editionErrors(code, 'landing/src/__tests__/probe.spec.ts')).toEqual([])
+  })
+
   it('does not apply to tests', async () => {
     const code = "export const m = import.meta.glob('../editions/*/index.ts', { eager: true })"
     expect(await editionErrors(code, 'app/src/__tests__/probe.spec.ts')).toEqual([])

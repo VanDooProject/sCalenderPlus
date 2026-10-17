@@ -93,7 +93,7 @@ Config: `Llm__Provider=anthropic|openai_compatible|none`, `Llm__Model`, `Llm__Ap
 
 - **SSRF protection** (`SafeHttpHandler`): only `http/https`, ports 80/443; resolve DNS ourselves and reject private, loopback, link-local, CGNAT, multicast and metadata ranges (IPv4+IPv6), connect to the vetted IP (prevents DNS rebinding); max 3 redirects, each re-validated.
 - Limits: 10 s connect, 30 s total, 3 MB body, content types `text/html`, `application/xhtml+xml`, `text/calendar`, `application/ld+json`, `application/json`.
-- User-Agent: `sCalenderPlusBot/1.0 (+https://www.example.com/bot)` — documented bot page with contact and opt-out.
+- User-Agent: `sCalenderPlusBot/1.0 (+https://www.example.com/bot)` — documented bot page on the landing (`/bot`, `/de/bot`: what it fetches, robots.txt, rate limits, robots.txt rules to block it, contact; [coolify.md §13](../deployment/coolify.md#13-landing-page)). The landing shows the user agent from its build arg `BOT_USER_AGENT`; keep the importer's equal.
 - **robots.txt** respected (cached 24 h); disallow → source error "Website disallows automated access", no override.
 - Per-domain politeness: max 1 request / 10 s per domain across all sources, global concurrency cap; honour `Retry-After` and 429/503 with backoff.
 - Conditional GET with stored `ETag` / `Last-Modified`.

@@ -3,7 +3,10 @@
 // when a build contains strings or files of another edition, e.g. poly wording in the standard
 // (white-label) build.
 //
-//   node scripts/check-edition-leak.mjs [dist] [--edition standard]
+//   node scripts/check-edition-leak.mjs [dist] [--edition standard] [--root <package dir>]
+//
+// `--root` checks another package laid out like the app (src/editions, src/locales, dist): the
+// landing runs it as `node ../app/scripts/check-edition-leak.mjs --root .`.
 //
 // Markers are derived from the edition folders themselves, so they cannot drift from the code:
 // every string literal of their .ts/.js/.vue and .css files, every message of their JSON and the
@@ -394,15 +397,22 @@ export function checkBuild({ appDir, distDir, edition }) {
   return problems
 }
 
+/** Removes `--name value` from `args` and returns the value (undefined when absent). */
+function takeFlag(args, name) {
+  const index = args.indexOf(name)
+  if (index === -1) return undefined
+  const value = args[index + 1] ?? ''
+  args.splice(index, 2)
+  return value
+}
+
 function main(argv) {
   const args = [...argv]
-  let edition = 'standard'
-  const editionFlag = args.indexOf('--edition')
-  if (editionFlag !== -1) {
-    edition = args[editionFlag + 1] ?? ''
-    args.splice(editionFlag, 2)
-  }
-  const appDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
+  const edition = takeFlag(args, '--edition') ?? 'standard'
+  // The package whose build is checked: the app (default) or another package with the same layout
+  // (src/editions/<edition>, src/locales, dist), e.g. `--root ../landing`.
+  const root = takeFlag(args, '--root')
+  const appDir = resolve(root ?? fileURLToPath(new URL('..', import.meta.url)))
   const distDir = resolve(args[0] ?? join(appDir, 'dist'))
   const problems = checkBuild({ appDir, distDir, edition })
   if (problems.length > 0) {

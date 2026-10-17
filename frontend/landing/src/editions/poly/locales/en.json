@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "home": {
+      "title": "{name} – the shared calendar for partners and constellations",
+      "description": "Plan dates, overnights and kids' schedules with everyone in your life – and decide for every entry who sees the details, who only sees “Busy” and who sees nothing. Works with your calendar app."
+    },
+    "ogAlt": "{name}: the shared calendar for partners and constellations"
+  },
+  "hero": {
+    "eyebrow": "The calendar for relationships",
+    "title": "Everyone in your life. Every date shared just right.",
+    "lead": "Share a date night with the partner it's with, show your metamours that you're busy, and keep the kids' schedule editable for every parent – in one calendar, in the calendar apps you already use.",
+    "primary": "Start for free",
+    "secondary": "See how it works",
+    "note": "Free plan forever · Pro features free for {trialDays} days · Hosted in the EU"
+  },
+  "demo": {
+    "title": "Your week, seen by …",
+    "viewers": [
+      {
+        "id": "partner",
+        "label": "Alex, partner"
+      },
+      {
+        "id": "metamour",
+        "label": "Kim, metamour"
+      },
+      {
+        "id": "coparent",
+        "label": "Jo, co-parent"
+      }
+    ],
+    "events": [
+      {
+        "title": "Dinner with Alex",
+        "when": "Fri 19:30",
+        "cover": "Evening plans",
+        "access": {
+          "partner": "read",
+          "metamour": "free_busy",
+          "coparent": "free_busy"
+        }
+      },
+      {
+        "title": "Kids: swimming lessons",
+        "when": "Sat 10:00",
+        "access": {
+          "partner": "read",
+          "metamour": "none",
+          "coparent": "edit"
+        }
+      },
+      {
+        "title": "Constellation brunch",
+        "when": "Sun 11:00",
+        "access": {
+          "partner": "read",
+          "metamour": "read",
+          "coparent": "none"
+        }
+      },
+      {
+        "title": "Weekend away with Alex",
+        "when": "Fri – Sun",
+        "cover": "Away",
+        "access": {
+          "partner": "edit",
+          "metamour": "free_busy",
+          "coparent": "free_busy"
+        }
+      }
+    ]
+  },
+  "features": {
+    "title": "A calendar that understands that relationships overlap",
+    "lead": "Every entry decides who sees what – no second calendar, no copy in a chat.",
+    "items": [
+      {
+        "icon": "lock",
+        "title": "Share each date with the right people",
+        "text": "Give a single entry to the partner it's with, keep the rest of the week visible to the people who plan with you, and hide what's nobody else's business."
+      },
+      {
+        "icon": "eye",
+        "title": "Busy, with a cover title",
+        "text": "Metamours and friends can see when you're busy without seeing why – as “Busy” or with a cover title you choose, like “Evening plans”."
+      },
+      {
+        "icon": "users",
+        "title": "Constellations",
+        "text": "Shared calendars for each constellation. One person can be part of several, and every entry still decides what each of them sees."
+      },
+      {
+        "icon": "home",
+        "title": "Kids' schedules and nesting",
+        "text": "A family calendar every parent can edit, a household calendar for nesting partners, kept apart from each person's own dates."
+      },
+      {
+        "icon": "calendar",
+        "title": "Your calendar app stays",
+        "text": "Personal feeds for Apple Calendar, Google Calendar, Outlook and Thunderbird. Everyone's feed only contains what they may see."
+      },
+      {
+        "icon": "shield",
+        "title": "Private by design",
+        "text": "Hosted in the EU, no ads, no tracking, no analytics. Your calendar entries are never used to train or prompt an AI. Export and deletion are one click away."
+      }
+    ]
+  },
+  "pricing": {
+    "lead": "Start free. The owner's plan counts, so one Pro account covers a shared calendar for everyone in it.",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "tagline": "For you, your partners and a small constellation",
+        "cta": "Start for free"
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For busy lives with many calendars",
+        "cta": "Try Pro free"
+      },
+      "team": {
+        "name": "Team",
+        "tagline": "For communities and organisers",
+        "cta": "Start with Team"
+      }
+    },
+    "limits": {
+      "ownedGroups": "Constellations",
+      "membersPerGroup": "People per constellation"
+    }
+  },
+  "faq": {
+    "items": [
+      {
+        "q": "Who sees what?",
+        "a": "You decide per calendar and per entry: details, only “Busy” (optionally with a cover title) or nothing at all. The calendar's defaults cover everything you don't set yourself."
+      },
+      {
+        "q": "Will my metamours see who I'm with?",
+        "a": "Only if you share it. Otherwise they see that you're busy, or the cover title you chose – never the real title, notes or location."
+      },
+      {
+        "q": "Do we have to switch calendar apps?",
+        "a": "No. Everyone gets a personal feed for Apple Calendar, Google Calendar, Outlook or Thunderbird that only contains what they may see."
+      },
+      {
+        "q": "Can I be in more than one constellation?",
+        "a": "Yes. Each constellation has its own members and calendars, and one entry can be shared differently with each of them."
+      },
+      {
+        "q": "Is the Free plan really free?",
+        "a": "Yes, without time limit and without a credit card. New accounts get the Pro limits for {trialDays} days on top; afterwards you continue on Free."
+      },
+      {
+        "q": "How private is my data?",
+        "a": "It is stored on servers in the EU, never sold, never used for advertising and never sent to an AI provider. You can export everything and delete your account at any time."
+      }
+    ]
+  },
+  "cta": {
+    "title": "Try it with the people in your life",
+    "text": "Create your calendar, invite a partner and subscribe in your calendar app – in a few minutes.",
+    "button": "Create a free account"
+  },
+  "footer": {
+    "tagline": "The shared calendar for partners and constellations."
+  },
+  "legal": {
+    "pages": {
+      "privacy": {
+        "sections": {
+          "specialCategories": {
+            "title": "Special categories of personal data",
+            "text": "Calendar entries in {name} can reveal information about your relationships and private life, which is a special category of personal data (Art. 9 GDPR). It is processed only with your explicit consent, given separately when you sign up and withdrawable at any time by deleting your account. It is never used for advertising and never sent to an AI provider. [Operator: data protection impact assessment and contact for questions about it.]"
+          }
+        }
+      }
+    }
+  }
+}

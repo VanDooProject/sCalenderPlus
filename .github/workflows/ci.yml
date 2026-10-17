@@ -53,6 +53,8 @@ jobs:
               - 'frontend/**'
               - 'backend/openapi/**'
               - 'backend/tests/SCalenderPlus.Application.Tests/Feeds/Golden/**' # parsed by ical.js
+              # plans.json is checked against the backend's plan defaults (frontend/packages/plans).
+              - 'backend/src/SCalenderPlus.Application/Entitlements/EntitlementOptions.cs'
               - '.github/workflows/ci.yml'
             openapi:
               - 'backend/openapi/**'
@@ -167,16 +169,21 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      # Builds the standard edition (frontend/app/src/editions): the default and the white-label build.
+      # Builds the standard edition (app/src/editions, landing/src/editions): the default and the
+      # white-label build. The landing build also checks its prerendered pages (scripts/check-dist.mjs).
       - run: pnpm build
-      - name: Edition leak check (standard build has no poly code or wording)
-        run: pnpm --filter app check:edition-leak
+      - name: Edition leak check (standard builds have no poly code or wording)
+        run: |
+          pnpm --filter app check:edition-leak
+          pnpm --filter landing check:edition-leak
       - name: Build the poly edition and check it
         env:
           VITE_EDITION: poly
         run: |
           pnpm --filter app build
           pnpm --filter app check:edition-leak --edition poly
+          pnpm --filter landing build
+          pnpm --filter landing check:edition-leak --edition poly
 
   openapi-breaking:
     name: openapi breaking changes
@@ -222,12 +229,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [api, worker, web, poly-web]
-        # poly-web: the web image of the poly edition (web.Dockerfile with EDITION=poly).
+        image: [api, worker, web, poly-web, landing, poly-landing]
+        # poly-*: the images of the poly edition (web/landing.Dockerfile with EDITION=poly). The landing
+        # images are static sites, not part of the fullstack suite.
         include:
           - image: poly-web
             dockerfile: web
             edition: poly
+          - image: landing
+            static: true
+          - image: poly-landing
+            dockerfile: landing
+            edition: poly
+            static: true
     env:
       IMAGE: ghcr.io/vandooproject/scalenderplus-${{ matrix.image }}:ci
       TRIVY_VERSION: v0.75.0
@@ -272,6 +286,30 @@ jobs:
       - name: Web image redacts feed secrets in its logs
         if: ${{ matrix.image == 'web' || matrix.dockerfile == 'web' }}
         run: deploy/caddy/test-log-redaction.sh "$IMAGE"
+      # The landing serves its prerendered pages with the CSP, 404 page and healthcheck of
+      # deploy/caddy/landing.Caddyfile, hardened like the compose services.
+      - name: Landing image serves its pages
+        if: ${{ matrix.static }}
+        run: |
+          docker run -d --name landing --read-only --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:8090:8080 "$IMAGE"
+          trap 'docker logs landing; docker rm -f landing >/dev/null' EXIT
+          for _ in $(seq 1 30); do
+            [ "$(docker inspect --format '{{.State.Health.Status}}' landing)" = healthy ] && break
+            sleep 1
+          done
+          check() { # path expected-status
+            status=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8090$1")
+            if [ "$status" != "$2" ]; then echo "::error::GET $1 returned $status, expected $2"; exit 1; fi
+          }
+          check /healthz 200
+          check / 200
+          check /de 200
+          check /de/legal/terms 200
+          check /bot 200
+          check /robots.txt 200
+          check /does-not-exist 404
+          curl -sI http://127.0.0.1:8090/ | grep -qi "^content-security-policy: default-src 'self'" \
+            || { echo "::error::landing serves no CSP"; exit 1; }
       - name: Trivy (fail on fixable CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -300,12 +338,12 @@ jobs:
           if [ -f "trivy-${{ matrix.image }}.txt" ]; then
             { echo "### Trivy: ${{ matrix.image }} (HIGH/CRITICAL)"; echo '```'; cat "trivy-${{ matrix.image }}.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
-      # The fullstack suite runs the standard edition.
+      # The fullstack suite runs the standard edition (without the landing).
       - name: Save image for e2e-fullstack
-        if: ${{ !matrix.edition }}
+        if: ${{ !matrix.edition && !matrix.static }}
         run: docker save "$IMAGE" | gzip -1 > "image-${{ matrix.image }}.tar.gz"
       - uses: actions/upload-artifact@v7
-        if: ${{ !matrix.edition }}
+        if: ${{ !matrix.edition && !matrix.static }}
         with:
           name: image-${{ matrix.image }}
           path: image-${{ matrix.image }}.tar.gz
@@ -337,6 +375,8 @@ jobs:
       - run: pnpm -C e2e typecheck
       # Starts the app with `pnpm --filter app dev:mock` (Vite + MSW) via Playwright's webServer.
       - run: pnpm -C e2e test:mocked
+      # Builds the landing and serves it with `vite preview`: axe on every page, light and dark.
+      - run: pnpm -C e2e test:landing
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

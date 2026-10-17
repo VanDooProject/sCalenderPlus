@@ -1,11 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Two projects (docs/development/workflow.md §6):
+ * Three projects (docs/development/workflow.md §6):
  * - `mocked`: the app on the Vite dev server in mock mode (`pnpm --filter app dev:mock`), MSW answers
  *   API requests with the shared handlers from @scalenderplus/api-client. Started by `webServer`.
  * - `fullstack`: the docker compose stack (deploy/docker-compose.yml), already running at
  *   E2E_FULLSTACK_BASE_URL (default http://localhost:8080).
+ * - `landing`: the prerendered marketing site (`pnpm --filter landing build`, then `vite preview`).
  *
  * Local runs may point to an installed Chromium whose revision differs from this Playwright
  * version with PLAYWRIGHT_CHROMIUM_EXECUTABLE (CI runs `playwright install chromium` instead).
@@ -13,6 +14,8 @@ import { defineConfig, devices } from '@playwright/test'
 const isCI = !!process.env.CI
 const mockedPort = Number(process.env.E2E_MOCKED_PORT ?? 5173)
 const mockedBaseURL = `http://localhost:${mockedPort}`
+const landingPort = Number(process.env.E2E_LANDING_PORT ?? 4174)
+const landingBaseURL = `http://localhost:${landingPort}`
 const fullstackBaseURL = process.env.E2E_FULLSTACK_BASE_URL ?? 'http://localhost:8080'
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined
 
@@ -27,6 +30,7 @@ function selectedProjects(argv: readonly string[]): string[] {
 }
 const projects = selectedProjects(process.argv)
 const needsMockedServer = projects.length === 0 || projects.includes('mocked')
+const needsLandingServer = projects.length === 0 || projects.includes('landing')
 
 export default defineConfig({
   forbidOnly: isCI,
@@ -50,15 +54,36 @@ export default defineConfig({
       testDir: './fullstack',
       use: { baseURL: fullstackBaseURL },
     },
+    {
+      name: 'landing',
+      testDir: './landing',
+      use: { baseURL: landingBaseURL },
+    },
   ],
-  webServer: needsMockedServer
-    ? {
-        command: `pnpm -C ../frontend --filter app dev:mock --port ${mockedPort} --strictPort`,
-        url: mockedBaseURL,
-        reuseExistingServer: !isCI,
-        timeout: 120_000,
-        stdout: 'ignore',
-        stderr: 'pipe',
-      }
-    : undefined,
+  webServer: [
+    ...(needsMockedServer
+      ? [
+          {
+            command: `pnpm -C ../frontend --filter app dev:mock --port ${mockedPort} --strictPort`,
+            url: mockedBaseURL,
+            reuseExistingServer: !isCI,
+            timeout: 120_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
+        ]
+      : []),
+    ...(needsLandingServer
+      ? [
+          {
+            command: `pnpm -C ../frontend --filter landing build && pnpm -C ../frontend --filter landing preview --port ${landingPort} --strictPort`,
+            url: landingBaseURL,
+            reuseExistingServer: !isCI,
+            timeout: 180_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
+        ]
+      : []),
+  ],
 })
