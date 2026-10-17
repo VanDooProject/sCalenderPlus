@@ -577,15 +577,18 @@ public static class AuthorizationMatrix
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
             .Expect(Actors.User, HttpStatusCode.Created)
             .Expect(Actors.UnverifiedUser, HttpStatusCode.Created)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .WithBody(s => JsonContent.Create(new { scope = "calendar", calendarId = s.Get("calendar:lions") }))
             .Expect(Actors.OtherTenant, HttpStatusCode.NotFound) // a calendar feed needs a calendar the caller sees
             .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Created),
         .. For("POST", "/api/v1/feed-tokens/rotate-all")
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherUser, HttpStatusCode.OK), // not "user": the anonymous feed case uses their secret
         .. For("GET", "/api/v1/feed-tokens/{id}")
             .WithRoute(s => Route(s, "feed-token:user"))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.OK),
         .. For("PATCH", "/api/v1/feed-tokens/{id}")
@@ -593,16 +596,19 @@ public static class AuthorizationMatrix
             .WithBody(_ => JsonContent.Create(new { name = "Phone" }))
             .WithHeaders(IfMatchAny)
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.OK),
         .. For("DELETE", "/api/v1/feed-tokens/{id}")
             .WithRoute(s => Route(s, "feed-token:user-revoked"))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.NoContent),
         .. For("POST", "/api/v1/feed-tokens/{id}/rotate")
             .WithRoute(s => Route(s, "feed-token:user-rotated"))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.OK),
 
@@ -610,6 +616,8 @@ public static class AuthorizationMatrix
         .. For("GET", "/api/v1/calendars/{id}/share-links")
             .WithRoute(LionsCalendar)
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.NotFound)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
             .Expect(Actors.NonMember, HttpStatusCode.NotFound)
             .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
@@ -622,6 +630,7 @@ public static class AuthorizationMatrix
             .WithRoute(LionsCalendar)
             .WithBody(_ => JsonContent.Create(new { level = "free_busy" }))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
             .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
             .Expect(Actors.NonMember, HttpStatusCode.NotFound)
@@ -634,6 +643,8 @@ public static class AuthorizationMatrix
         .. For("DELETE", "/api/v1/share-links/{id}")
             .WithRoute(s => Route(s, "share-link:lions"))
             .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.NotFound)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
             .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
             .Expect(Actors.NonMember, HttpStatusCode.NotFound)
             .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
