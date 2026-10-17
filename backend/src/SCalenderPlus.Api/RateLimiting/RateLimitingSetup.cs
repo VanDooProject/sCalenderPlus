@@ -19,7 +19,10 @@ namespace SCalenderPlus.Api.RateLimiting;
 /// IPv6 grouped by /64), fixed windows, on the anonymous auth endpoints.</item>
 /// <item><see cref="InviteCreate"/> and <see cref="InviteAccept"/> policies: per signed-in user, fixed windows
 /// (invite-email spam, invite-token guessing); <see cref="InvitePreview"/> per client IP (anonymous token guessing).</item>
-/// <item><see cref="Feed"/> policy: per feed token (the URL path, hashed), token bucket (60/h, burst 10).</item>
+/// <item><see cref="Feed"/> policy: per feed token (the <c>{token}</c> route value, hashed, <c>u:</c>/<c>s:</c> for
+/// personal and share-link feeds), token bucket (60/h, burst 10); and, as part of the global limiter, per client
+/// IP over all feed requests (<see cref="RateLimitingOptions.FeedPerClient"/>, 600/h), which also throttles
+/// requests for unknown tokens.</item>
 /// <item>Global limiter: per signed-in user for cookie sessions (generous sliding window); per API token by
 /// plan once tokens exist (<see cref="ApiTokenAuthenticationType"/>); anonymous requests are only limited by
 /// the endpoint policies.</item>
@@ -49,7 +52,7 @@ public static class RateLimitingSetup
             .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
             .ValidateDataAnnotations()
             .Validate(
-                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept) && Valid(o.InvitePreview)
+                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept) && Valid(o.InvitePreview) && Valid(o.FeedPerClient)
                     && o.Feed is { TokenLimit: >= 1, TokensPerPeriod: >= 1 } && o.Feed.ReplenishmentPeriod >= TimeSpan.FromSeconds(1) && o.Feed.ReplenishmentPeriod <= TimeSpan.FromDays(1),
                 "RateLimiting: every PermitLimit/TokenLimit must be ≥ 1 and every Window/ReplenishmentPeriod between 1 second and 1 day.")
             .ValidateOnStart();
@@ -66,7 +69,9 @@ public static class RateLimitingSetup
             options.AddPolicy(InviteAccept, context => FixedWindowPerUser(context, InviteAccept, settings.InviteAccept));
             options.AddPolicy(InvitePreview, context => FixedWindowPerClient(context, InvitePreview, settings.InvitePreview));
             options.AddPolicy(Feed, context => BucketPerFeed(context, settings.Feed));
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => GlobalPartition(context.User, settings));
+            options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                PartitionedRateLimiter.Create<HttpContext, string>(context => GlobalPartition(context.User, settings)),
+                PartitionedRateLimiter.Create<HttpContext, string>(context => FeedClientPartition(context, settings.FeedPerClient)));
         });
         return services;
     }
@@ -148,12 +153,33 @@ public static class RateLimitingSetup
             });
 
     /// <summary>
-    /// Per feed: the partition is the SHA-256 of the request path (it contains the secret, which must not sit in
-    /// memory as a dictionary key in clear). Unknown tokens get buckets too, so guessing is throttled per URL.
+    /// The partition key of a feed request: <c>u:</c> (personal) or <c>s:</c> (share link) and the SHA-256 of the
+    /// <c>{token}</c> route value — the secret itself must not sit in memory as a dictionary key in clear, and the
+    /// raw path would give every spelling of the same URL (case of the literal segments, a trailing slash,
+    /// percent-encoding) a bucket of its own. Unknown tokens get buckets too; the per-client limit covers guessing.
     /// </summary>
+    public static string FeedKey(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var token = context.Request.RouteValues.TryGetValue("token", out var value) ? value?.ToString() ?? string.Empty : string.Empty;
+        var kind = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == Feeds.FeedEndpoints.ShareLinkFeedName ? "s:" : "u:";
+        return kind + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+    }
+
+    /// <summary>The global limiter's per-client limit of feed requests (endpoints with the <see cref="Feed"/> policy); no limit elsewhere.</summary>
+    private static RateLimitPartition<string> FeedClientPartition(HttpContext context, WindowLimit limit) =>
+        context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName != Feed
+            ? RateLimitPartition.GetNoLimiter(string.Empty)
+            : RateLimitPartition.GetFixedWindowLimiter("feed-client:" + ClientKey(context.Connection.RemoteIpAddress), _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit.PermitLimit,
+                Window = limit.Window,
+                QueueLimit = 0,
+            });
+
     private static RateLimitPartition<string> BucketPerFeed(HttpContext context, BucketLimit limit) =>
         RateLimitPartition.GetTokenBucketLimiter(
-            Feed + ":" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(context.Request.Path.Value ?? string.Empty))),
+            Feed + ":" + FeedKey(context),
             _ => new TokenBucketRateLimiterOptions
             {
                 TokenLimit = limit.TokenLimit,

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SCalenderPlus.Api.RateLimiting;
@@ -67,6 +68,80 @@ public sealed class FeedHostingTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Every_spelling_of_a_feed_url_shares_the_token_s_bucket()
+    {
+        await using var host = await ApiTestHost.StartAsync(postgres, s =>
+        {
+            s["RateLimiting:Feed:TokenLimit"] = "3";
+            s["RateLimiting:Feed:TokensPerPeriod"] = "1";
+            s["RateLimiting:Feed:ReplenishmentPeriod"] = "01:00:00";
+        });
+        var email = ApiTestHost.UniqueEmail();
+        await host.CreateUserAsync(email);
+        using var mia = await host.SignedInClientAsync(email);
+        var secret = (string)(await mia.CreateFeedTokenAsync())["token"]!;
+
+        // The literal segments match in any case and with a trailing slash; the token decides the bucket.
+        foreach (var spelling in new[] { $"/ical/v1/{secret}.ics", $"/ICAL/V1/{secret}.ICS", $"/ical/v1/{secret}.ics/" })
+        {
+            using var allowed = await host.GetFeedAsync(spelling);
+            Assert.True(allowed.StatusCode == HttpStatusCode.OK, $"{spelling}: {(int)allowed.StatusCode}");
+        }
+
+        using var limited = await host.GetFeedAsync($"/Ical/v1/{secret}.ics");
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+
+        // A share link with the same secret text would be another bucket (u: and s: partitions).
+        Assert.NotEqual(PartitionKey($"/ical/v1/{secret}.ics", "GetFeed", secret), PartitionKey($"/ical/v1/s/{secret}.ics", "GetShareLinkFeed", secret));
+    }
+
+    [Fact]
+    public async Task Feed_requests_are_limited_per_client_ip_across_tokens()
+    {
+        await using var host = await ApiTestHost.StartAsync(
+            postgres,
+            s =>
+            {
+                s["RateLimiting:FeedPerClient:PermitLimit"] = "3";
+                s["RateLimiting:FeedPerClient:Window"] = "01:00:00";
+            },
+            s => TestPipeline.Add(s, new Dictionary<string, RequestDelegate>(StringComparer.Ordinal)));
+        Assert.Equal(600, new RateLimitingOptions().FeedPerClient.PermitLimit); // production default: 600 per hour
+        Assert.Equal(TimeSpan.FromHours(1), new RateLimitingOptions().FeedPerClient.Window);
+
+        // Guessing: every request names another unknown token (each has a fresh per-token bucket).
+        for (var i = 0; i < 3; i++)
+        {
+            using var guess = await FeedFromAsync(host, "203.0.113.9", $"/ical/v1/{Guid.NewGuid():N}{i:00000000000}.ics");
+            Assert.Equal(HttpStatusCode.NotFound, guess.StatusCode);
+        }
+
+        using var limited = await FeedFromAsync(host, "203.0.113.9", $"/ical/v1/s/{Guid.NewGuid():N}00000000000.ics");
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        var problem = System.Text.Json.Nodes.JsonNode.Parse(await limited.Content.ReadAsStringAsync(Ct))!;
+        Assert.Equal(ErrorCodes.RateLimited, (string?)problem["code"]);
+        Assert.Equal(SecretRedaction.Replacement, (string?)problem["instance"]);
+        Assert.InRange(int.Parse(Assert.Single(limited.Headers.GetValues("Retry-After")), System.Globalization.CultureInfo.InvariantCulture), 1, 3600);
+
+        // The address comes from the trusted forwarded headers; IPv6 clients are grouped by /64.
+        using var other = await FeedFromAsync(host, "198.51.100.23", $"/ical/v1/{new string('x', 43)}.ics");
+        Assert.Equal(HttpStatusCode.NotFound, other.StatusCode);
+        for (var i = 0; i < 3; i++)
+        {
+            using var v6 = await FeedFromAsync(host, $"2001:db8:1:2::{i + 1:x}", $"/ical/v1/{new string('y', 43)}.ics");
+            Assert.Equal(HttpStatusCode.NotFound, v6.StatusCode);
+        }
+
+        using var sameNetwork = await FeedFromAsync(host, "2001:db8:1:2:ffff::1", $"/ical/v1/{new string('z', 43)}.ics");
+        Assert.Equal(HttpStatusCode.TooManyRequests, sameNetwork.StatusCode);
+
+        // Other endpoints are not counted against the feed limit.
+        using var client = host.CreateClient();
+        using var api = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Ct);
+        Assert.Equal(HttpStatusCode.OK, api.StatusCode);
+    }
+
+    [Fact]
     public async Task No_feed_secret_reaches_a_log_entry_or_a_trace()
     {
         var logs = new CapturingLoggerProvider();
@@ -105,6 +180,20 @@ public sealed class FeedHostingTests(PostgresFixture postgres)
         using var feed = await host.GetFeedAsync(FeedApi.PathOf(issued));
         using var notModified = await host.GetFeedAsync(FeedApi.PathOf(issued), ifNoneMatch: feed.Headers.ETag!.ToString());
         using var percentEncoded = await host.GetFeedAsync($"/%69cal/v1/{secret}.ics");
+        foreach (var spelling in new[]
+        {
+            $"/%69%63%61%6C/v1/{secret}.ics",
+            $"/%49%43%41%4c/v1/{secret}.ics",
+            $"/ICAL/V1/{secret}.ics",
+            $"/ical%2Fv1%2F{secret}.ics",
+            $"/ical%5Cv1%5C{secret}.ics",
+            $"%2Fical%2Fv1%2F{secret}.ics",
+            $"/api/v1/x/..%2F..%2Fical/v1/{secret}.ics",
+        })
+        {
+            using var _ = await host.GetFeedAsync(spelling);
+        }
+
         using var unknown = await host.GetFeedAsync("/ical/v1/" + new string('q', 43) + ".ics?x=" + secret);
         Assert.Equal(HttpStatusCode.OK, feed.StatusCode);
         Assert.Equal(HttpStatusCode.NotModified, notModified.StatusCode);
@@ -124,8 +213,36 @@ public sealed class FeedHostingTests(PostgresFixture postgres)
     [InlineData("https://app.example.test/ical/v1/s/abc.ics?x=1", "https://app.example.test/ical/[REDACTED]")]
     [InlineData("RequestPath:/ICAL/v1/abc.ics RequestId:1", "RequestPath:/ical/[REDACTED] RequestId:1")]
     [InlineData("/api/v1/feed-tokens", "/api/v1/feed-tokens")]
-    public void Redaction_masks_everything_after_ical(string input, string expected) =>
+    [InlineData("GET /%69%63%61%6C/v1/abc.ics HTTP/1.1", "GET /ical/[REDACTED] HTTP/1.1")]
+    [InlineData("GET /%49cAl/v1/abc.ics", "GET /ical/[REDACTED]")]
+    [InlineData("/ical%2Fv1%2Fabc.ics", "/ical/[REDACTED]")]
+    [InlineData("/ical%2fv1%2fabc.ics", "/ical/[REDACTED]")]
+    [InlineData("%2Fical%2Fv1%2Fabc.ics", "/ical/[REDACTED]")]
+    [InlineData(@"C:\x\ical\v1\abc.ics", "C:\\x/ical/[REDACTED]")]
+    [InlineData("/ical%5Cv1%5Cabc.ics", "/ical/[REDACTED]")]
+    [InlineData("%5Cical%5Cv1%5Cabc.ics", "/ical/[REDACTED]")]
+    [InlineData("/api/v1/calendars?q=icalendar", "/api/v1/calendars?q=icalendar")]
+    [InlineData("/icalendar/x", "/icalendar/x")]
+    public void Redaction_masks_everything_from_an_ical_segment_in_any_spelling(string input, string expected) =>
         Assert.Equal(expected, SecretRedaction.Redact(input));
+
+    private static string PartitionKey(string path, string endpointName, string token)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Request.RouteValues["token"] = token;
+        context.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(new Microsoft.AspNetCore.Routing.EndpointNameMetadata(endpointName)), endpointName));
+        return RateLimitingSetup.FeedKey(context);
+    }
+
+    private static async Task<HttpResponseMessage> FeedFromAsync(ApiTestHost host, string clientAddress, string path)
+    {
+        using var client = host.CreateClient(csrfHeader: false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(path, UriKind.Relative));
+        request.Headers.Add(TestPipeline.RemoteIpHeader, "127.0.0.1"); // the trusted proxy (web)
+        request.Headers.Add("X-Forwarded-For", clientAddress);
+        return await client.SendAsync(request, Ct);
+    }
 
     /// <summary>Records every log entry as the JSON console formatter would see it: message, properties and scopes.</summary>
     private sealed class CapturingLoggerProvider : ILoggerProvider, ISupportExternalScope
