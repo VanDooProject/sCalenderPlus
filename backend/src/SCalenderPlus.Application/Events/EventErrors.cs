@@ -181,6 +181,9 @@ public static class EventAuditActions
     /// <summary>The group an entry named was deleted.</summary>
     public const string OverridesRemovedWithGroup = "event.overrides.removed_with_group";
 
+    /// <summary>The account an entry named was deleted (after the grace period).</summary>
+    public const string OverridesRemovedWithUser = "event.overrides.removed_with_user";
+
     /// <summary>One occurrence of a series was changed ("this occurrence"; before/after: the exception).</summary>
     public const string OccurrenceUpdated = "event.occurrence.updated";
 

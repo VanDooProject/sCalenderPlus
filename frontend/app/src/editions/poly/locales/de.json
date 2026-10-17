@@ -112,7 +112,8 @@
       "external_sharing_not_allowed": "Teilen außerhalb der Konstellation ist für diesen Kalender nicht erlaubt.",
       "group_frozen": "Diese Konstellation ist schreibgeschützt, weil das Tariflimit überschritten ist.",
       "group_has_calendars": "Lösche oder verschiebe zuerst die Kalender der Konstellation.",
-      "last_owner": "Eine Konstellation braucht mindestens einen Inhaber."
+      "last_owner": "Eine Konstellation braucht mindestens einen Inhaber.",
+      "account_deletion_blocked": "Übergib zuerst die Konstellationen, die nur dir gehören, und beende das Teilen deiner Kalender."
     }
   },
   "permissions": {
@@ -151,6 +152,15 @@
         "text": "Lege eine Konstellation an und teile einen Einladungslink oder seinen QR-Code mit den Leuten, mit denen du planst.",
         "create": "Konstellation anlegen"
       }
+    }
+  },
+  "accountDeletion": {
+    "effects": {
+      "shared": "Konstellationskalender bleiben bei ihren Konstellationen; Termine, die du dort eingetragen hast, bleiben ohne deinen Namen. Deine Mitgliedschaften und Freigaben für dich enden."
+    },
+    "blockers": {
+      "group": "Du bist einziger Inhaber dieser Konstellation | Einziger Inhaber, 1 weiteres Mitglied: mache zuerst jemand anderen zum Inhaber | Einziger Inhaber, {n} weitere Mitglieder: mache zuerst jemand anderen zum Inhaber",
+      "calendar": "Dein Kalender, nicht geteilt | Dein Kalender, geteilt mit 1 Person oder Konstellation: beende das Teilen oder lösche ihn | Dein Kalender, geteilt mit {n} Personen oder Konstellationen: beende das Teilen oder lösche ihn"
     }
   }
 }

@@ -5,6 +5,7 @@ import { Menu, CloudOff } from '@lucide/vue'
 import { UiButton, UiSheet, UiSpinner } from '@scalenderplus/ui'
 import AppSidebar from '@/components/AppSidebar.vue'
 import BrandMark from '@/components/BrandMark.vue'
+import AccountDeletionBanner from '@/components/AccountDeletionBanner.vue'
 import EmailVerificationBanner from '@/components/EmailVerificationBanner.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import EnvironmentBadge from '@/components/EnvironmentBadge.vue'
@@ -75,6 +76,10 @@ const drawerOpen = ref(false)
       </header>
 
       <EmailVerificationBanner v-if="user && !user.emailVerified" :email="user.email" />
+      <AccountDeletionBanner
+        v-if="user?.deletionScheduledFor"
+        :purge-at="user.deletionScheduledFor"
+      />
 
       <main id="main" class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <div v-if="query.isPending.value" class="flex justify-center py-24">

@@ -210,6 +210,90 @@
     "settings": "Calendar settings",
     "settingsOf": "Settings of {name}"
   },
+  "icsImport": {
+    "cardTitle": "Import events",
+    "cardDescription": "Bring your events from Google Calendar, Outlook or Apple Calendar: export them as an .ics file and upload it here. You see what will be added before anything changes.",
+    "open": "Import .ics file",
+    "frozen": "Importing is paused while the calendar is frozen.",
+    "title": "Import into {name}",
+    "description": "Recurring events keep their rules, changed and cancelled dates. Events this calendar already has are left out, so importing the same file again adds nothing.",
+    "noFile": "No file chosen",
+    "choose": "Choose file",
+    "chooseAnother": "Choose another file",
+    "hint": "An .ics file of up to 5 MB and 5,000 events. In Google Calendar: Settings → Import & export → Export. In Outlook: save the calendar as an iCalendar file.",
+    "tooLarge": "The file is larger than 5 MB. Export a shorter period or split the calendar.",
+    "counts": {
+      "created": "Nothing new | 1 new event | {n} new events",
+      "duplicates": "None already here | 1 already here | {n} already here",
+      "skipped": "None skipped | 1 can't be imported | {n} can't be imported",
+      "series": "{series} with {modified} and {cancelled}.",
+      "seriesCount": "No recurring events | 1 recurring event | {n} recurring events"
+    },
+    "recurring": "Recurring",
+    "modified": "no changed dates | 1 changed date | {n} changed dates",
+    "cancelled": "no cancelled dates | 1 cancelled date | {n} cancelled dates",
+    "listLabel": "Events in the file",
+    "more": "and {n} more",
+    "nothing": "There is nothing new to import: every event of this file is already in the calendar or can't be imported.",
+    "submit": "Import | Import 1 event | Import {n} events",
+    "done": "Nothing imported | 1 event imported | {n} events imported",
+    "actions": {
+      "create": "New",
+      "duplicate": "Already here",
+      "skip": "Skipped"
+    },
+    "reasons": {
+      "exists": "already in this calendar",
+      "duplicate_in_file": "appears twice in the file",
+      "start_missing": "has no start",
+      "time_invalid": "its time can't be read",
+      "recurrence_not_supported": "this kind of repetition isn't supported (e.g. hourly)",
+      "recurrence_invalid": "its repeat rule is invalid",
+      "cancelled": "cancelled"
+    },
+    "warnings": {
+      "time_zone_unknown": "1 event has an unknown time zone: its times were read in the calendar's time zone. | {n} events have an unknown time zone: their times were read in the calendar's time zone.",
+      "floating_time": "1 event has no time zone: its times were read in the calendar's time zone. | {n} events have no time zone: their times were read in the calendar's time zone.",
+      "title_missing": "1 event has no title and is imported as \"(No title)\". | {n} events have no title and are imported as \"(No title)\".",
+      "truncated": "1 event has texts that are too long; they are shortened. | {n} events have texts that are too long; they are shortened.",
+      "url_invalid": "1 event has an invalid link, which is left out. | {n} events have an invalid link, which is left out.",
+      "private_event": "1 event is marked private in the file. Everyone who sees this calendar will see it – restrict it after the import if needed. | {n} events are marked private in the file. Everyone who sees this calendar will see them – restrict them after the import if needed.",
+      "end_before_start": "1 event ends before it starts; it gets no duration. | {n} events end before they start; they get no duration.",
+      "time_adjusted_dst": "1 event starts at a time that doesn't exist (clock change); it is moved forward. | {n} events start at a time that doesn't exist (clock change); they are moved forward.",
+      "uid_generated": "1 event has no usable ID; it gets one, so importing the file again still adds nothing. | {n} events have no usable ID; they get one, so importing the file again still adds nothing.",
+      "dates_capped": "1 recurring event has too many extra or excluded dates; only the first are kept. | {n} recurring events have too many extra or excluded dates; only the first are kept.",
+      "rdate_period_ignored": "1 recurring event has extra dates given as periods; they are left out. | {n} recurring events have extra dates given as periods; they are left out.",
+      "occurrence_not_found": "1 recurring event has changes for dates it doesn't have; they are left out. | {n} recurring events have changes for dates they don't have; they are left out.",
+      "occurrence_ignored": "1 event has changes of single dates that can't be imported; they are left out. | {n} events have changes of single dates that can't be imported; they are left out.",
+      "orphan_occurrence": "1 changed date has no recurring event in the file; it is imported on its own. | {n} changed dates have no recurring event in the file; they are imported on their own.",
+      "unsupported_components": "The file also contains tasks or notes; only events are imported. | The file also contains tasks or notes; only events are imported."
+    }
+  },
+  "accountDeletion": {
+    "title": "Delete account",
+    "description": "Your account is deleted {days} days after you ask for it. Until then you can change your mind.",
+    "effects": {
+      "personal": "Your personal calendars and their events, your feed links and your settings are deleted.",
+      "shared": "Group calendars stay with their groups; events you added there stay without your name. Your memberships and the access you were given end.",
+      "feeds": "Your calendar subscriptions stop at once.",
+      "grace": "You can sign in and cancel for {days} days; after that the deletion is final."
+    },
+    "blockedIntro": "Before your account can be deleted, hand these over or stop sharing them:",
+    "blockedNow": "Something changed in the meantime: hand over or stop sharing what is listed first.",
+    "blockers": {
+      "group": "You are its only owner | Only owner, 1 other member: make someone else an owner first | Only owner, {n} other members: make someone else an owner first",
+      "calendar": "Your calendar, not shared | Your calendar, shared with 1 person or group: stop sharing it or delete it | Your calendar, shared with {n} people or groups: stop sharing it or delete it"
+    },
+    "delete": "Delete account",
+    "confirmTitle": "Delete your account?",
+    "confirmText": "Confirm with your password or an authenticator code. Your account is deleted in {days} days; you can cancel until then.",
+    "scheduled": "Your account will be deleted on {date}. Until then you can cancel the deletion here.",
+    "cancel": "Cancel deletion",
+    "scheduledToast": "Your account is scheduled for deletion. We sent you an email.",
+    "cancelledToast": "Deletion cancelled. Your account stays.",
+    "banner": "Your account will be deleted on {date}.",
+    "bannerAction": "Cancel deletion"
+  },
   "calendarSettings": {
     "title": "{name}: settings",
     "back": "Back to the calendar",
@@ -667,6 +751,7 @@
     "apiUnavailableTitle": "We can't reach the server",
     "apiUnavailable": "{app} is temporarily unavailable. Please try again in a moment.",
     "code": {
+      "account_deletion_blocked": "Hand over the groups you own alone and stop sharing your calendars first.",
       "bad_request": "The request could not be processed.",
       "billing_owner_must_be_owner": "The billing owner must be an owner of the group.",
       "billing_owner_transfer_required": "Transfer the billing to another owner first.",
@@ -679,6 +764,9 @@
       "feature_not_in_plan": "This feature is not included in your plan.",
       "group_frozen": "This group is read-only because the plan limit was exceeded.",
       "group_has_calendars": "Delete or move the group's calendars first.",
+      "ics_invalid": "The file is not a valid calendar (.ics) file.",
+      "ics_too_complex": "The file takes too long to process. Split it into smaller files (for example by year).",
+      "ics_too_many_events": "The file has more than 5,000 events. Split it into smaller files.",
       "insufficient_permission": "You don't have permission to do this.",
       "internal_error": "Something went wrong on our side. Please try again.",
       "invalid_credentials": "Email address or password is incorrect.",

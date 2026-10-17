@@ -78,6 +78,12 @@ public static class ErrorCodes
     /// <summary>The group still owns calendars: transfer or delete them before deleting the group.</summary>
     public const string GroupHasCalendars = "group_has_calendars";
 
+    /// <summary>
+    /// The account cannot be scheduled for deletion yet: the user is the only owner of groups with other members, or
+    /// owns calendars shared with others; carries <c>blockers</c> (what to hand over or stop sharing first).
+    /// </summary>
+    public const string AccountDeletionBlocked = "account_deletion_blocked";
+
     // 412 / 428
     public const string PreconditionFailed = "precondition_failed";
     public const string PreconditionRequired = "precondition_required";
@@ -103,6 +109,15 @@ public static class ErrorCodes
     /// group or user that cannot be selected); carries <c>violations</c> and <c>errors.overrides</c>.
     /// </summary>
     public const string OverrideInvalid = "override_invalid";
+
+    /// <summary>An uploaded file is not an iCalendar object (no VCALENDAR, unbalanced components, broken content lines).</summary>
+    public const string IcsInvalid = "ics_invalid";
+
+    /// <summary>An uploaded file has more events than one upload takes (5,000 VEVENTs); carries <c>limit: { max }</c>.</summary>
+    public const string IcsTooManyEvents = "ics_too_many_events";
+
+    /// <summary>An uploaded file takes too long to process (thousands of long recurring series): split it.</summary>
+    public const string IcsTooComplex = "ics_too_complex";
 
     /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";

@@ -126,27 +126,36 @@ public sealed class GroupService(
         await db.InTransactionAsync(async ct =>
         {
             var (group, _) = await LoadForAsync(actorId, groupId, GroupAction.Delete, precondition, ct).ConfigureAwait(false);
-            await calendars.OnGroupDeletingAsync(groupId, ct).ConfigureAwait(false);
-            var members = await db.GroupMembers.Where(m => m.GroupId == groupId).ToListAsync(ct).ConfigureAwait(false);
-
-            await users.BumpAclVersionAsync([.. members.Select(m => m.UserId)], ct).ConfigureAwait(false);
-            foreach (var member in members)
-            {
-                await NotifyAsync(new MembershipChange(groupId, member.UserId, member.Role, null, MembershipChangeKind.GroupDeleted), ct).ConfigureAwait(false);
-            }
-
-            audit.Record(
-                GroupAuditActions.Deleted,
-                GroupAuditActions.ResourceType,
-                group.Id.ToString(),
-                GroupAudit.State(group) with { MemberCount = members.Count },
-                null,
-                group.OwnerUserId);
-            db.GroupMembers.RemoveRange(members);
-            db.Groups.Remove(group);
+            await RemoveAsync(group, ct).ConfigureAwait(false);
             await SaveAsync(ct).ConfigureAwait(false);
             return true;
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Stages the deletion of the (tracked) group without a role check, inside the caller's transaction (the caller
+    /// saves): <see cref="DeleteAsync"/>, and the purge of an account that was the group's only member.
+    /// </summary>
+    internal async Task RemoveAsync(Group group, CancellationToken cancellationToken)
+    {
+        await calendars.OnGroupDeletingAsync(group.Id, cancellationToken).ConfigureAwait(false);
+        var members = await db.GroupMembers.Where(m => m.GroupId == group.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        await users.BumpAclVersionAsync([.. members.Select(m => m.UserId)], cancellationToken).ConfigureAwait(false);
+        foreach (var member in members)
+        {
+            await NotifyAsync(new MembershipChange(group.Id, member.UserId, member.Role, null, MembershipChangeKind.GroupDeleted), cancellationToken).ConfigureAwait(false);
+        }
+
+        audit.Record(
+            GroupAuditActions.Deleted,
+            GroupAuditActions.ResourceType,
+            group.Id.ToString(),
+            GroupAudit.State(group) with { MemberCount = members.Count },
+            null,
+            group.OwnerUserId);
+        db.GroupMembers.RemoveRange(members);
+        db.Groups.Remove(group);
     }
 
     private async Task<(Group Group, GroupRole Role)> LoadForAsync(Guid actorId, Guid groupId, GroupAction action, Action<GroupView>? precondition, CancellationToken cancellationToken)

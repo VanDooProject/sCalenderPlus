@@ -10,6 +10,7 @@ using SCalenderPlus.Application.Entitlements;
 using SCalenderPlus.Application.Events;
 using SCalenderPlus.Application.Feeds;
 using SCalenderPlus.Application.Groups;
+using SCalenderPlus.Application.Import;
 using SCalenderPlus.Application.Jobs;
 
 namespace SCalenderPlus.Application;
@@ -45,6 +46,8 @@ public static class DependencyInjection
         services.TryAddScoped<IEntitlementService, EntitlementService>();
 
         services.AddSingleton<AccountEmails>();
+        services.AddScoped<AccountDeletionService>();
+        services.AddScoped<AccountPurgeService>();
         services.AddSingleton<EmailDomainPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
 
@@ -70,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<EventMoveService>();
         services.AddScoped<EventOccurrenceService>();
         services.AddScoped<EventShareRevocation>();
+        services.AddScoped<IcsImportService>();
         services.AddScoped<IGroupMembershipObserver>(sp => sp.GetRequiredService<EventShareRevocation>());
 
         services.AddOptions<FeedOptions>()
@@ -91,6 +95,7 @@ public static class DependencyInjection
     public static IServiceCollection AddJobHandlers(this IServiceCollection services)
     {
         services.AddScoped<IJobHandler, SendEmailJobHandler>();
+        services.AddScoped<IJobHandler, AccountPurgeJobHandler>();
 
         return services;
     }

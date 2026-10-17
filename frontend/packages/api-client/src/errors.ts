@@ -8,6 +8,7 @@ type ErrorCode = components['schemas']['ErrorCode']
  * the app's i18n test checks that every listed code has a message in each locale.
  */
 const errorCodeSet = {
+  account_deletion_blocked: true,
   bad_request: true,
   billing_owner_must_be_owner: true,
   billing_owner_transfer_required: true,
@@ -20,6 +21,9 @@ const errorCodeSet = {
   feature_not_in_plan: true,
   group_frozen: true,
   group_has_calendars: true,
+  ics_invalid: true,
+  ics_too_complex: true,
+  ics_too_many_events: true,
   insufficient_permission: true,
   internal_error: true,
   invalid_credentials: true,

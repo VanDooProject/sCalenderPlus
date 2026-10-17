@@ -3,10 +3,14 @@ import { setupWorker } from 'msw/browser'
 import {
   handlers,
   mockNewUser,
+  mockSharedCalendarBlocker,
+  mockSoleOwnerBlocker,
+  resetMockAccount,
   resetMockAuth,
   resetMockCalendars,
   resetMockFeeds,
   resetMockGroups,
+  resetMockImports,
 } from '@scalenderplus/api-client/mocks'
 /**
  * `/config.json` is served by `web` (not part of the API); in mock mode the badge shows "mock".
@@ -47,6 +51,18 @@ function newUserScenario() {
   }
 }
 
+/**
+ * `localStorage['scal.mock.account'] = 'blocked'` (mocked e2e init script): the mock user owns a
+ * group alone and shares a calendar, so deleting the account is blocked.
+ */
+function accountBlocked() {
+  try {
+    return localStorage.getItem('scal.mock.account') === 'blocked'
+  } catch {
+    return false
+  }
+}
+
 export const worker = setupWorker(
   http.get('/config.json', () => HttpResponse.json(mockConfig())),
   ...handlers,
@@ -57,6 +73,10 @@ export async function startMockWorker() {
   resetMockGroups()
   resetMockCalendars()
   resetMockFeeds()
+  resetMockAccount(
+    accountBlocked() ? { blockers: [mockSoleOwnerBlocker, mockSharedCalendarBlocker] } : {},
+  )
+  resetMockImports()
   if (newUserScenario()) mockNewUser()
   await worker.start({ onUnhandledFrame: 'bypass', quiet: true })
 }

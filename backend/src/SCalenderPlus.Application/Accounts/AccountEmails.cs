@@ -1,4 +1,7 @@
+using System.Globalization;
 using Microsoft.Extensions.Options;
+using NodaTime;
+using NodaTime.Text;
 using SCalenderPlus.Application.Configuration;
 using SCalenderPlus.Application.Email;
 
@@ -20,6 +23,9 @@ public sealed class AccountEmails(IOptions<AppOptions> options, IOptions<BrandOp
     public const string ResetPasswordPath = "/reset-password";
 
     public const string LoginPath = "/login";
+
+    /// <summary>Web app route with the account's danger zone (security settings): cancel a scheduled deletion there.</summary>
+    public const string AccountSettingsPath = "/settings/security";
     public const string ForgotPasswordPath = "/forgot-password";
 
     public EmailMessage EmailConfirmation(string to, string displayName, string locale, Guid userId, string token)
@@ -73,6 +79,54 @@ public sealed class AccountEmails(IOptions<AppOptions> options, IOptions<BrandOp
                 new EmailAction("Reset password", url));
         return template.Render(to, displayName);
     }
+
+    /// <summary>Confirms a deletion request: the date the account goes (in the user's zone) and how to keep it.</summary>
+    public EmailMessage DeletionScheduled(string to, string displayName, string locale, string timeZone, Instant purgeAt)
+    {
+        var url = new Uri(BaseUrl, AccountSettingsPath.TrimStart('/'));
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZone) ?? DateTimeZone.Utc;
+        var date = purgeAt.InZone(zone).Date;
+        var template = IsGerman(locale)
+            ? new EmailTemplate(
+                Brand,
+                "Dein Konto wird gelöscht",
+                [
+                    $"Hallo {displayName},",
+                    $"du hast die Löschung deines {Brand.ProductName}-Kontos beantragt. Am {_germanDate.Format(date)} löschen wir es endgültig mit deinen persönlichen Kalendern, Feed-Links und Einstellungen. Deine Kalender-Abos liefern ab sofort keine Termine mehr.",
+                    "Bis dahin kannst du die Löschung jederzeit abbrechen: melde dich an und wähle in den Kontoeinstellungen „Löschung abbrechen“.",
+                    "Wenn du das nicht warst, melde dich an, brich die Löschung ab und ändere dein Passwort.",
+                ],
+                new EmailAction("Löschung abbrechen", url))
+            : new EmailTemplate(
+                Brand,
+                "Your account will be deleted",
+                [
+                    $"Hi {displayName},",
+                    $"you asked us to delete your {Brand.ProductName} account. On {_englishDate.Format(date)} we delete it for good, with your personal calendars, feed links and settings. Your calendar subscriptions stop delivering events now.",
+                    "Until then you can cancel at any time: sign in and choose \"Cancel deletion\" in your account settings.",
+                    "If this wasn't you, sign in, cancel the deletion and change your password.",
+                ],
+                new EmailAction("Cancel deletion", url));
+        return template.Render(to, displayName);
+    }
+
+    /// <summary>The last email to the address: the account is gone.</summary>
+    public EmailMessage AccountDeleted(string to, string displayName, string locale)
+    {
+        var template = IsGerman(locale)
+            ? new EmailTemplate(
+                Brand,
+                "Dein Konto wurde gelöscht",
+                [$"Hallo {displayName},", $"dein {Brand.ProductName}-Konto und deine persönlichen Daten wurden gelöscht. Geteilte Kalender von Gruppen bleiben für ihre Mitglieder erhalten.", "Danke, dass du dabei warst."])
+            : new EmailTemplate(
+                Brand,
+                "Your account has been deleted",
+                [$"Hi {displayName},", $"your {Brand.ProductName} account and your personal data have been deleted. Group calendars you shared stay with their members.", "Thank you for having been with us."]);
+        return template.Render(to, displayName);
+    }
+
+    private static readonly LocalDatePattern _germanDate = LocalDatePattern.Create("d. MMMM uuuu", CultureInfo.GetCultureInfo("de-DE"));
+    private static readonly LocalDatePattern _englishDate = LocalDatePattern.Create("MMMM d, uuuu", CultureInfo.GetCultureInfo("en-US"));
 
     private Uri BaseUrl => new(options.Value.PublicBaseUrl.TrimEnd('/') + "/");
 

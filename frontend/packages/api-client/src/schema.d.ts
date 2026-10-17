@@ -200,7 +200,11 @@ export interface paths {
     get: operations['GetMe']
     put?: never
     post?: never
-    delete?: never
+    /**
+     * Schedule my account for deletion (14-day grace period; confirm with password or code)
+     * @description Body: { password } or { code } (403 reauthentication_failed when wrong; counts towards the lockout). Refused with 409 account_deletion_blocked (+ blockers: [{ type: group|calendar, id, name, reason: sole_owner|shared, count }]) while I am the only owner of a group with other members or own calendars shared with others: hand them over, stop sharing or delete them first. Then: my iCal feeds answer 410 at once, other sessions end, a confirmation email is sent, and after 14 days the account is purged — groups I am alone in and my personal calendars are deleted, my memberships, grants and event overrides removed (shared calendars survive), the audit trail pseudonymised, and a final email sent. Signing in stays possible until then to cancel. Already scheduled: 200 with the current state.
+     */
+    delete: operations['DeleteMe']
     options?: never
     head?: never
     /**
@@ -208,6 +212,43 @@ export interface paths {
      * @description Absent or null members stay unchanged. Unknown time zones are 422 time_zone_invalid, unsupported locales and week starts 400 validation_failed. If-Match: the ETag of GET /me (or *); missing → 428 precondition_required, stale → 412 precondition_failed.
      */
     patch: operations['UpdateMe']
+    trace?: never
+  }
+  '/api/v1/me/deletion': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Whether my account is scheduled for deletion, and what blocks deleting it */
+    get: operations['GetAccountDeletion']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/me/deletion/cancel': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Cancel the scheduled deletion of my account (idempotent)
+     * @description The feeds work again with their old URLs. Not scheduled: 200 unchanged.
+     */
+    post: operations['CancelAccountDeletion']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
     trace?: never
   }
   '/api/v1/me/two-factor': {
@@ -631,6 +672,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/calendars/{id}/ics-upload': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Import an .ics file into the calendar (contribute; preview with dryRun=true, the default)
+     * @description Body: the iCalendar file (Content-Type text/calendar, UTF-8, at most 5 MB and 5,000 VEVENTs: 413 payload_too_large / 422 ics_too_many_events; not iCalendar: 422 ics_invalid). Series keep their RRULE, EXDATEs and RECURRENCE-ID overrides (as exceptions; cancelled ones as cancelled occurrences); TZIDs map to IANA zones (Windows names of Outlook exports too), floating times use X-WR-TIMEZONE or the calendar's zone. Events whose UID the calendar already has are duplicates and left out, so uploading the same file again creates nothing. The uploader becomes the creator; no permission overrides are set. Needs calendar level contribute (below: 403; none: 404), a verified email (403 email_not_verified) and a calendar that is not frozen (409 calendar_frozen).
+     */
+    post: operations['UploadIcs']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/me/calendar-prefs': {
     parameters: {
       query?: never
@@ -998,6 +1059,27 @@ export interface components {
       hiddenAsTransparent?: null | boolean
       steps: components['schemas']['ExplainStepResponse'][]
     }
+    AccountDeletionBlocker: {
+      type: string
+      /** Format: uuid */
+      id: string
+      name: string
+      reason: string
+      /** Format: int32 */
+      count: number
+    }
+    AccountDeletionResponse: {
+      scheduled: null | components['schemas']['AccountDeletionSchedule']
+      /** Format: int32 */
+      graceDays: number
+      blockers: components['schemas']['AccountDeletionBlocker'][]
+    }
+    AccountDeletionSchedule: {
+      /** Format: date-time */
+      requestedAt: string
+      /** Format: date-time */
+      purgeAt: string
+    }
     CalendarListResponse: {
       items: components['schemas']['CalendarResponse'][]
       nextCursor: null | string
@@ -1121,6 +1203,7 @@ export interface components {
      * @enum {string}
      */
     ErrorCode:
+      | 'account_deletion_blocked'
       | 'bad_request'
       | 'billing_owner_must_be_owner'
       | 'billing_owner_transfer_required'
@@ -1133,6 +1216,9 @@ export interface components {
       | 'feature_not_in_plan'
       | 'group_frozen'
       | 'group_has_calendars'
+      | 'ics_invalid'
+      | 'ics_too_complex'
+      | 'ics_too_many_events'
       | 'insufficient_permission'
       | 'internal_error'
       | 'invalid_credentials'
@@ -1373,6 +1459,50 @@ export interface components {
         [key: string]: string[]
       }
     }
+    IcsUploadCounts: {
+      /** Format: int32 */
+      total: number
+      /** Format: int32 */
+      created: number
+      /** Format: int32 */
+      duplicates: number
+      /** Format: int32 */
+      skipped: number
+      /** Format: int32 */
+      series: number
+      /** Format: int32 */
+      modifiedOccurrences: number
+      /** Format: int32 */
+      cancelledOccurrences: number
+    }
+    IcsUploadItem: {
+      uid: string
+      title: string
+      start: null | components['schemas']['EventTimeResponse']
+      end: null | components['schemas']['EventTimeResponse']
+      allDay: boolean
+      rrule: null | string
+      /** Format: int32 */
+      modifiedOccurrences: number
+      /** Format: int32 */
+      cancelledOccurrences: number
+      action: string
+      reason: null | string
+      warnings: string[]
+    }
+    IcsUploadResponse: {
+      /** Format: uuid */
+      calendarId: string
+      dryRun: boolean
+      counts: components['schemas']['IcsUploadCounts']
+      warnings: components['schemas']['IcsUploadWarning'][]
+      items: components['schemas']['IcsUploadItem'][]
+    }
+    IcsUploadWarning: {
+      code: string
+      /** Format: int32 */
+      count: number
+    }
     InviteListResponse: {
       items: components['schemas']['InviteResponse'][]
       nextCursor: null | string
@@ -1463,6 +1593,8 @@ export interface components {
       twoFactorEnabled: boolean
       /** Format: date-time */
       createdAt: string
+      /** Format: date-time */
+      deletionScheduledFor: null | string
     }
     MoveEventRequest: {
       /** Format: uuid */
@@ -2029,6 +2161,39 @@ export interface operations {
       }
     }
   }
+  DeleteMe: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReauthenticationRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AccountDeletionResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
   UpdateMe: {
     parameters: {
       query?: never
@@ -2061,6 +2226,64 @@ export interface operations {
         }
         content: {
           'application/problem+json': components['schemas']['HttpValidationProblemDetails']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  GetAccountDeletion: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AccountDeletionResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  CancelAccountDeletion: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AccountDeletionResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */
@@ -3142,6 +3365,43 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['IssuedShareLinkResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UploadIcs: {
+    parameters: {
+      query?: {
+        dryRun?: boolean
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'text/calendar': string
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IcsUploadResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

@@ -33,6 +33,7 @@ internal static class MeEndpoints
             .WithSummary("Update profile settings (JSON Merge Patch, requires If-Match)")
             .WithDescription("Absent or null members stay unchanged. Unknown time zones are 422 time_zone_invalid, unsupported locales and week starts 400 validation_failed. If-Match: the ETag of GET /me (or *); missing → 428 precondition_required, stale → 412 precondition_failed.");
         me.MapTwoFactorEndpoints();
+        me.MapAccountDeletionEndpoints();
 
         return me;
     }

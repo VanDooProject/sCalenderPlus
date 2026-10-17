@@ -17,6 +17,9 @@ public static class GroupAuditActions
     public const string MemberRemoved = "group.member.removed";
     public const string MemberLeft = "group.member.left";
     public const string MemberJoined = "group.member.joined";
+
+    /// <summary>The last owner's account was deleted: the longest-standing member of the highest role became owner (and billing owner if needed).</summary>
+    public const string OwnerHandedOver = "group.owner_handed_over";
     public const string InviteCreated = "group.invite.created";
     public const string InviteRevoked = "group.invite.revoked";
 }

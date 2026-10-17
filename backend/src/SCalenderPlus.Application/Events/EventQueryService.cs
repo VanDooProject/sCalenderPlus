@@ -134,6 +134,26 @@ public sealed class EventQueryService(
         db.Events.AnyAsync(e => e.CalendarId == calendarId && e.Uid == uid && e.DeletedAt == null, cancellationToken);
 
     /// <summary>
+    /// Which of <paramref name="uids"/> live events of <paramref name="calendarId"/> already have (ICS upload dedupe; no
+    /// permission check: UIDs are per calendar and only the uploader's own file values come back).
+    /// </summary>
+    public async Task<IReadOnlySet<string>> ExistingUidsAsync(Guid calendarId, IReadOnlyCollection<string> uids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(uids);
+        var existing = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var chunk in uids.Distinct(StringComparer.Ordinal).Chunk(1000))
+        {
+            var found = await db.Events.AsNoTracking()
+                .Where(e => e.CalendarId == calendarId && e.DeletedAt == null && chunk.Contains(e.Uid))
+                .Select(e => e.Uid)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            existing.UnionWith(found);
+        }
+
+        return existing;
+    }
+
+    /// <summary>
     /// Events overlapping the window, as the actor sees them (permissions.md §8 listing): (1) the calendars the
     /// actor sees with their ACLs, (2) one SQL query per window over the GiST index <c>(calendar_id, occurs_range)</c>
     /// for those calendars (<see cref="WindowSql"/>), unioned with the events whose overrides name the actor

@@ -98,6 +98,23 @@ public static class AuthorizationMatrix
             .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
 
+        // Account deletion (M4): only one's own account; DELETE /me needs the password and refuses sole owners.
+        .. For("GET", "/api/v1/me/deletion")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("DELETE", "/api/v1/me")
+            .WithBody(_ => JsonContent.Create(new { password = MatrixScenario.Password }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Conflict, "account_deletion_blocked") // sole owner of "lions"
+            .Expect(Actors.Leaver, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/me/deletion/cancel")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK) // nothing scheduled: unchanged
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+
         // Two-factor authentication (#31)
         .. For("POST", "/api/v1/auth/login/2fa")
             .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.TwoFactorPending.Name) }))
@@ -612,6 +629,23 @@ public static class AuthorizationMatrix
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.OK),
 
+        // ICS upload (M4): calendar contribute (permissions.md §4.5 "create events") and a verified email; dry runs
+        // here, so no case changes the calendar.
+        .. For("POST", "/api/v1/calendars/{id}/ics-upload")
+            .WithRoute(LionsCalendar)
+            .WithQuery("dryRun=true")
+            .WithBody(_ => IcsFile())
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.OK)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
         // Share links (M4): calendar manage (permissions.md §4.5); creating needs a verified email.
         .. For("GET", "/api/v1/calendars/{id}/share-links")
             .WithRoute(LionsCalendar)
@@ -661,6 +695,9 @@ public static class AuthorizationMatrix
     private static IReadOnlyDictionary<string, string> IfMatchAny => new Dictionary<string, string>(StringComparer.Ordinal) { ["If-Match"] = "*" };
 
     private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
+
+    private static StringContent IcsFile() =>
+        new("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:matrix@example.test\r\nSUMMARY:Matrix\r\nDTSTART;VALUE=DATE:20261102\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", System.Text.Encoding.UTF8, "text/calendar");
 
     private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
 

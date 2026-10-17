@@ -244,22 +244,31 @@ public sealed class CalendarService(
         {
             var loaded = await access.RequireAsync(actorId, calendarId, CalendarAction.Delete, forUpdate: true, ct).ConfigureAwait(false);
             precondition?.Invoke(new CalendarView(loaded.Calendar, loaded.Level));
-
-            // Everyone whose calendars or "Shared with me" lose something: grantees, the owner, people its events name.
-            var overridePrincipals = await events.OverridePrincipalsAsync(calendarId, ct).ConfigureAwait(false);
-            await aclVersions.BumpPrincipalsAsync([.. loaded.Grants.Select(g => g.Principal), loaded.Calendar.Owner, .. overridePrincipals], ct).ConfigureAwait(false);
-            audit.Record(
-                CalendarAuditActions.Deleted,
-                CalendarAuditActions.ResourceType,
-                calendarId.ToString(),
-                CalendarAudit.State(loaded.Calendar) with { GrantCount = loaded.Grants.Count },
-                null,
-                await BillingSubjectAsync(loaded.Calendar, ct).ConfigureAwait(false));
-            db.CalendarGrants.RemoveRange(loaded.Grants);
-            db.Calendars.Remove(loaded.Calendar);
+            await RemoveAsync(loaded.Calendar, loaded.Grants, ct).ConfigureAwait(false);
             await SaveAsync(ct).ConfigureAwait(false);
             return true;
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Stages the deletion of the (tracked) calendar with its (tracked) grants without a level check, inside the
+    /// caller's transaction (the caller saves): <see cref="DeleteAsync"/>, and the purge of a deleted account.
+    /// Events, sync log, share links, prefs and calendar feed links go with it (FK cascade).
+    /// </summary>
+    internal async Task RemoveAsync(Calendar calendar, IReadOnlyList<CalendarGrantEntry> grants, CancellationToken cancellationToken)
+    {
+        // Everyone whose calendars or "Shared with me" lose something: grantees, the owner, people its events name.
+        var overridePrincipals = await events.OverridePrincipalsAsync(calendar.Id, cancellationToken).ConfigureAwait(false);
+        await aclVersions.BumpPrincipalsAsync([.. grants.Select(g => g.Principal), calendar.Owner, .. overridePrincipals], cancellationToken).ConfigureAwait(false);
+        audit.Record(
+            CalendarAuditActions.Deleted,
+            CalendarAuditActions.ResourceType,
+            calendar.Id.ToString(),
+            CalendarAudit.State(calendar) with { GrantCount = grants.Count },
+            null,
+            await BillingSubjectAsync(calendar, cancellationToken).ConfigureAwait(false));
+        db.CalendarGrants.RemoveRange(grants);
+        db.Calendars.Remove(calendar);
     }
 
     /// <summary>Calendars whose plan subject is <paramref name="billingOwnerId"/>: their own and those of groups they bill.</summary>

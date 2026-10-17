@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Core.Users;
 using SCalenderPlus.Infrastructure.Identity;
 
@@ -43,7 +44,8 @@ internal static class IdentityResults
         user.TimeZone,
         UserPreferences.FormatWeekStart(user.WeekStart),
         user.TwoFactorEnabled,
-        user.CreatedAt.ToDateTimeOffset());
+        user.CreatedAt.ToDateTimeOffset(),
+        user.DeletedAt is { } deletedAt ? AccountDeletionService.PurgeAt(deletedAt).ToDateTimeOffset() : null);
 
     /// <summary>Audit snapshot of the account (no secrets; the redactor would catch them anyway).</summary>
     public static object ToAuditState(this AppUser user) => new

@@ -112,7 +112,8 @@
       "external_sharing_not_allowed": "Sharing outside the constellation is not allowed for this calendar.",
       "group_frozen": "This constellation is read-only because the plan limit was exceeded.",
       "group_has_calendars": "Delete or move the constellation's calendars first.",
-      "last_owner": "A constellation needs at least one owner."
+      "last_owner": "A constellation needs at least one owner.",
+      "account_deletion_blocked": "Hand over the constellations you own alone and stop sharing your calendars first."
     }
   },
   "permissions": {
@@ -151,6 +152,15 @@
         "text": "Create a constellation and share an invite link or its QR code with the people you plan with.",
         "create": "Create constellation"
       }
+    }
+  },
+  "accountDeletion": {
+    "effects": {
+      "shared": "Constellation calendars stay with their constellations; events you added there stay without your name. Your memberships and the access you were given end."
+    },
+    "blockers": {
+      "group": "You are its only owner | Only owner, 1 other member: make someone else an owner first | Only owner, {n} other members: make someone else an owner first",
+      "calendar": "Your calendar, not shared | Your calendar, shared with 1 person or constellation: stop sharing it or delete it | Your calendar, shared with {n} people or constellations: stop sharing it or delete it"
     }
   }
 }
