@@ -11,7 +11,8 @@ namespace SCalenderPlus.Infrastructure.Hosting;
 /// Keeps feed secrets out of the logs (ical-caldav.md §1.1): iCal feed URLs carry the token in the path
 /// (<c>/ical/v1/{token}.ics</c>, <c>/ical/v1/s/{token}.ics</c>), and ASP.NET Core logs request paths — in messages
 /// ("Request starting …"), in structured properties and in the request scope (<c>RequestPath</c>) that the JSON
-/// console formatter writes with every entry of a request. Everything after <c>/ical/</c> is replaced by
+/// console formatter writes with every entry of a request. Everything from an <c>ical</c> path segment on — in any
+/// case, percent-encoded or with backslash separators (<see cref="Contains"/>) — is replaced by
 /// <see cref="Replacement"/> in all of them, for every provider (console, OpenTelemetry, and any added later or by
 /// tests), by decorating the logger factory. The reverse proxy masks the same paths in its own logs
 /// (deploy/caddy/web.Caddyfile).
@@ -20,10 +21,17 @@ public static partial class SecretRedaction
 {
     public const string Replacement = "/ical/[REDACTED]";
 
-    /// <summary>Whether <paramref name="value"/> may contain a feed secret.</summary>
-    public static bool Contains(string? value) => value is not null && value.Contains("/ical/", StringComparison.OrdinalIgnoreCase);
+    /// <summary>The characters a feed path's first separator starts with (a cheap pre-check before the pattern).</summary>
+    private static readonly System.Buffers.SearchValues<char> _separatorStarts = System.Buffers.SearchValues.Create("/\\%");
 
-    /// <summary><paramref name="value"/> with everything after <c>/ical/</c> (up to whitespace or a quote) masked.</summary>
+    /// <summary>
+    /// Whether <paramref name="value"/> may contain a feed secret: an <c>ical</c> path segment in any spelling a
+    /// client may send and a log may keep — any case, percent-encoded letters (<c>%69%63%61%6C</c>), and
+    /// <c>/</c>, <c>\</c>, <c>%2F</c> or <c>%5C</c> as separators.
+    /// </summary>
+    public static bool Contains(string? value) => value is not null && value.AsSpan().IndexOfAny(_separatorStarts) >= 0 && FeedPath().IsMatch(value);
+
+    /// <summary><paramref name="value"/> with everything from an <c>ical</c> path segment on (up to whitespace or a quote) masked.</summary>
     public static string Redact(string value) => Contains(value) ? FeedPath().Replace(value, Replacement) : value;
 
     /// <summary>Decorates the logger factory so every logger redacts messages, properties and scopes.</summary>
@@ -37,7 +45,7 @@ public static partial class SecretRedaction
         return services;
     }
 
-    [GeneratedRegex("""/ical/[^\s"'<>]*""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex("""(?:/|\\|%2f|%5c)(?:i|%69|%49)(?:c|%63|%43)(?:a|%61|%41)(?:l|%6c|%4c)(?:/|\\|%2f|%5c)[^\s"'<>]*""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex FeedPath();
 
     /// <summary>Redacts a log state or scope: structured properties and the formatted text.</summary>

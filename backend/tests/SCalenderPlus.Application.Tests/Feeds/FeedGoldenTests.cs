@@ -55,7 +55,7 @@ public sealed class FeedGoldenTests
     {
         var ev = Timed(5, "Jahreshauptversammlung mit Wahlen, Berichten und Ehrungen – bitte pünktlich 🎉 (Vereinsheim, großer Saal)", "2026-12-05T15:00:00", "2026-12-05T18:00:00");
         ev.Description = "Bitte Mitgliedsausweis mitbringen. Getränke gibt es an der Theke; Snacks bringt jeder selbst mit.";
-        ev.RelatedTo = "earlier-series@scalenderplus";
+        ev.RelatedTo = Training().Uid; // split from the training series, which is in the same feed
         return ev;
     }
 

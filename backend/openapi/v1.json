@@ -3375,7 +3375,7 @@
           "Feeds"
         ],
         "summary": "Personal iCal feed (the token is the credential)",
-        "description": "What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10), then 429 with Retry-After.",
+        "description": "What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10) and 600 per hour per client IP over all feeds, then 429 with Retry-After.",
         "operationId": "GetFeed",
         "parameters": [
           {

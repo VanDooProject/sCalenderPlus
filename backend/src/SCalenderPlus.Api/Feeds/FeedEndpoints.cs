@@ -18,6 +18,9 @@ namespace SCalenderPlus.Api.Feeds;
 internal static class FeedEndpoints
 {
     public const string BasePath = "/ical/v1";
+
+    /// <summary>Endpoint name of the share-link feed (its rate-limit partitions are kept apart from personal feeds').</summary>
+    public const string ShareLinkFeedName = "GetShareLinkFeed";
     private const string CalendarContentType = "text/calendar; charset=utf-8";
 
     public static IEndpointRouteBuilder MapFeedEndpoints(this IEndpointRouteBuilder endpoints)
@@ -25,12 +28,12 @@ internal static class FeedEndpoints
         var feeds = endpoints.MapGroup(BasePath).WithTags(FeedTokenEndpoints.Tag).AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Feed);
         feeds.MapGet("/{token}.ics", UserFeedAsync).WithName("GetFeed")
             .WithSummary("Personal iCal feed (the token is the credential)")
-            .WithDescription("What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10), then 429 with Retry-After.")
+            .WithDescription("What the token's owner sees, per event through the permission engine: busy-only events as cover title or Busy without details, read-only and editable events labelled per the token's label mode. Series as RRULE plus exceptions, VTIMEZONE for every TZID. ETag/If-None-Match → 304; 404 for unknown and revoked tokens, 410 while the owner's account is being deleted. 60 requests per hour per token (burst 10) and 600 per hour per client IP over all feeds, then 429 with Retry-After.")
             .Produces<string>(StatusCodes.Status200OK, "text/calendar")
             .Produces(StatusCodes.Status304NotModified)
             .Produces<string>(StatusCodes.Status404NotFound, "text/plain")
             .Produces<string>(StatusCodes.Status410Gone, "text/plain");
-        feeds.MapGet("/s/{token}.ics", ShareLinkFeedAsync).WithName("GetShareLinkFeed")
+        feeds.MapGet("/s/{token}.ics", ShareLinkFeedAsync).WithName(ShareLinkFeedName)
             .WithSummary("Anonymous share-link iCal feed (the token is the credential)")
             .WithDescription("The calendar as the anonymous principal sees it, the link's level (free_busy or read) as ceiling: no event is ever more than the link allows. No access labels or app links. 404 for unknown, revoked and expired links. Same caching and rate limit as personal feeds.")
             .Produces<string>(StatusCodes.Status200OK, "text/calendar")

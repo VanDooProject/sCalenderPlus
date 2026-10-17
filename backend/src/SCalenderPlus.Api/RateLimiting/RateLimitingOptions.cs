@@ -41,6 +41,14 @@ public sealed class RateLimitingOptions
     [Required]
     public BucketLimit Feed { get; set; } = new() { TokenLimit = 10, TokensPerPeriod = 1, ReplenishmentPeriod = TimeSpan.FromMinutes(1) };
 
+    /// <summary>
+    /// Per client IP (IPv6 by /64) over all feed requests, known and unknown tokens alike (fixed window,
+    /// ical-caldav.md §1.4): 600 per hour leaves room for a household or office polling dozens of feeds and
+    /// throttles token guessing, which the per-token buckets cannot (every guess gets a bucket of its own).
+    /// </summary>
+    [Required]
+    public WindowLimit FeedPerClient { get; set; } = new() { PermitLimit = 600, Window = TimeSpan.FromHours(1) };
+
     /// <summary>Per API token and minute, by plan (plans.md "API rate limit"); applied once API tokens exist (v1).</summary>
     [Required]
     public PlanLimits TokenPlans { get; set; } = new();

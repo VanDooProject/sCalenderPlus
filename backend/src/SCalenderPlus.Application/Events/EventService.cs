@@ -405,6 +405,11 @@ public sealed class EventService(
             : trimmed.Length == 0 ? null : trimmed;
     }
 
+    /// <summary>
+    /// An absolute http(s) URL, stored in its normalized form (<see cref="Uri.AbsoluteUri"/>). Whitespace and
+    /// control characters inside it are refused, not encoded: <see cref="Uri.TryCreate(string, UriKind, out Uri)"/>
+    /// accepts embedded CR/LF, NEL and spaces, and the URL is written as is into iCal feeds and links.
+    /// </summary>
     private static string? ValidUrl(string url)
     {
         var trimmed = url.Trim();
@@ -414,10 +419,13 @@ public sealed class EventService(
         }
 
         return trimmed.Length <= Event.UrlMaxLength
+            && !trimmed.Any(c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '\u2028' or '\u2029')
             && Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
-            ? trimmed
-            : throw Validation.Failed("url", "Use an absolute http(s) URL.");
+            && !string.IsNullOrEmpty(uri.Host)
+            && uri.AbsoluteUri is { Length: <= Event.UrlMaxLength } normalized
+            ? normalized
+            : throw Validation.Failed("url", "Use an absolute http(s) URL without spaces.");
     }
 
     private static string? ValidColor(string color) =>

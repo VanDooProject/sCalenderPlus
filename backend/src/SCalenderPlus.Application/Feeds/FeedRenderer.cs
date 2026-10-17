@@ -37,8 +37,9 @@ public sealed record FeedDocument(
 /// <list type="bullet">
 /// <item><c>free_busy</c>: only times, recurrence, <c>TRANSP</c>, <c>CLASS:CONFIDENTIAL</c>, <c>SUMMARY</c> = the
 /// cover title or the localized "Busy", <c>DTSTAMP</c> = creation (edits of hidden fields leave no trace) and the
-/// opaque UID <c>{id}@scalenderplus</c>. Exceptions are stripped the same way: only those that change what busy
-/// viewers see (moved, another cover title) get a VEVENT; transparent occurrences become <c>EXDATE</c>s.</item>
+/// UID <c>{id}@scalenderplus</c> (never the stored UID; the event id is not secret from busy viewers). Exceptions
+/// are stripped the same way: only those that change what busy viewers see (moved, another cover title) get a
+/// VEVENT; transparent occurrences become <c>EXDATE</c>s.</item>
 /// <item><c>read</c> / <c>edit</c> / <c>manage</c>: every field plus the access label of the token's
 /// <see cref="FeedLabelMode"/>, a description footer and <c>X-SCALENDERPLUS-ACCESS</c>/<c>-EVENT-ID</c>.</item>
 /// <item>Never <c>ATTENDEE</c>/<c>ORGANIZER</c> (no iTIP replies to a feed) and no <c>VALARM</c>.</item>
@@ -53,7 +54,7 @@ public static class FeedRenderer
     public const string ProductId = "-//sCalenderPlus//EN";
 
     /// <summary>Bump when the output changes for the same data: part of the feed ETag (cached renders and client caches refresh).</summary>
-    public const int FormatVersion = 1;
+    public const int FormatVersion = 2;
 
     public static string Render(FeedDocument document)
     {
@@ -82,6 +83,14 @@ public static class FeedRenderer
             }
         }
 
+        // RELATED-TO names a stored UID (of the calendar's event a series was split from). It is emitted only when
+        // that event is in this document with its full content, as the UID it is written with here: a target
+        // outside the feed, busy-only or in another calendar would leak a stored (possibly imported) UID that the
+        // feed otherwise rewrites, or link to something the viewer cannot see.
+        var related = document.Items
+            .Where(i => !EventVisibility.IsBusyOnly(i.Level))
+            .GroupBy(i => (i.Event.CalendarId, i.Event.Uid))
+            .ToDictionary(g => g.Key, g => FullUid(document, g.First().Event));
         foreach (var item in document.Items.OrderBy(i => i.Event.StartUtc).ThenBy(i => i.Event.Id))
         {
             if (EventVisibility.IsBusyOnly(item.Level))
@@ -90,7 +99,7 @@ public static class FeedRenderer
             }
             else
             {
-                WriteFull(writer, document, item.Event, item.Level);
+                WriteFull(writer, document, item.Event, item.Level, related);
             }
         }
 
@@ -112,11 +121,14 @@ public static class FeedRenderer
             : item.Event.Exceptions.Count(x => !x.Cancelled));
     }
 
-    private static void WriteFull(IcsWriter writer, FeedDocument document, Event ev, EventLevel level)
+    /// <summary>The UID a read-or-above VEVENT is written with: the stored one in single-calendar feeds, else <c>{id}@scalenderplus</c>.</summary>
+    private static string FullUid(FeedDocument document, Event ev) => document.NativeUids ? ev.Uid : Event.NativeUid(ev.Id);
+
+    private static void WriteFull(IcsWriter writer, FeedDocument document, Event ev, EventLevel level, Dictionary<(Guid, string), string> related)
     {
-        var uid = document.NativeUids ? ev.Uid : Event.NativeUid(ev.Id);
+        var uid = FullUid(document, ev);
         writer.Begin("VEVENT")
-            .Raw("UID", uid)
+            .Text("UID", uid)
             .Utc("DTSTAMP", ev.UpdatedAt)
             .Utc("CREATED", ev.CreatedAt)
             .Utc("LAST-MODIFIED", ev.UpdatedAt)
@@ -129,7 +141,7 @@ public static class FeedRenderer
             WriteDates(writer, "EXDATE", ev, ev.ExDates.Concat(ev.Exceptions.Where(x => x.Cancelled).Select(x => x.RecurrenceId)));
         }
 
-        WriteDetails(writer, document, ev, level, ev.Title, ev.Description, ev.Location, ev.Status, ev.Transparency);
+        WriteDetails(writer, document, ev, level, related, ev.Title, ev.Description, ev.Location, ev.Status, ev.Transparency);
         writer.End("VEVENT");
 
         if (!ev.IsSeries)
@@ -145,14 +157,14 @@ public static class FeedRenderer
             }
 
             writer.Begin("VEVENT")
-                .Raw("UID", uid)
+                .Text("UID", uid)
                 .Utc("DTSTAMP", exception.UpdatedAt)
                 .Utc("CREATED", exception.CreatedAt)
                 .Utc("LAST-MODIFIED", exception.UpdatedAt)
                 .Raw("SEQUENCE", ev.Sequence.ToString(CultureInfo.InvariantCulture));
             WriteRecurrenceId(writer, ev, exception.RecurrenceId);
             WriteTimes(writer, occurrence.Times);
-            WriteDetails(writer, document, ev, level, occurrence.Title, occurrence.Description, occurrence.Location, occurrence.Status, occurrence.Transparency);
+            WriteDetails(writer, document, ev, level, related, occurrence.Title, occurrence.Description, occurrence.Location, occurrence.Status, occurrence.Transparency);
             writer.End("VEVENT");
         }
     }
@@ -162,6 +174,7 @@ public static class FeedRenderer
         FeedDocument document,
         Event ev,
         EventLevel level,
+        Dictionary<(Guid, string), string> related,
         string title,
         string? description,
         string? location,
@@ -196,9 +209,9 @@ public static class FeedRenderer
             writer.Raw("CATEGORIES", string.Join(',', ev.Categories.Select(IcsWriter.EscapeText)));
         }
 
-        if (!string.IsNullOrEmpty(ev.RelatedTo))
+        if (!string.IsNullOrEmpty(ev.RelatedTo) && related.TryGetValue((ev.CalendarId, ev.RelatedTo), out var relatedUid))
         {
-            writer.Raw("RELATED-TO", ev.RelatedTo);
+            writer.Text("RELATED-TO", relatedUid);
         }
 
         if (document.AccessProperties)
@@ -213,7 +226,7 @@ public static class FeedRenderer
         var uid = Event.NativeUid(ev.Id);
         var exceptions = ev.IsSeries ? BusyExceptions(ev) : [];
         writer.Begin("VEVENT")
-            .Raw("UID", uid)
+            .Text("UID", uid)
             .Utc("DTSTAMP", ev.CreatedAt);
         WriteTimes(writer, ev.Times);
         if (ev.IsSeries)
@@ -229,7 +242,7 @@ public static class FeedRenderer
         foreach (var exception in exceptions.Where(x => x.Kind == BusyExceptionKind.Event))
         {
             writer.Begin("VEVENT")
-                .Raw("UID", uid)
+                .Text("UID", uid)
                 .Utc("DTSTAMP", ev.CreatedAt);
             WriteRecurrenceId(writer, ev, exception.RecurrenceId);
             WriteTimes(writer, exception.Occurrence!.Times);
@@ -350,7 +363,7 @@ public static class FeedRenderer
         }
         else
         {
-            writer.Raw($"{name};TZID={series.TimeZone}", string.Join(',', dates.Select(IcsWriter.FormatLocal)));
+            writer.Raw($"{name};TZID={IcsWriter.ParamValue(series.TimeZone!)}", string.Join(',', dates.Select(IcsWriter.FormatLocal)));
         }
     }
 }

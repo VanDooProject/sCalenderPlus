@@ -25,7 +25,7 @@ public enum FeedStatus
 {
     Ok,
 
-    /// <summary><c>If-None-Match</c> (or <c>If-Modified-Since</c>) matched: 304 without loading events.</summary>
+    /// <summary><c>If-None-Match</c> (or <c>If-Modified-Since</c>) matched the body: 304 (without loading events while the render is cached).</summary>
     NotModified,
 
     /// <summary>Unknown, malformed, revoked or expired token: 404 (no oracle).</summary>
@@ -36,7 +36,8 @@ public enum FeedStatus
 }
 
 /// <summary>The outcome of a feed request; <see cref="Feed"/> is set for <see cref="FeedStatus.Ok"/>.</summary>
-/// <param name="LastModified">When the current representation was rendered on this replica (known only while it is cached).</param>
+/// <param name="ETag">The entity tag of the body (<see cref="RenderedFeed.ETag"/>).</param>
+/// <param name="LastModified">Since when this replica has served this body (<see cref="RenderedFeed.LastModified"/>).</param>
 public sealed record FeedResponse(FeedStatus Status, RenderedFeed? Feed = null, string? ETag = null, Instant? LastModified = null)
 {
     public static FeedResponse NotFound { get; } = new(FeedStatus.NotFound);
@@ -57,8 +58,11 @@ public sealed record FeedConditions(IReadOnlyList<string> IfNoneMatch, Instant? 
 /// the link's level as ceiling — both through the permission engine, per event, on every request. Order of work
 /// (§1.4): (1) the token is resolved and validated (revoked/expired/unknown → 404, owner being deleted → 410) —
 /// always first, so a revoked token never reaches a cached render; (2) the ETag is computed from a few cheap
-/// queries that load no event rows (sync-log sequence numbers, <c>acl_version</c>s, settings); (3) a matching
-/// <c>If-None-Match</c> answers 304; (4) otherwise the render cached under token + ETag, or a fresh render.
+/// queries that load no event rows (sync-log sequence numbers, <c>acl_version</c>s, settings) — the <em>state</em>, an
+/// internal cache key only; (3) a render cached under token + state whose body ETag matches <c>If-None-Match</c>
+/// answers 304 without loading events; (4) otherwise the cached render, or a fresh render — which answers 304 too when
+/// its body is the one the client has. The ETag is the hash of the body, so a change the viewer cannot see (a hidden
+/// field of a busy event, the calendar of an ex-member) changes neither the ETag nor <c>Last-Modified</c>.
 /// </summary>
 public sealed class FeedService(
     IAppDbContext db,
@@ -174,14 +178,34 @@ public sealed class FeedService(
             {
                 state.Add(id);
             }
+
+            // The calendars of the shared events the user does not see (their ACL and settings take part in each
+            // event's level): found through the sync log, which names every calendar an event has been in.
+            var known = visibleIds.Concat(included.Select(c => c.Calendar.Id)).Distinct().ToList();
+            var extraIds = await db.CalendarChanges.AsNoTracking()
+                .Where(c => !known.Contains(c.CalendarId) && db.EventOverrides.Any(o => o.EventId == c.EventId
+                    && ((o.PrincipalType == PrincipalType.User && o.PrincipalId == userId)
+                        || (o.PrincipalType == PrincipalType.Group && groupIds.Contains(o.PrincipalId!.Value)))))
+                .Select(c => c.CalendarId).Distinct()
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            var extras = extraIds.Count == 0
+                ? []
+                : await db.Calendars.AsNoTracking().Where(c => extraIds.Contains(c.Id)).OrderBy(c => c.Id)
+                    .Select(c => new { c.Id, c.AclVersion, c.Version })
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
+            state.Add("extra");
+            foreach (var extra in extras)
+            {
+                state.Add(extra.Id).Add(extra.AclVersion).Add(extra.Version);
+            }
         }
 
         var plan = (await entitlements.GetAsync(owner.Id, cancellationToken).ConfigureAwait(false)).Plan;
         state.Add(plan.ToString());
-        var etag = state.ToETag(FeedRenderer.FormatVersion, brand.Value.ProductName, app.Value.PublicBaseUrl);
+        var stateKey = state.ToKey(FeedRenderer.FormatVersion, brand.Value.ProductName, app.Value.PublicBaseUrl);
 
         var key = "u:" + Convert.ToHexString(hash);
-        var response = await RespondAsync(key, etag, conditions, async () =>
+        var response = await RespondAsync(key, stateKey, conditions, async () =>
         {
             var views = await events.FeedAsync(principal, included, sharedWithMe, visibleIds, from, options.Value.MaxEvents, cancellationToken).ConfigureAwait(false);
             return new FeedDocument(
@@ -234,10 +258,10 @@ public sealed class FeedService(
         var state = new FeedState()
             .Add("link").Add(link.Id).Add((int)link.Level).Add(locale).Add(zone.Id).Add(fromDate.ToString("R", CultureInfo.InvariantCulture));
         await AddCalendarStateAsync(state, [calendar], cancellationToken).ConfigureAwait(false);
-        var etag = state.ToETag(FeedRenderer.FormatVersion, brand.Value.ProductName, app.Value.PublicBaseUrl);
+        var stateKey = state.ToKey(FeedRenderer.FormatVersion, brand.Value.ProductName, app.Value.PublicBaseUrl);
 
         var key = "s:" + Convert.ToHexString(hash);
-        var response = await RespondAsync(key, etag, conditions, async () =>
+        var response = await RespondAsync(key, stateKey, conditions, async () =>
         {
             var views = await events.FeedAsync(principal, [calendar], false, [], from, options.Value.MaxEvents, cancellationToken).ConfigureAwait(false);
             return new FeedDocument(
@@ -291,25 +315,39 @@ public sealed class FeedService(
         }
     }
 
-    private async Task<FeedResponse> RespondAsync(string key, string etag, FeedConditions conditions, Func<Task<FeedDocument>> document)
-    {
-        var cached = cache.Get(key, etag);
-        if (Matches(conditions.IfNoneMatch, etag)
-            || (conditions.IfNoneMatch.Count == 0 && conditions.IfModifiedSince is { } since && cached is not null
-                && since >= Instant.FromUnixTimeSeconds(cached.RenderedAt.ToUnixTimeSeconds())))
-        {
-            return new FeedResponse(FeedStatus.NotModified, null, etag, cached?.RenderedAt);
-        }
+    /// <summary>The entity tag of a feed body: <c>W/"&lt;base64url of 16 bytes of its SHA-256&gt;"</c> (weak: the api compresses the body).</summary>
+    public static string BodyETag(byte[] body) => "W/\"" + Base64Url(SHA256.HashData(body)) + "\"";
 
+    /// <summary>
+    /// §1.4: a render cached under the token and the state answers from memory (304 without loading events when
+    /// its body ETag is the client's); otherwise the feed is rendered, and a body equal to the one the client has
+    /// still answers 304. <c>Last-Modified</c> is when this replica first served the body (kept per token in
+    /// the cache, so a re-render with an unchanged body keeps it); <c>If-Modified-Since</c> is honoured only
+    /// without <c>If-None-Match</c> and never claims more than that.
+    /// </summary>
+    private async Task<FeedResponse> RespondAsync(string key, string stateKey, FeedConditions conditions, Func<Task<FeedDocument>> document)
+    {
+        var cached = cache.Get(key, stateKey);
         if (cached is null)
         {
             var body = Encoding.UTF8.GetBytes(FeedRenderer.Render(await document().ConfigureAwait(false)));
-            cached = new RenderedFeed(body, etag, clock.GetCurrentInstant());
-            cache.Set(key, cached);
+            var etag = BodyETag(body);
+            var lastModified = cache.BodySince(key, etag) ?? Instant.FromUnixTimeSeconds(clock.GetCurrentInstant().ToUnixTimeSeconds());
+            cached = new RenderedFeed(body, etag, lastModified);
+            cache.Set(key, stateKey, cached);
         }
 
-        return new FeedResponse(FeedStatus.Ok, cached, etag, cached.RenderedAt);
+        return NotModified(conditions, cached)
+            ? new FeedResponse(FeedStatus.NotModified, null, cached.ETag, cached.LastModified)
+            : new FeedResponse(FeedStatus.Ok, cached, cached.ETag, cached.LastModified);
     }
+
+    private static bool NotModified(FeedConditions conditions, RenderedFeed feed) =>
+        conditions.IfNoneMatch.Count > 0
+            ? Matches(conditions.IfNoneMatch, feed.ETag)
+            : conditions.IfModifiedSince is { } since && since >= feed.LastModified;
+
+    private static string Base64Url(byte[] hash) => Convert.ToBase64String(hash, 0, 16).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     /// <summary>At most <see cref="FeedOptions.MaxEvents"/> VEVENTs: the events ending latest are kept (oldest past events dropped first).</summary>
     private List<FeedItem> Cap(IReadOnlyList<EventView> views)
@@ -337,7 +375,7 @@ public sealed class FeedService(
         return new Uri(url.EndsWith('/') ? url : url + "/", UriKind.Absolute);
     }
 
-    /// <summary>The inputs of a feed ETag (§1.4), hashed: <c>W/"&lt;base64url of 16 bytes of SHA-256&gt;"</c>.</summary>
+    /// <summary>The state of a feed (§1.4): every input of its render, hashed — the internal cache key, never sent to clients.</summary>
     private sealed class FeedState
     {
         private readonly StringBuilder _parts = new();
@@ -352,11 +390,10 @@ public sealed class FeedService(
 
         public FeedState Add(Guid value) => Add(value.ToString("N"));
 
-        public string ToETag(int formatVersion, string productName, string baseUrl)
+        public string ToKey(int formatVersion, string productName, string baseUrl)
         {
             Add(formatVersion).Add(productName).Add(baseUrl);
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(_parts.ToString()));
-            return "W/\"" + Convert.ToBase64String(hash, 0, 16).TrimEnd('=').Replace('+', '-').Replace('/', '_') + "\"";
+            return Base64Url(SHA256.HashData(Encoding.UTF8.GetBytes(_parts.ToString())));
         }
     }
 }

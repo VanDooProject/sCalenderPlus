@@ -46,6 +46,7 @@ internal static class TestSettings
         ["RateLimiting:Auth:PermitLimit"] = "10000",
         ["RateLimiting:SignUp:PermitLimit"] = "10000",
         ["RateLimiting:InvitePreview:PermitLimit"] = "10000",
+        ["RateLimiting:FeedPerClient:PermitLimit"] = "100000",
 
         // Worker only (validated on start); nothing listens on port 1, tests that send mail point it at Mailpit.
         ["Smtp:Host"] = "127.0.0.1",
