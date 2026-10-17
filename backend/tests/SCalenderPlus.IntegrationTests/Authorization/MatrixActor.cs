@@ -54,6 +54,9 @@ public static class Actors
     /// <summary>A verified user signed in anew for every case: for operations that end or replace the session (logout).</summary>
     public static readonly MatrixActor FreshSession = new("fresh-session", scenario => scenario.NewSessionClientAsync("fresh-session"));
 
+    /// <summary>A verified user in no group who schedules the deletion of their account (<c>DELETE /me</c>): kept apart so no other case sees it.</summary>
+    public static readonly MatrixActor Leaver = new("leaver", scenario => Task.FromResult(scenario.SessionClient("leaver")));
+
     /// <summary>A verified user with two-factor authentication enabled, fully signed in.</summary>
     public static readonly MatrixActor TwoFactorUser = new("two-factor-user", scenario => Task.FromResult(scenario.SessionClient("two-factor-user")));
 

@@ -2,10 +2,12 @@ import { afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
 import {
   handlers,
+  resetMockAccount,
   resetMockAuth,
   resetMockCalendars,
   resetMockFeeds,
   resetMockGroups,
+  resetMockImports,
 } from '@scalenderplus/api-client/mocks'
 
 /**
@@ -21,6 +23,8 @@ export function useMockApi() {
     resetMockGroups()
     resetMockCalendars()
     resetMockFeeds()
+    resetMockAccount()
+    resetMockImports()
   })
   afterAll(() => server.close())
   return server

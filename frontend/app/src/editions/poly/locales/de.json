@@ -108,6 +108,7 @@
   },
   "errors": {
     "code": {
+      "account_deletion_blocked": "Übergib zuerst die Konstellationen, die nur dir gehören, und beende das Teilen deiner Kalender.",
       "billing_owner_must_be_owner": "Die Rechnungsverantwortung muss bei einem Konstellationsinhaber liegen.",
       "external_sharing_not_allowed": "Teilen außerhalb der Konstellation ist für diesen Kalender nicht erlaubt.",
       "group_frozen": "Diese Konstellation ist schreibgeschützt, weil das Tariflimit überschritten ist.",

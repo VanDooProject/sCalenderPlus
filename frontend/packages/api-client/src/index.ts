@@ -88,3 +88,9 @@ export type IcsUploadResponse = components['schemas']['IcsUploadResponse']
 
 /** One event of an uploaded file and what the upload does with it (`action`: create, duplicate, skip). */
 export type IcsUploadItem = components['schemas']['IcsUploadItem']
+
+/** Deletion state of my account (`GET /me/deletion`): the schedule, the grace period and what blocks it. */
+export type AccountDeletionResponse = components['schemas']['AccountDeletionResponse']
+
+/** A group I own alone (with other members) or a calendar of mine shared with others: blocks deleting the account. */
+export type AccountDeletionBlocker = components['schemas']['AccountDeletionBlocker']

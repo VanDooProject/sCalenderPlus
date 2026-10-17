@@ -88,6 +88,7 @@ public sealed class ResetPasswordRequest
 
 /// <summary>The signed-in user's account and profile.</summary>
 /// <param name="WeekStart">First day of the week: <c>monday</c> … <c>sunday</c>.</param>
+/// <param name="DeletionScheduledFor">The account is scheduled for deletion and will be purged then (cancel with <c>POST /me/deletion/cancel</c>); null otherwise.</param>
 public sealed record MeResponse(
     Guid Id,
     string Email,
@@ -97,7 +98,8 @@ public sealed record MeResponse(
     string TimeZone,
     string WeekStart,
     bool TwoFactorEnabled,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? DeletionScheduledFor);
 
 /// <summary>
 /// JSON Merge Patch of the profile (<c>application/merge-patch+json</c>): members that are absent or

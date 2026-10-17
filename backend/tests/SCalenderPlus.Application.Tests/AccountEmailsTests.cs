@@ -38,6 +38,22 @@ public sealed class AccountEmailsTests
     }
 
     [Theory]
+    [InlineData("en", "Europe/Berlin", "On October 31, 2026 we delete it")]
+    [InlineData("de", "Europe/Berlin", "Am 31. Oktober 2026 löschen wir es")]
+    [InlineData("en", "Pacific/Honolulu", "On October 30, 2026 we delete it")] // the date in the user's zone
+    public void Deletion_confirmation_names_the_purge_date_and_links_to_the_account_settings(string locale, string zone, string sentence)
+    {
+        var message = _emails.DeletionScheduled("mia@example.test", "Mia", locale, zone, NodaTime.Instant.FromUtc(2026, 10, 31, 8, 0));
+
+        Assert.Contains(sentence, message.TextBody, StringComparison.Ordinal);
+        Assert.Contains("https://app.example.test/settings/profile", message.TextBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Deleted_account_email_has_no_link() =>
+        Assert.DoesNotContain("https://", _emails.AccountDeleted("mia@example.test", "Mia", "de").TextBody, StringComparison.Ordinal);
+
+    [Theory]
     [InlineData("en")]
     [InlineData("de")]
     public void Every_account_email_names_the_configured_product(string locale)
@@ -51,6 +67,8 @@ public sealed class AccountEmailsTests
             emails.EmailConfirmation("mia@example.test", "Mia", locale, _userId, "tok"),
             emails.PasswordReset("mia@example.test", "Mia", locale, _userId, "tok"),
             emails.AlreadyRegistered("mia@example.test", "Mia", locale),
+            emails.DeletionScheduled("mia@example.test", "Mia", locale, "UTC", NodaTime.Instant.FromUtc(2026, 10, 31, 8, 0)),
+            emails.AccountDeleted("mia@example.test", "Mia", locale),
         })
         {
             Assert.Contains("Lions Calendar", message.TextBody.Split("-- \n")[0], StringComparison.Ordinal); // body, not only the footer

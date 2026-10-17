@@ -482,6 +482,124 @@
             "session": [ ]
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Schedule my account for deletion (14-day grace period; confirm with password or code)",
+        "description": "Body: { password } or { code } (403 reauthentication_failed when wrong; counts towards the lockout). Refused with 409 account_deletion_blocked (+ blockers: [{ type: group|calendar, id, name, reason: sole_owner|shared, count }]) while I am the only owner of a group with other members or own calendars shared with others: hand them over, stop sharing or delete them first. Then: my iCal feeds answer 410 at once, other sessions end, a confirmation email is sent, and after 14 days the account is purged — groups I am alone in and my personal calendars are deleted, my memberships, grants and event overrides removed (shared calendars survive), the audit trail pseudonymised, and a final email sent. Signing in stays possible until then to cancel. Already scheduled: 200 with the current state.",
+        "operationId": "DeleteMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/me/deletion": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Whether my account is scheduled for deletion, and what blocks deleting it",
+        "operationId": "GetAccountDeletion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/me/deletion/cancel": {
+      "post": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Cancel the scheduled deletion of my account (idempotent)",
+        "description": "The feeds work again with their old URLs. Not scheduled: 200 unchanged.",
+        "operationId": "CancelAccountDeletion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
       }
     },
     "/api/v1/me/two-factor": {
@@ -3591,6 +3709,82 @@
           }
         }
       },
+      "AccountDeletionBlocker": {
+        "required": [
+          "type",
+          "id",
+          "name",
+          "reason",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AccountDeletionResponse": {
+        "required": [
+          "scheduled",
+          "graceDays",
+          "blockers"
+        ],
+        "type": "object",
+        "properties": {
+          "scheduled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AccountDeletionSchedule"
+              }
+            ]
+          },
+          "graceDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountDeletionBlocker"
+            }
+          }
+        }
+      },
+      "AccountDeletionSchedule": {
+        "required": [
+          "requestedAt",
+          "purgeAt"
+        ],
+        "type": "object",
+        "properties": {
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "purgeAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CalendarListResponse": {
         "required": [
           "items",
@@ -4160,6 +4354,7 @@
       },
       "ErrorCode": {
         "enum": [
+          "account_deletion_blocked",
           "bad_request",
           "billing_owner_must_be_owner",
           "billing_owner_transfer_required",
@@ -5611,7 +5806,8 @@
           "timeZone",
           "weekStart",
           "twoFactorEnabled",
-          "createdAt"
+          "createdAt",
+          "deletionScheduledFor"
         ],
         "type": "object",
         "properties": {
@@ -5642,6 +5838,13 @@
           },
           "createdAt": {
             "type": "string",
+            "format": "date-time"
+          },
+          "deletionScheduledFor": {
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           }
         }

@@ -1,5 +1,6 @@
 import { createOpenApiHttp } from 'openapi-msw'
 import type { paths } from '../schema'
+import { accountHandlers } from './account'
 import { authHandlers, sessionGuard } from './auth'
 import { calendarHandlers } from './calendars'
 import { entitlementHandlers } from './entitlements'
@@ -9,6 +10,13 @@ import { groupHandlers } from './groups'
 import { importHandlers } from './imports'
 import { overrideHandlers } from './overrides'
 
+export {
+  mockAccount,
+  mockSharedCalendarBlocker,
+  mockSoleOwnerBlocker,
+  resetMockAccount,
+  type MockAccountState,
+} from './account'
 export {
   mockAuth,
   mockCredentials,
@@ -76,6 +84,7 @@ export const handlers = [
     response(200).json({ status: 'Healthy', checks: { database: 'Healthy' } }),
   ),
   ...authHandlers(http),
+  ...accountHandlers(http),
   ...entitlementHandlers(http),
 
   ...groupHandlers(http),

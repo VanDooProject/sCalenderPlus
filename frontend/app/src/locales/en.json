@@ -663,6 +663,7 @@
     "apiUnavailableTitle": "We can't reach the server",
     "apiUnavailable": "{app} is temporarily unavailable. Please try again in a moment.",
     "code": {
+      "account_deletion_blocked": "Hand over the groups you own alone and stop sharing your calendars first.",
       "bad_request": "The request could not be processed.",
       "billing_owner_must_be_owner": "The billing owner must be an owner of the group.",
       "billing_owner_transfer_required": "Transfer the billing to another owner first.",

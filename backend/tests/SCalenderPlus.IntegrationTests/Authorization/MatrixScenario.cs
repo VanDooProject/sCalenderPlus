@@ -84,6 +84,7 @@ public sealed class MatrixScenario(PostgresFixture postgres) : IAsyncLifetime
         await SeedUserAsync(Actors.UnverifiedUser.Name, emailConfirmed: false);
         await SeedUserAsync(Actors.OtherUser.Name, emailConfirmed: true);
         await SeedUserAsync(Actors.FreshSession.Name, emailConfirmed: true, signIn: false);
+        await SeedUserAsync(Actors.Leaver.Name, emailConfirmed: true);
         await SeedUserAsync(Actors.TwoFactorUser.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled);
         await SeedUserAsync(Actors.TwoFactorPending.Name, emailConfirmed: true, twoFactor: TwoFactorSeed.Enabled, signIn: false);
 

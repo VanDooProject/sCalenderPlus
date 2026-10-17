@@ -17,6 +17,7 @@ export const mockUser: MeResponse = {
   weekStart: 'monday',
   twoFactorEnabled: false,
   createdAt: '2026-10-01T08:00:00Z',
+  deletionScheduledFor: null,
 }
 
 /**

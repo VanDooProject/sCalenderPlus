@@ -56,6 +56,9 @@ public static class CalendarAuditActions
     /// <summary>A group was deleted: its grants on this calendar were removed with it (issue #43).</summary>
     public const string GrantRemovedWithGroup = "calendar.grant.removed_with_group";
 
+    /// <summary>The account a grant named was deleted: the grant went with it.</summary>
+    public const string GrantRemovedWithUser = "calendar.grant.removed_with_user";
+
     /// <summary>An ICS file was uploaded into the calendar (one record with the totals, not one per event).</summary>
     public const string IcsImported = "calendar.ics_imported";
 }

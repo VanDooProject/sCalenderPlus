@@ -218,7 +218,7 @@ internal static class TwoFactorEndpoints
     }
 
     /// <summary>Null when the password or the authenticator code is correct; otherwise the problem to return.</summary>
-    private static Task<ProblemHttpResult?> ReauthenticateAsync(
+    internal static Task<ProblemHttpResult?> ReauthenticateAsync(
         UserManager<AppUser> users,
         IAuditLog audit,
         IAppDbContext db,

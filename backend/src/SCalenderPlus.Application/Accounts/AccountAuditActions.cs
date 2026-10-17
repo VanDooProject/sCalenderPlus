@@ -22,4 +22,13 @@ public static class AccountAuditActions
     public const string RecoveryCodesRegenerated = "user.recovery_codes_regenerated";
     public const string RecoveryCodeRedeemed = "user.recovery_code_redeemed";
     public const string ProfileUpdated = "user.profile_updated";
+
+    /// <summary>Deletion requested (after: <c>requestedAt</c>, <c>purgeAt</c>); the grace period runs.</summary>
+    public const string DeletionRequested = "user.deletion_requested";
+
+    /// <summary>A scheduled deletion was cancelled by the owner.</summary>
+    public const string DeletionCancelled = "user.deletion_cancelled";
+
+    /// <summary>The account was purged after the grace period (system; after: what went with it, no personal data).</summary>
+    public const string Deleted = "user.deleted";
 }

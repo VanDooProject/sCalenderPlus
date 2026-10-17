@@ -8,6 +8,7 @@ type ErrorCode = components['schemas']['ErrorCode']
  * the app's i18n test checks that every listed code has a message in each locale.
  */
 const errorCodeSet = {
+  account_deletion_blocked: true,
   bad_request: true,
   billing_owner_must_be_owner: true,
   billing_owner_transfer_required: true,

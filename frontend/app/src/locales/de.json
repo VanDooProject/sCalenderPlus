@@ -663,6 +663,7 @@
     "apiUnavailableTitle": "Der Server ist nicht erreichbar",
     "apiUnavailable": "{app} ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal.",
     "code": {
+      "account_deletion_blocked": "Übergib zuerst die Gruppen, die nur dir gehören, und beende das Teilen deiner Kalender.",
       "bad_request": "Die Anfrage konnte nicht verarbeitet werden.",
       "billing_owner_must_be_owner": "Die Rechnungsverantwortung muss bei einem Gruppeninhaber liegen.",
       "billing_owner_transfer_required": "Übertrage die Rechnungsverantwortung zuerst an einen anderen Inhaber.",

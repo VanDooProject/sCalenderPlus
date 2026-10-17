@@ -98,6 +98,23 @@ public static class AuthorizationMatrix
             .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
             .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
 
+        // Account deletion (M4): only one's own account; DELETE /me needs the password and refuses sole owners.
+        .. For("GET", "/api/v1/me/deletion")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.OK)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+        .. For("DELETE", "/api/v1/me")
+            .WithBody(_ => JsonContent.Create(new { password = MatrixScenario.Password }))
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized)
+            .Expect(Actors.GroupOwner, HttpStatusCode.Conflict, "account_deletion_blocked") // sole owner of "lions"
+            .Expect(Actors.Leaver, HttpStatusCode.OK),
+        .. For("POST", "/api/v1/me/deletion/cancel")
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.User, HttpStatusCode.OK) // nothing scheduled: unchanged
+            .Expect(Actors.TwoFactorPending, HttpStatusCode.Unauthorized),
+
         // Two-factor authentication (#31)
         .. For("POST", "/api/v1/auth/login/2fa")
             .WithBody(s => JsonContent.Create(new { code = s.CurrentTotp(Actors.TwoFactorPending.Name) }))

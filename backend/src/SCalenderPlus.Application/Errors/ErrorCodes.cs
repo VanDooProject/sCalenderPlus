@@ -78,6 +78,12 @@ public static class ErrorCodes
     /// <summary>The group still owns calendars: transfer or delete them before deleting the group.</summary>
     public const string GroupHasCalendars = "group_has_calendars";
 
+    /// <summary>
+    /// The account cannot be scheduled for deletion yet: the user is the only owner of groups with other members, or
+    /// owns calendars shared with others; carries <c>blockers</c> (what to hand over or stop sharing first).
+    /// </summary>
+    public const string AccountDeletionBlocked = "account_deletion_blocked";
+
     // 412 / 428
     public const string PreconditionFailed = "precondition_failed";
     public const string PreconditionRequired = "precondition_required";

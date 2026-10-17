@@ -127,6 +127,22 @@ public sealed class EventShareRevocation(
         }
     }
 
+    /// <summary>
+    /// The account is being purged (permissions.md §4.6 "User deleted"): removes every override naming the user —
+    /// shares and restrictions alike (nobody can sign in as them any more, and their id must not linger in ACLs).
+    /// </summary>
+    public async Task RemoveUserOverridesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var rows = await db.EventOverrides
+            .Where(o => o.PrincipalType == PrincipalType.User && o.PrincipalId == userId)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (rows.Count > 0)
+        {
+            var events = await queries.ForLifecycleAsync([.. rows.Select(r => r.EventId).Distinct()], cancellationToken: cancellationToken).ConfigureAwait(false);
+            await RemoveAsync(rows, events, EventAuditActions.OverridesRemovedWithUser, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     /// <summary>Records the calendars where <paramref name="before"/>'s level is higher than <paramref name="after"/>'s (same order of ACLs).</summary>
     private static void AddLoss(Dictionary<Guid, Loss> losses, PrincipalContext before, PrincipalContext after, IEnumerable<CalendarAcl> aclsBefore, IEnumerable<CalendarAcl> aclsAfter)
     {
