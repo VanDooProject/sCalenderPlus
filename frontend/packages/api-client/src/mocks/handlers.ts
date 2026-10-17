@@ -4,6 +4,7 @@ import { authHandlers, sessionGuard } from './auth'
 import { calendarHandlers } from './calendars'
 import { entitlementHandlers } from './entitlements'
 import { eventHandlers } from './events'
+import { feedHandlers } from './feeds'
 import { groupHandlers } from './groups'
 import { overrideHandlers } from './overrides'
 
@@ -36,6 +37,14 @@ export {
 } from './calendars'
 export { mockEntitlements } from './entitlements'
 export { mockConflictTitle } from './events'
+export {
+  mockFeedToken,
+  mockFeeds,
+  mockResetFeedToken,
+  mockShareLink,
+  resetMockFeeds,
+  type MockFeedsState,
+} from './feeds'
 export { mockExplain, mockOverrideLimit } from './overrides'
 export {
   mockGroup,
@@ -72,4 +81,6 @@ export const handlers = [
   ...eventHandlers(http),
 
   ...overrideHandlers(http),
+
+  ...feedHandlers(http),
 ]
