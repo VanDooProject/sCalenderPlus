@@ -1,0 +1,437 @@
+{
+  "meta": {
+    "home": {
+      "title": "{name} – ein gemeinsamer Kalender, eigene Regeln für jeden Termin",
+      "description": "Der gemeinsame Kalender für Vereine, Teams und Familien, in dem jeder Termin eigene Berechtigungen hat: bearbeitbar, nur lesbar, nur „Belegt“ oder privat. Funktioniert mit Apple-, Google- und Outlook-Kalendern."
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen – {name}",
+      "description": "Nutzungsbedingungen von {name}."
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung – {name}",
+      "description": "Wie {name} personenbezogene Daten verarbeitet."
+    },
+    "imprint": {
+      "title": "Impressum – {name}",
+      "description": "Anbieterkennzeichnung des Betreibers von {name}."
+    },
+    "dpa": {
+      "title": "Auftragsverarbeitungsvertrag – {name}",
+      "description": "Auftragsverarbeitungsvertrag (Art. 28 DSGVO) für Organisationen, die {name} nutzen."
+    },
+    "bot": {
+      "title": "{bot}: der Import-Bot von {name}",
+      "description": "Was der Import-Bot von {name} abruft, wie er robots.txt und Ratenlimits beachtet und wie Sie ihn sperren oder uns erreichen."
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden – {name}",
+      "description": "Diese Seite gibt es nicht."
+    },
+    "ogAlt": "{name}: ein gemeinsamer Kalender, eigene Regeln für jeden Termin"
+  },
+  "nav": {
+    "skip": "Zum Inhalt springen",
+    "main": "Hauptnavigation",
+    "home": "{name} Startseite",
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "signIn": "Anmelden",
+    "getStarted": "Loslegen",
+    "language": "Sprache",
+    "switchTo": "English"
+  },
+  "hero": {
+    "eyebrow": "Gemeinsame Kalender mit Berechtigungen pro Termin",
+    "title": "Ein Kalender für alle. Eigene Regeln für jeden Termin.",
+    "lead": "Manche Termine dürfen alle bearbeiten, manche nur lesen, manche zeigen nur „Belegt“ und manche bleiben privat – alles im selben Kalender und richtig in den Kalender-Apps, die alle schon nutzen.",
+    "primary": "Kostenlos starten",
+    "secondary": "So funktioniert’s",
+    "note": "Dauerhaft kostenloser Tarif · Pro-Funktionen {trialDays} Tage gratis · Gehostet in der EU"
+  },
+  "demo": {
+    "title": "Vereinskalender, gesehen als …",
+    "viewAs": "Kalender ansehen als",
+    "hidden": "{count} Termin ausgeblendet | {count} Termine ausgeblendet",
+    "busy": "Belegt",
+    "levels": {
+      "edit": "Bearbeiten",
+      "read": "Nur lesen",
+      "free_busy": "Nur belegt"
+    },
+    "viewers": [
+      { "id": "board", "label": "Vorstand" },
+      { "id": "member", "label": "Mitglied" },
+      { "id": "public", "label": "Öffentlicher Link" }
+    ],
+    "events": [
+      {
+        "title": "Heimspiel gegen Riverside",
+        "when": "Sa 15:00",
+        "access": { "board": "edit", "member": "read", "public": "read" }
+      },
+      {
+        "title": "Vorstandssitzung: Haushalt",
+        "when": "Di 19:00",
+        "access": { "board": "edit", "member": "free_busy", "public": "none" }
+      },
+      {
+        "title": "Training, Platz 2",
+        "when": "Do 18:00",
+        "access": { "board": "edit", "member": "edit", "public": "free_busy" }
+      },
+      {
+        "title": "Überraschungsfeier für den Trainer",
+        "when": "Fr 20:00",
+        "access": { "board": "read", "member": "read", "public": "none" }
+      }
+    ]
+  },
+  "features": {
+    "title": "Alles, was ein gemeinsamer Kalender von Anfang an hätte können sollen",
+    "lead": "Berechtigungen pro Termin statt eines eigenen Kalenders für jede Ausnahme.",
+    "items": [
+      {
+        "icon": "lock",
+        "title": "Berechtigungen pro Termin",
+        "text": "Einzelne Termine bekommen eigene Regeln für Personen, Gruppen, Rollen oder Freigabelinks: bearbeiten, lesen, nur belegt oder ausgeblendet. Für den Rest gelten die Vorgaben des Kalenders."
+      },
+      {
+        "icon": "users",
+        "title": "Gruppen mit Rollen",
+        "text": "Inhaber, Admin, Mitglied und Zuschauer. Mitglieder tragen eigene Termine ein, ohne die offiziellen anzufassen."
+      },
+      {
+        "icon": "calendar",
+        "title": "Ihre Kalender-App bleibt",
+        "text": "Persönliche Feeds für Apple Kalender, Google Kalender, Outlook und Thunderbird. Jeder Termin sagt, ob Sie ihn bearbeiten dürfen."
+      },
+      {
+        "icon": "info",
+        "title": "Nachvollziehbarer Zugriff",
+        "text": "Zu jeder Entscheidung gibt es einen Satz: „Vic darf das lesen, weil der Vorstand für diesen Termin Lesen freigegeben hat.“"
+      },
+      {
+        "icon": "refresh",
+        "title": "Kalender, die sich selbst füllen",
+        "text": "Spielpläne und Termine regelmäßig aus Kalenderdateien und Veranstaltungsseiten importieren – mit Prüfliste, damit nichts ungesehen landet."
+      },
+      {
+        "icon": "shield",
+        "title": "Standardmäßig privat",
+        "text": "Gehostet in der EU, ohne Werbung, ohne Tracking. Neue Kalender sind privat; Export und Löschen sind einen Klick entfernt."
+      }
+    ]
+  },
+  "pricing": {
+    "title": "Einfache Preise",
+    "lead": "Kostenlos starten. Es zählt der Tarif des Inhabers – eine zahlende Organisatorin reicht für die ganze Gruppe.",
+    "billing": "Abrechnungszeitraum",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "yearlyHint": "2 Monate gratis",
+    "perMonth": "/ Monat",
+    "perYear": "/ Jahr",
+    "perSeatMonth": "pro Platz / Monat",
+    "perSeatYear": "pro Platz / Jahr",
+    "minSeats": "ab {count} Plätzen",
+    "seatsHint": "Plätze sind Personen, die Termine anlegen oder ändern. Wer nur liest, ist kostenlos (10 pro Platz).",
+    "vat": "Preise in {currency}, zzgl. MwSt.",
+    "trial": "Jedes neue Konto bekommt {trialDays} Tage lang die Pro-Limits und läuft danach im kostenlosen Tarif weiter, wenn Sie nicht upgraden. Es wird nichts gelöscht.",
+    "comparison": "Tarifvergleich",
+    "feature": "Funktion",
+    "recommended": "Beliebt",
+    "unlimited": "Unbegrenzt",
+    "included": "Enthalten",
+    "notIncluded": "Nicht enthalten",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "tagline": "Für Familien, kleine Vereine und zum Ausprobieren",
+        "cta": "Kostenlos starten"
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Für Organisatoren von Vereinen und Gemeinschaften",
+        "cta": "Pro gratis testen"
+      },
+      "team": {
+        "name": "Team",
+        "tagline": "Für Unternehmen und größere Verbände",
+        "cta": "Mit Team starten"
+      }
+    },
+    "limits": {
+      "ownedCalendars": "Kalender",
+      "ownedGroups": "Gruppen",
+      "membersPerGroup": "Mitglieder pro Gruppe",
+      "eventsWithOverrides": "Anstehende Termine mit eigenen Berechtigungen",
+      "overridesPerEvent": "Berechtigungsregeln pro Termin",
+      "importSources": "Importquellen (Webseiten, Kalenderdateien)",
+      "importInterval": "Import-Rhythmus",
+      "llmRunsPerMonth": "Webseiten-Importe pro Monat",
+      "autoPublish": "Importe ohne Prüfung veröffentlichen",
+      "historyDays": "Änderungsverlauf",
+      "apiTokens": "API-Tokens",
+      "webhooks": "Webhooks",
+      "support": "Support"
+    },
+    "feeds": "Persönliche Kalender-Feeds",
+    "interval": { "weekly": "Wöchentlich", "daily": "Täglich", "hourly": "Stündlich" },
+    "days": "{count} Tag | {count} Tage",
+    "years": "{count} Jahr | {count} Jahre",
+    "supportLevel": {
+      "community": "Community",
+      "email": "E-Mail, 2 Werktage",
+      "priority": "E-Mail, 1 Werktag"
+    }
+  },
+  "faq": {
+    "title": "Häufige Fragen",
+    "items": [
+      {
+        "q": "Was ist anders als beim Teilen eines Google- oder Outlook-Kalenders?",
+        "a": "Dort teilen Sie einen ganzen Kalender: Alle sehen alle Details, nur frei/belegt oder dürfen alles ändern. In {name} kann jeder Termin eigene Regeln haben – ein Kalender ersetzt die Zusatzkalender, die Sie sonst für jede Ausnahme anlegen würden."
+      },
+      {
+        "q": "Muss ich die Kalender-App wechseln?",
+        "a": "Nein. Alle bekommen einen persönlichen Feed für Apple Kalender, Google Kalender, Outlook oder Thunderbird, der nur enthält, was sie sehen dürfen. Termine sagen in der App, ob Sie sie bearbeiten dürfen."
+      },
+      {
+        "q": "Ist der kostenlose Tarif wirklich kostenlos?",
+        "a": "Ja, ohne Zeitlimit und ohne Kreditkarte. Neue Konten bekommen zusätzlich {trialDays} Tage lang die Pro-Limits; danach geht es im kostenlosen Tarif weiter."
+      },
+      {
+        "q": "Was passiert beim Downgrade oder wenn ein Limit erreicht ist?",
+        "a": "Es wird nichts gelöscht und nichts wird für mehr Personen sichtbar. Was über dem Limit liegt, bleibt lesbar erhalten, bestehende Berechtigungen gelten weiter, nur Neues hinzufügen ist pausiert."
+      },
+      {
+        "q": "Wer muss in einer Gruppe zahlen?",
+        "a": "Es gilt der Tarif des Kalender-Inhabers für alle darin. Hat die Organisatorin Pro, bekommen alle Mitglieder die Pro-Funktionen in diesem Kalender – mit einem kostenlosen Konto."
+      },
+      {
+        "q": "Wie funktionieren die Team-Preise?",
+        "a": "Sie zahlen für Plätze: Personen, die Termine anlegen oder ändern. Wer nur liest, ist kostenlos, zehn pro Platz. Ein Verein mit 200 Mitgliedern und 8 Organisatoren zahlt für 8 Plätze."
+      },
+      {
+        "q": "Wo werden meine Daten gespeichert?",
+        "a": "Auf Servern in der EU. Sie können Ihre Daten jederzeit exportieren und Ihr Konto löschen."
+      }
+    ]
+  },
+  "cta": {
+    "title": "Probieren Sie es mit Ihrem eigenen Kalender aus",
+    "text": "Kalender anlegen, Gruppe einladen und in der Kalender-App abonnieren – in wenigen Minuten.",
+    "button": "Kostenloses Konto anlegen"
+  },
+  "footer": {
+    "tagline": "Ein gemeinsamer Kalender, eigene Regeln für jeden Termin.",
+    "product": "Produkt",
+    "legal": "Rechtliches",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "dpa": "Auftragsverarbeitung",
+    "bot": "Import-Bot",
+    "contact": "Kontakt",
+    "copyright": "© {year} {name}"
+  },
+  "legal": {
+    "template": {
+      "title": "Vorlage für den Betreiber",
+      "text": "Diese Seite ist eine Vorlage. Der Betreiber von {name} ergänzt die Stellen in [Klammern] mit seinen eigenen Angaben und lässt den Text vor der Veröffentlichung prüfen oder verlinkt stattdessen seine eigene Seite ({variable} beim Bauen der Landingpage). Sie ist keine Rechtsberatung."
+    },
+    "external": "Der Betreiber von {name} veröffentlicht diese Seite auf seiner eigenen Website:",
+    "contact": "Fragen zu dieser Seite:",
+    "pages": {
+      "imprint": {
+        "title": "Impressum",
+        "lead": "Anbieterkennzeichnung des Anbieters von {name}.",
+        "sections": {
+          "provider": {
+            "title": "Diensteanbieter",
+            "text": "[Name der Person oder des Unternehmens, das {name} betreibt] · [Rechtsform] · [Postanschrift]"
+          },
+          "representatives": {
+            "title": "Vertreten durch",
+            "text": "[Geschäftsführer oder andere Vertretungsberechtigte]"
+          },
+          "contact": {
+            "title": "Kontakt",
+            "text": "[E-Mail-Adresse] · [Telefonnummer, soweit erforderlich]"
+          },
+          "register": {
+            "title": "Registereintrag",
+            "text": "[Registergericht und Registernummer, soweit vorhanden]"
+          },
+          "vat": {
+            "title": "Umsatzsteuer-Identifikationsnummer",
+            "text": "[USt-IdNr. gemäß § 27a UStG oder die Entsprechung Ihres Landes, soweit vorhanden]"
+          },
+          "responsible": {
+            "title": "Verantwortlich für den Inhalt",
+            "text": "[Name und Anschrift der für redaktionelle Inhalte verantwortlichen Person]"
+          },
+          "disputes": {
+            "title": "Verbraucherstreitbeilegung",
+            "text": "[Erklärung, ob der Betreiber bereit oder verpflichtet ist, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen]"
+          }
+        }
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "lead": "Wie personenbezogene Daten verarbeitet werden, wenn Sie diese Website besuchen und {name} nutzen.",
+        "sections": {
+          "controller": {
+            "title": "Verantwortlicher",
+            "text": "[Name, Anschrift und Kontaktdaten des Betreibers von {name}] · [Datenschutzbeauftragte(r), falls benannt]"
+          },
+          "website": {
+            "title": "Diese Website",
+            "text": "Diese Website setzt keine Cookies und verwendet keine Analyse-, Werbe- oder Drittanbieter-Schriften. Beim Aufruf einer Seite verarbeitet der Webserver Ihre IP-Adresse, die aufgerufene Seite, die Uhrzeit und den User-Agent Ihres Browsers, um die Seite auszuliefern und den Dienst zu schützen; diese Protokolle werden [Speicherdauer] aufbewahrt."
+          },
+          "account": {
+            "title": "Ihr Konto und Ihre Kalender",
+            "text": "{name} speichert Ihr Konto (E-Mail-Adresse, Anzeigename, Passwort-Hash, Zwei-Faktor-Einstellungen, Sprache und Zeitzone), die Kalender, Termine, Berechtigungen, Gruppen und Einladungen, die Sie anlegen oder die mit Ihnen geteilt werden, die geheimen Links Ihrer Kalender-Feeds sowie Sicherheitsprotokolle wie Anmeldungen und den Änderungsverlauf gemeinsamer Kalender."
+          },
+          "purposes": {
+            "title": "Zwecke und Rechtsgrundlagen",
+            "text": "Bereitstellung des Dienstes, für den Sie sich registriert haben (Art. 6 Abs. 1 lit. b DSGVO); Sicherheit, Missbrauchsabwehr und Änderungsprotokolle (Art. 6 Abs. 1 lit. f DSGVO); E-Mails, die Sie angefordert haben, etwa Bestätigungen, Einladungen und Erinnerungen (Art. 6 Abs. 1 lit. b DSGVO); Rechnungsstellung und steuerliche Pflichten bei bezahlten Tarifen (Art. 6 Abs. 1 lit. c DSGVO). [Betreiber: prüfen und ergänzen.]"
+          },
+          "recipients": {
+            "title": "Auftragsverarbeiter und Empfänger",
+            "text": "[Hosting-Anbieter und Standort] · [E-Mail-Versanddienst] · [Zahlungsanbieter für bezahlte Tarife, z. B. Stripe] · [Anbieter des vom Import genutzten Sprachmodells, falls aktiviert]. Der Import sendet nur den Inhalt öffentlicher Webseiten, die Nutzer als Importquelle hinzufügen, an das Sprachmodell – niemals Ihre Kalendertermine."
+          },
+          "calendarApps": {
+            "title": "Verbundene Kalender-Apps",
+            "text": "Wenn Sie einen Feed in einer anderen Kalender-App abonnieren (zum Beispiel Google Kalender oder Outlook), erhält dieser Anbieter eine Kopie dessen, was Sie sehen dürfen, und verarbeitet sie nach seiner eigenen Datenschutzerklärung."
+          },
+          "retention": {
+            "title": "Speicherdauer",
+            "text": "Kontodaten werden gespeichert, solange Ihr Konto besteht, und beim Löschen des Kontos entfernt; Sicherungen rotieren innerhalb von [6 Monaten] heraus. Der Änderungsverlauf wird so lange aufbewahrt, wie es Ihr Tarif vorsieht. [Betreiber: Aufbewahrung von Rechnungen und Server-Protokollen.]"
+          },
+          "transfers": {
+            "title": "Übermittlung außerhalb der EU",
+            "text": "[Ob personenbezogene Daten in Länder außerhalb der EU/des EWR übermittelt werden und auf welcher Grundlage, z. B. Standardvertragsklauseln]"
+          },
+          "rights": {
+            "title": "Ihre Rechte",
+            "text": "Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch sowie darauf, Einwilligungen jederzeit mit Wirkung für die Zukunft zu widerrufen. Sie können sich bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel [die für den Betreiber zuständige Behörde]."
+          }
+        }
+      },
+      "terms": {
+        "title": "Nutzungsbedingungen",
+        "lead": "Bedingungen für die Nutzung von {name}.",
+        "sections": {
+          "scope": {
+            "title": "Geltungsbereich",
+            "text": "Diese Bedingungen gelten für die Nutzung von {name}, angeboten von [Betreiber, Anschrift] („wir“). Abweichende Bedingungen von Nutzern gelten nicht."
+          },
+          "service": {
+            "title": "Der Dienst",
+            "text": "{name} bietet gemeinsame Kalender mit Berechtigungen pro Termin im Browser und über Kalender-Feeds sowie optional Importe öffentlicher Veranstaltungsseiten. Wir dürfen den Dienst weiterentwickeln, solange seine Kernfunktionen erhalten bleiben."
+          },
+          "account": {
+            "title": "Konto",
+            "text": "Sie benötigen ein Konto mit zutreffenden Angaben und müssen mindestens [16] Jahre alt sein. Halten Sie Passwort, zweiten Faktor und Feed-Links geheim; Feed-Links wirken wie Passwörter."
+          },
+          "plans": {
+            "title": "Tarife, Testphase und Preise",
+            "text": "Der kostenlose Tarif ist ohne Zeitlimit kostenlos. Neue Konten erhalten für eine Testphase von [90] Tagen die Pro-Limits ohne Zahlungspflicht. Bezahlte Tarife kosten die auf der Preisseite angegebenen Preise zzgl. MwSt. [Betreiber: Zahlungsanbieter, Abrechnungszeiträume, Preisänderungen.]"
+          },
+          "term": {
+            "title": "Laufzeit und Kündigung",
+            "text": "Bezahlte Tarife verlängern sich um den gewählten Abrechnungszeitraum, wenn sie nicht vor dessen Ende gekündigt werden. Sie können Ihr Konto jederzeit löschen. [Betreiber: Kündigungsfristen, außerordentliche Kündigung, Erstattungen.]"
+          },
+          "withdrawal": {
+            "title": "Widerrufsrecht",
+            "text": "[Widerrufsbelehrung und Muster-Widerrufsformular für Verbraucher, soweit erforderlich]"
+          },
+          "use": {
+            "title": "Zulässige Nutzung",
+            "text": "Keine rechtswidrigen Inhalte, keine Belästigung oder Spam, keine Versuche, auf fremde Daten zuzugreifen oder den Dienst zu stören. Importieren Sie nur Webseiten, die Sie importieren dürfen."
+          },
+          "content": {
+            "title": "Ihre Inhalte",
+            "text": "Was Sie hinzufügen, bleibt Ihres und liegt in Ihrer Verantwortung. Sie erlauben uns, es zu speichern und den Personen zu zeigen, mit denen Sie es teilen, soweit es für den Dienst nötig ist."
+          },
+          "availability": {
+            "title": "Verfügbarkeit",
+            "text": "[Angestrebte Verfügbarkeit, Wartungsfenster und was bei Ausfällen gilt]"
+          },
+          "liability": {
+            "title": "Haftung",
+            "text": "[Haftungsregeln nach anwendbarem Recht, z. B. unbeschränkt bei Vorsatz und grober Fahrlässigkeit, beschränkt bei leichter Fahrlässigkeit]"
+          },
+          "changes": {
+            "title": "Änderungen dieser Bedingungen",
+            "text": "Änderungen kündigen wir mindestens [6 Wochen] vorher per E-Mail an. Widersprechen Sie, [Folgen]."
+          },
+          "law": {
+            "title": "Anwendbares Recht und Gerichtsstand",
+            "text": "[Anwendbares Recht, Gerichtsstand für Kaufleute; zwingende Verbraucherschutzvorschriften Ihres Landes bleiben unberührt]"
+          }
+        }
+      },
+      "dpa": {
+        "title": "Auftragsverarbeitungsvertrag",
+        "lead": "Organisationen, die in {name} Daten anderer Personen verwalten – Teamkalender eines Unternehmens, Mitgliederkalender eines Vereins –, brauchen einen Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.",
+        "sections": {
+          "who": {
+            "title": "Wer ihn braucht",
+            "text": "In der Regel Organisationen im Team-Tarif und alle, die {name} für Personen nutzen, für die sie datenschutzrechtlich verantwortlich sind. Die private Nutzung unter Freunden und in der Familie braucht keinen."
+          },
+          "content": {
+            "title": "Was er regelt",
+            "text": "Gegenstand und Dauer der Verarbeitung, Arten personenbezogener Daten und betroffene Personen, technische und organisatorische Maßnahmen, Unterauftragsverarbeiter, Unterstützung bei Betroffenenanfragen, Löschung und Rückgabe der Daten bei Vertragsende."
+          },
+          "sign": {
+            "title": "Wie er geschlossen wird",
+            "text": "[Wie der Betreiber den Vertrag bereitstellt und schließt: herunterladen und gegenzeichnen, in den Kontoeinstellungen annehmen oder per E-Mail]"
+          }
+        },
+        "download": "Auftragsverarbeitungsvertrag herunterladen",
+        "placeholder": "Der Download ist ein Platzhalter, bis der Betreiber seinen Vertrag bereitstellt ({variable} beim Bauen der Landingpage)."
+      }
+    }
+  },
+  "bot": {
+    "title": "{bot}: der Import von {name}",
+    "lead": "Nutzer von {name} können Kalender mit Terminen von öffentlichen Webseiten aktuell halten – Spielpläne einer Liga, Ferientermine einer Schule, das Programm eines Veranstaltungsorts. Wenn Sie {bot} in Ihren Server-Protokollen gefunden haben, hat er eine Seite Ihrer Website abgerufen, die ein Nutzer als Importquelle hinzugefügt hat.",
+    "userAgent": "User-Agent",
+    "sections": {
+      "what": {
+        "title": "Was er abruft",
+        "text": "Nur die einzelnen Seiten, die Nutzer als Importquelle hinzugefügt haben, über http oder https, keine Links darüber hinaus. Er führt kein JavaScript aus, sendet keine Formulare ab und meldet sich nie an. Antworten sind auf 3 MB und Kalender-, HTML- und JSON-Inhalte begrenzt."
+      },
+      "robots": {
+        "title": "robots.txt",
+        "text": "{bot} beachtet robots.txt und speichert sie bis zu 24 Stunden zwischen. Verbietet Ihre robots.txt eine Seite für {bot} oder für alle User-Agents, schlägt der Import mit „Website verbietet automatisierten Zugriff“ fehl – Nutzer können das nicht umgehen."
+      },
+      "rate": {
+        "title": "Ratenlimits",
+        "text": "Höchstens eine Anfrage alle 10 Sekunden pro Domain, über alle Nutzer hinweg. Er beachtet Retry-After und wartet bei 429- und 503-Antworten länger. Seiten werden im Rhythmus des Imports erneut geprüft – höchstens stündlich, bei den meisten Quellen wöchentlich oder täglich – mit bedingten Anfragen (ETag, Last-Modified), sodass unveränderte Seiten Sie fast nichts kosten."
+      },
+      "processing": {
+        "title": "Was mit dem Inhalt passiert",
+        "text": "Der Text der Seite wird, teils mit Hilfe eines Sprachmodells, in Kalendertermine umgewandelt und dem Nutzer, der die Quelle hinzugefügt hat, zur Prüfung angezeigt. Beschreibungen werden als reiner Text mit einem Link zurück auf Ihre Seite gespeichert."
+      },
+      "block": {
+        "title": "So sperren Sie ihn",
+        "text": "Mit diesen Zeilen in Ihrer robots.txt sperren Sie {bot} für Ihre ganze Website; statt / können Sie auch einzelne Pfade angeben:"
+      },
+      "contact": {
+        "title": "Kontakt",
+        "text": "Probleme mit {bot} oder soll Ihre Domain für alle Importe gesperrt werden? Schreiben Sie uns mit Ihrer Domain:"
+      }
+    },
+    "contactPlaceholder": "[Kontaktadresse des Betreibers]"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "text": "Die gesuchte Seite gibt es nicht oder sie ist umgezogen.",
+    "home": "Zur Startseite"
+  }
+}

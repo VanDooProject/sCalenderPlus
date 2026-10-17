@@ -58,13 +58,14 @@ export default defineConfigWithVueTs(
   },
   {
     // Editions are selected at build time through the `@edition` alias; importing a folder directly
-    // would bundle it into every edition (app/src/editions/types.ts). Tests may look at all of them.
+    // would bundle it into every edition (app/src/editions/types.ts, landing/src/editions/types.ts).
+    // Tests may look at all of them.
     // Static imports, dynamic `import()`, `import.meta.glob()` and `new URL(…, import.meta.url)` all
     // make Vite bundle the target, so all four are checked; `@edition/…` subpaths (`@edition/../poly`)
     // are rejected too, the alias names exactly one module.
     name: 'scal/editions',
-    files: ['app/src/**/*.{ts,vue}'],
-    ignores: ['app/src/__tests__/**'],
+    files: ['app/src/**/*.{ts,vue}', 'landing/src/**/*.{ts,vue}'],
+    ignores: ['app/src/__tests__/**', 'landing/src/__tests__/**'],
     rules: {
       'no-restricted-imports': [
         'error',

@@ -143,8 +143,8 @@ Later in this track:
 
 ## M7 — Landing page and launch readiness
 
-- [ ] **feat(landing): marketing site with vite-ssg** — Landing Dockerfile + Coolify resource, hero (per-event permissions), feature sections, pricing table from `plans.json`, FAQ, de/en, SEO meta, OG images. *AC:* Lighthouse ≥ 95 all categories.
-- [ ] **feat(landing): legal pages and bot page** — Full terms, DPA download, importer bot page. *AC:* linked from footer of app and landing.
+- [x] **feat(landing): marketing site with vite-ssg** — Landing Dockerfile + Coolify resource, hero (per-event permissions), feature sections, pricing table from `plans.json`, FAQ, de/en, SEO meta, OG images. *AC:* Lighthouse ≥ 95 all categories.
+- [x] **feat(landing): legal pages and bot page** — Full terms, DPA download, importer bot page. *AC:* linked from footer of app and landing.
 - [ ] **feat(api): GDPR export** — Async export zip (JSON + ICS). *AC:* export contains all own events and memberships, no events of others below `read`.
 - [ ] **feat(api): calendar transfer between user and group** — `POST /calendars/{id}/transfer` with plan check and warning. *AC:* transfer to Free owner over limit → frozen per downgrade rules.
 - [ ] **feat(web): onboarding flow** — First calendar, invite group, subscribe feed checklist. *AC:* new user completes in < 2 min in usability test.

@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+@import '@scalenderplus/ui/tokens.css';
+
+/* Workspace packages are symlinked under node_modules, which Tailwind skips by default. */
+@source '../../packages/ui/src';
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-surface text-on-surface antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Anchored sections stay clear of the sticky header. */
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

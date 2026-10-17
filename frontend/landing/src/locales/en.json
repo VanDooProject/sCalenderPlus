@@ -1,0 +1,437 @@
+{
+  "meta": {
+    "home": {
+      "title": "{name} – one shared calendar, different rules per entry",
+      "description": "The shared calendar for clubs, teams and families where every entry has its own permissions: editable, read-only, busy only or private. Works with Apple, Google and Outlook calendars."
+    },
+    "terms": {
+      "title": "Terms of use – {name}",
+      "description": "Terms of use of {name}."
+    },
+    "privacy": {
+      "title": "Privacy policy – {name}",
+      "description": "How {name} processes personal data."
+    },
+    "imprint": {
+      "title": "Imprint – {name}",
+      "description": "Legal notice of the operator of {name}."
+    },
+    "dpa": {
+      "title": "Data processing agreement – {name}",
+      "description": "Data processing agreement (GDPR Art. 28) for organisations using {name}."
+    },
+    "bot": {
+      "title": "{bot}: the {name} importer bot",
+      "description": "What the {name} importer bot fetches, how it respects robots.txt and rate limits, and how to block it or contact us."
+    },
+    "notFound": {
+      "title": "Page not found – {name}",
+      "description": "This page does not exist."
+    },
+    "ogAlt": "{name}: one shared calendar, different rules per entry"
+  },
+  "nav": {
+    "skip": "Skip to content",
+    "main": "Main",
+    "home": "{name} home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "signIn": "Sign in",
+    "getStarted": "Get started",
+    "language": "Language",
+    "switchTo": "Deutsch"
+  },
+  "hero": {
+    "eyebrow": "Shared calendars with permissions per entry",
+    "title": "One calendar for everyone. Different rules for every entry.",
+    "lead": "Some entries everyone may edit, some are read-only, some only show “Busy” and some stay private – all in the same calendar, and correct in the calendar apps people already use.",
+    "primary": "Start for free",
+    "secondary": "See how it works",
+    "note": "Free plan forever · Pro features free for {trialDays} days · Hosted in the EU"
+  },
+  "demo": {
+    "title": "Club calendar, seen as …",
+    "viewAs": "View the calendar as",
+    "hidden": "{count} entry hidden | {count} entries hidden",
+    "busy": "Busy",
+    "levels": {
+      "edit": "Can edit",
+      "read": "Read-only",
+      "free_busy": "Busy only"
+    },
+    "viewers": [
+      { "id": "board", "label": "Board member" },
+      { "id": "member", "label": "Member" },
+      { "id": "public", "label": "Public link" }
+    ],
+    "events": [
+      {
+        "title": "Home match vs. Riverside",
+        "when": "Sat 15:00",
+        "access": { "board": "edit", "member": "read", "public": "read" }
+      },
+      {
+        "title": "Board meeting: budget",
+        "when": "Tue 19:00",
+        "access": { "board": "edit", "member": "free_busy", "public": "none" }
+      },
+      {
+        "title": "Training, pitch 2",
+        "when": "Thu 18:00",
+        "access": { "board": "edit", "member": "edit", "public": "free_busy" }
+      },
+      {
+        "title": "Surprise party for the coach",
+        "when": "Fri 20:00",
+        "access": { "board": "read", "member": "read", "public": "none" }
+      }
+    ]
+  },
+  "features": {
+    "title": "Everything a shared calendar should have done from the start",
+    "lead": "Per-entry permissions instead of a separate calendar for every exception.",
+    "items": [
+      {
+        "icon": "lock",
+        "title": "Permissions per entry",
+        "text": "Give single entries their own rules for people, groups, roles or share links: edit, read, busy only or hidden. The calendar's defaults cover the rest."
+      },
+      {
+        "icon": "users",
+        "title": "Groups with roles",
+        "text": "Owner, admin, member and viewer. Members can add their own entries without touching the official ones."
+      },
+      {
+        "icon": "calendar",
+        "title": "Your calendar app stays",
+        "text": "Personal feeds for Apple Calendar, Google Calendar, Outlook and Thunderbird. Each entry says whether you may edit it."
+      },
+      {
+        "icon": "info",
+        "title": "Access you can explain",
+        "text": "Every decision comes with one sentence: “Vic can read this because the board granted read for this entry.”"
+      },
+      {
+        "icon": "refresh",
+        "title": "Calendars that fill themselves",
+        "text": "Import fixtures and dates from calendar files and event websites on a schedule, with a review queue so nothing lands unseen."
+      },
+      {
+        "icon": "shield",
+        "title": "Private by default",
+        "text": "Hosted in the EU, no ads, no tracking. New calendars start private; export and deletion are one click away."
+      }
+    ]
+  },
+  "pricing": {
+    "title": "Simple pricing",
+    "lead": "Start free. The owner's plan counts, so one paying organiser covers the whole group.",
+    "billing": "Billing period",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "yearlyHint": "2 months free",
+    "perMonth": "/ month",
+    "perYear": "/ year",
+    "perSeatMonth": "per seat / month",
+    "perSeatYear": "per seat / year",
+    "minSeats": "from {count} seats",
+    "seatsHint": "Seats are people who create or change entries. People who only read are free (10 per seat).",
+    "vat": "Prices in {currency}, excluding VAT.",
+    "trial": "Every new account gets the Pro limits for {trialDays} days, then continues on Free unless you upgrade. Nothing is deleted.",
+    "comparison": "Plan comparison",
+    "feature": "Feature",
+    "recommended": "Popular",
+    "unlimited": "Unlimited",
+    "included": "Included",
+    "notIncluded": "Not included",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "tagline": "For families, small clubs and trying it out",
+        "cta": "Start for free"
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For organisers of clubs and communities",
+        "cta": "Try Pro free"
+      },
+      "team": {
+        "name": "Team",
+        "tagline": "For companies and larger associations",
+        "cta": "Start with Team"
+      }
+    },
+    "limits": {
+      "ownedCalendars": "Calendars",
+      "ownedGroups": "Groups",
+      "membersPerGroup": "Members per group",
+      "eventsWithOverrides": "Upcoming entries with their own permissions",
+      "overridesPerEvent": "Permission rules per entry",
+      "importSources": "Import sources (websites, calendar files)",
+      "importInterval": "Import schedule",
+      "llmRunsPerMonth": "Website imports per month",
+      "autoPublish": "Publish imports without review",
+      "historyDays": "Change history",
+      "apiTokens": "API tokens",
+      "webhooks": "Webhooks",
+      "support": "Support"
+    },
+    "feeds": "Personal calendar feeds",
+    "interval": { "weekly": "Weekly", "daily": "Daily", "hourly": "Hourly" },
+    "days": "{count} day | {count} days",
+    "years": "{count} year | {count} years",
+    "supportLevel": {
+      "community": "Community",
+      "email": "Email, 2 business days",
+      "priority": "Email, 1 business day"
+    }
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "items": [
+      {
+        "q": "How is this different from sharing a Google or Outlook calendar?",
+        "a": "There you share a whole calendar: everyone sees all details, only free/busy, or may change everything. In {name} every entry can have its own rules, so one calendar replaces the extra calendars you would otherwise create for every exception."
+      },
+      {
+        "q": "Do I have to switch calendar apps?",
+        "a": "No. Everyone gets a personal feed for Apple Calendar, Google Calendar, Outlook or Thunderbird that only contains what they may see. Entries say in the app whether you may edit them."
+      },
+      {
+        "q": "Is the Free plan really free?",
+        "a": "Yes, without time limit and without a credit card. New accounts get the Pro limits for {trialDays} days on top; afterwards you continue on Free."
+      },
+      {
+        "q": "What happens when I downgrade or a limit is reached?",
+        "a": "Nothing is deleted and nothing becomes visible to more people. Anything over the limit is kept read-only, existing permissions stay in force, and only adding more is paused."
+      },
+      {
+        "q": "Who has to pay in a group?",
+        "a": "The plan of a calendar's owner counts for everyone in it. If the organiser has Pro, all members get the Pro features in that calendar – with a Free account."
+      },
+      {
+        "q": "How does Team pricing work?",
+        "a": "You pay for seats: people who create or change entries. People who only read are free, ten per seat. A club with 200 members and 8 organisers pays for 8 seats."
+      },
+      {
+        "q": "Where is my data stored?",
+        "a": "On servers in the EU. You can export your data and delete your account at any time."
+      }
+    ]
+  },
+  "cta": {
+    "title": "Try it with your own calendar",
+    "text": "Create a calendar, invite your group and subscribe in your calendar app – in a few minutes.",
+    "button": "Create a free account"
+  },
+  "footer": {
+    "tagline": "One shared calendar, different rules per entry.",
+    "product": "Product",
+    "legal": "Legal",
+    "imprint": "Imprint",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "dpa": "Data processing agreement",
+    "bot": "Importer bot",
+    "contact": "Contact",
+    "copyright": "© {year} {name}"
+  },
+  "legal": {
+    "template": {
+      "title": "Template for the operator",
+      "text": "This page is a template. The operator of {name} completes the parts in [brackets] with its own details and has the text reviewed before publishing it, or links its own page instead ({variable} when building the landing). It is not legal advice."
+    },
+    "external": "The operator of {name} publishes this page on its own website:",
+    "contact": "Questions about this page:",
+    "pages": {
+      "imprint": {
+        "title": "Imprint",
+        "lead": "Legal notice of the provider of {name}.",
+        "sections": {
+          "provider": {
+            "title": "Service provider",
+            "text": "[Name of the person or company operating {name}] · [Legal form] · [Postal address]"
+          },
+          "representatives": {
+            "title": "Represented by",
+            "text": "[Managing directors or other authorised representatives]"
+          },
+          "contact": {
+            "title": "Contact",
+            "text": "[Email address] · [Phone number, where required]"
+          },
+          "register": {
+            "title": "Register entry",
+            "text": "[Register court and register number, where applicable]"
+          },
+          "vat": {
+            "title": "VAT identification number",
+            "text": "[VAT ID under § 27a of the German VAT Act or the equivalent of your country, where applicable]"
+          },
+          "responsible": {
+            "title": "Responsible for the content",
+            "text": "[Name and address of the person responsible for editorial content]"
+          },
+          "disputes": {
+            "title": "Consumer dispute resolution",
+            "text": "[Statement whether the operator is willing or obliged to take part in dispute resolution proceedings before a consumer arbitration board]"
+          }
+        }
+      },
+      "privacy": {
+        "title": "Privacy policy",
+        "lead": "How personal data is processed when you visit this website and use {name}.",
+        "sections": {
+          "controller": {
+            "title": "Controller",
+            "text": "[Name, address and contact details of the operator of {name}] · [Data protection officer, if appointed]"
+          },
+          "website": {
+            "title": "This website",
+            "text": "This website sets no cookies and uses no analytics, advertising or third-party fonts. When you open a page, the web server processes your IP address, the requested page, the time and your browser's user agent to deliver the page and protect the service; these logs are kept for [retention period]."
+          },
+          "account": {
+            "title": "Your account and calendars",
+            "text": "{name} stores your account (email address, display name, password hash, two-factor settings, language and time zone), the calendars, entries, permissions, groups and invitations you create or that are shared with you, the secret links of your calendar feeds and security records such as sign-ins and the change history of shared calendars."
+          },
+          "purposes": {
+            "title": "Purposes and legal bases",
+            "text": "Providing the service you signed up for (Art. 6(1)(b) GDPR); security, abuse prevention and audit logs (Art. 6(1)(f) GDPR); emails you asked for, such as confirmations, invitations and reminders (Art. 6(1)(b) GDPR); invoicing and tax obligations for paid plans (Art. 6(1)(c) GDPR). [Operator: check and complete.]"
+          },
+          "recipients": {
+            "title": "Processors and recipients",
+            "text": "[Hosting provider and location] · [Email delivery provider] · [Payment provider for paid plans, e.g. Stripe] · [Provider of the language model used by the importer, if enabled]. The importer only sends the content of public web pages that users add as import sources to the language model, never your calendar entries."
+          },
+          "calendarApps": {
+            "title": "Calendar apps you connect",
+            "text": "When you subscribe to a feed in another calendar app (for example Google Calendar or Outlook), that provider receives and keeps a copy of what you may see, under its own privacy policy."
+          },
+          "retention": {
+            "title": "Retention",
+            "text": "Account data is kept while your account exists and deleted when you delete it; backups rotate out within [6 months]. The change history is kept for as long as your plan's history allows. [Operator: retention of invoices and server logs.]"
+          },
+          "transfers": {
+            "title": "Transfers outside the EU",
+            "text": "[Whether personal data is transferred to countries outside the EU/EEA, and on which safeguards, e.g. standard contractual clauses]"
+          },
+          "rights": {
+            "title": "Your rights",
+            "text": "You have the right to access, rectification, erasure, restriction of processing, data portability and to object, and to withdraw consent at any time with effect for the future. You can complain to a data protection supervisory authority, for example [the authority responsible for the operator]."
+          }
+        }
+      },
+      "terms": {
+        "title": "Terms of use",
+        "lead": "Terms for using {name}.",
+        "sections": {
+          "scope": {
+            "title": "Scope",
+            "text": "These terms apply to the use of {name}, provided by [operator, address] (“we”). Deviating terms of users do not apply."
+          },
+          "service": {
+            "title": "The service",
+            "text": "{name} provides shared calendars with permissions per entry in the browser and through calendar feeds, and optionally imports of public event pages. We may develop the service further as long as its core functions remain."
+          },
+          "account": {
+            "title": "Account",
+            "text": "You need an account with accurate details and must be at least [16] years old. Keep your password, second factor and feed links secret; feed links work like passwords."
+          },
+          "plans": {
+            "title": "Plans, trial and prices",
+            "text": "The Free plan is free without time limit. New accounts get the Pro limits for a trial period of [90] days without a payment obligation. Paid plans cost the prices shown on the pricing page plus VAT. [Operator: payment provider, billing periods, price changes.]"
+          },
+          "term": {
+            "title": "Term and cancellation",
+            "text": "Paid plans renew for the chosen billing period unless cancelled before its end. You can delete your account at any time. [Operator: notice periods, extraordinary termination, refunds.]"
+          },
+          "withdrawal": {
+            "title": "Right of withdrawal",
+            "text": "[Withdrawal instructions and model withdrawal form for consumers, where required]"
+          },
+          "use": {
+            "title": "Acceptable use",
+            "text": "No unlawful content, no harassment or spam, no attempts to access other people's data or to disrupt the service. Import only web pages you are allowed to import."
+          },
+          "content": {
+            "title": "Your content",
+            "text": "What you add stays yours and is your responsibility. You allow us to store it and show it to the people you share it with, as far as needed to provide the service."
+          },
+          "availability": {
+            "title": "Availability",
+            "text": "[Target availability, maintenance windows and what happens in case of outages]"
+          },
+          "liability": {
+            "title": "Liability",
+            "text": "[Liability rules under applicable law, e.g. unlimited for intent and gross negligence, limited for slight negligence]"
+          },
+          "changes": {
+            "title": "Changes to these terms",
+            "text": "We announce changes at least [6 weeks] in advance by email. If you object, [consequences]."
+          },
+          "law": {
+            "title": "Applicable law and jurisdiction",
+            "text": "[Applicable law, place of jurisdiction for merchants, mandatory consumer protection rules of your country remain unaffected]"
+          }
+        }
+      },
+      "dpa": {
+        "title": "Data processing agreement",
+        "lead": "Organisations that manage other people's data in {name} – a company's team calendars, an association's member calendars – need a data processing agreement under Art. 28 GDPR.",
+        "sections": {
+          "who": {
+            "title": "Who needs it",
+            "text": "Usually organisations on the Team plan, and anyone who uses {name} for people they are responsible for under data protection law. Private use among friends and family does not need one."
+          },
+          "content": {
+            "title": "What it covers",
+            "text": "Subject and duration of the processing, types of personal data and data subjects, technical and organisational measures, sub-processors, support with data subject requests, deletion and return of data at the end of the contract."
+          },
+          "sign": {
+            "title": "How to conclude it",
+            "text": "[How the operator provides and concludes the agreement: download and countersign, accept in the account settings, or by email]"
+          }
+        },
+        "download": "Download the data processing agreement",
+        "placeholder": "The download is a placeholder until the operator provides its agreement ({variable} when building the landing)."
+      }
+    }
+  },
+  "bot": {
+    "title": "{bot}: the {name} importer",
+    "lead": "Users of {name} can keep calendars up to date with dates from public web pages – fixtures of a league, a school's term dates, a venue's programme. If you found {bot} in your server logs, it fetched a page of your website that a user added as an import source.",
+    "userAgent": "User agent",
+    "sections": {
+      "what": {
+        "title": "What it fetches",
+        "text": "Only the single pages that users added as import sources, over http or https, no links beyond them. It runs no JavaScript, submits no forms and never logs in. Responses are limited to 3 MB and calendar, HTML and JSON content."
+      },
+      "robots": {
+        "title": "robots.txt",
+        "text": "{bot} respects robots.txt and caches it for up to 24 hours. If your robots.txt disallows a page for {bot} or for all user agents, the import fails with “Website disallows automated access” – users cannot override this."
+      },
+      "rate": {
+        "title": "Rate limits",
+        "text": "At most one request every 10 seconds per domain, across all users. It honours Retry-After and backs off on 429 and 503 responses. Pages are re-checked on the import's schedule – at most hourly, for most sources weekly or daily – with conditional requests (ETag, Last-Modified), so unchanged pages cost you almost nothing."
+      },
+      "processing": {
+        "title": "What happens with the content",
+        "text": "The page's text is turned into calendar entries, partly with the help of a language model, and shown to the user who added the source for review. Event descriptions are stored as plain text with a link back to your page."
+      },
+      "block": {
+        "title": "How to block it",
+        "text": "Add these lines to your robots.txt to block {bot} from your whole site, or list single paths instead of /:"
+      },
+      "contact": {
+        "title": "Contact",
+        "text": "Problems with {bot}, or want your domain blocked for all imports? Write to us and include your domain:"
+      }
+    },
+    "contactPlaceholder": "[Contact address of the operator]"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "The page you are looking for doesn't exist or has moved.",
+    "home": "Go to the home page"
+  }
+}

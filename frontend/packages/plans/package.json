@@ -1,0 +1,20 @@
+{
+  "name": "@scalenderplus/plans",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plan prices and limits (docs/product/plans.md) as data: the one source of the landing's pricing table, checked against the backend's PlansOptions defaults.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./plans.json": "./plans.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

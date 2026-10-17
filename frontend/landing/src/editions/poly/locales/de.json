@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "home": {
+      "title": "{name} – der gemeinsame Kalender für Partner und Konstellationen",
+      "description": "Dates, Übernachtungen und Termine der Kinder mit allen Menschen in Ihrem Leben planen – und für jeden Termin entscheiden, wer Details sieht, wer nur „Belegt“ und wer gar nichts. Funktioniert mit Ihrer Kalender-App."
+    },
+    "ogAlt": "{name}: der gemeinsame Kalender für Partner und Konstellationen"
+  },
+  "hero": {
+    "eyebrow": "Der Kalender für Beziehungen",
+    "title": "Alle Menschen in Ihrem Leben. Jeder Termin genau richtig geteilt.",
+    "lead": "Teilen Sie ein Date mit dem Partner, mit dem es ist, zeigen Sie Ihren Metamours, dass Sie belegt sind, und halten Sie den Kalender der Kinder für alle Eltern bearbeitbar – in einem Kalender, in den Kalender-Apps, die Sie schon nutzen.",
+    "primary": "Kostenlos starten",
+    "secondary": "So funktioniert’s",
+    "note": "Dauerhaft kostenloser Tarif · Pro-Funktionen {trialDays} Tage gratis · Gehostet in der EU"
+  },
+  "demo": {
+    "title": "Ihre Woche, gesehen von …",
+    "viewers": [
+      {
+        "id": "partner",
+        "label": "Alex, Partner"
+      },
+      {
+        "id": "metamour",
+        "label": "Kim, Metamour"
+      },
+      {
+        "id": "coparent",
+        "label": "Jo, Co-Elternteil"
+      }
+    ],
+    "events": [
+      {
+        "title": "Abendessen mit Alex",
+        "when": "Fr 19:30",
+        "cover": "Abendtermin",
+        "access": {
+          "partner": "read",
+          "metamour": "free_busy",
+          "coparent": "free_busy"
+        }
+      },
+      {
+        "title": "Kinder: Schwimmkurs",
+        "when": "Sa 10:00",
+        "access": {
+          "partner": "read",
+          "metamour": "none",
+          "coparent": "edit"
+        }
+      },
+      {
+        "title": "Brunch der Konstellation",
+        "when": "So 11:00",
+        "access": {
+          "partner": "read",
+          "metamour": "read",
+          "coparent": "none"
+        }
+      },
+      {
+        "title": "Wochenende mit Alex",
+        "when": "Fr – So",
+        "cover": "Unterwegs",
+        "access": {
+          "partner": "edit",
+          "metamour": "free_busy",
+          "coparent": "free_busy"
+        }
+      }
+    ]
+  },
+  "features": {
+    "title": "Ein Kalender, der versteht, dass sich Beziehungen überschneiden",
+    "lead": "Jeder Termin entscheidet, wer was sieht – kein zweiter Kalender, keine Kopie im Chat.",
+    "items": [
+      {
+        "icon": "lock",
+        "title": "Jeden Termin mit den richtigen Menschen teilen",
+        "text": "Geben Sie einen einzelnen Termin dem Partner, mit dem er ist, lassen Sie den Rest der Woche für alle sichtbar, die mit Ihnen planen, und blenden Sie aus, was niemanden etwas angeht."
+      },
+      {
+        "icon": "eye",
+        "title": "Belegt, mit Ersatztitel",
+        "text": "Metamours und Freunde sehen, wann Sie belegt sind, aber nicht warum – als „Belegt“ oder mit einem Ersatztitel Ihrer Wahl, etwa „Abendtermin“."
+      },
+      {
+        "icon": "users",
+        "title": "Konstellationen",
+        "text": "Gemeinsame Kalender für jede Konstellation. Eine Person kann zu mehreren gehören, und jeder Termin entscheidet trotzdem, was jede davon sieht."
+      },
+      {
+        "icon": "home",
+        "title": "Kinderkalender und Zusammenleben",
+        "text": "Ein Familienkalender, den alle Eltern bearbeiten, ein Haushaltskalender für zusammenlebende Partner – getrennt von den eigenen Terminen jeder Person."
+      },
+      {
+        "icon": "calendar",
+        "title": "Ihre Kalender-App bleibt",
+        "text": "Persönliche Feeds für Apple Kalender, Google Kalender, Outlook und Thunderbird. Jeder Feed enthält nur, was die Person sehen darf."
+      },
+      {
+        "icon": "shield",
+        "title": "Privat von Grund auf",
+        "text": "Gehostet in der EU, ohne Werbung, ohne Tracking, ohne Analyse. Ihre Kalendertermine werden nie an eine KI gegeben. Export und Löschen sind einen Klick entfernt."
+      }
+    ]
+  },
+  "pricing": {
+    "lead": "Kostenlos starten. Es zählt der Tarif des Inhabers – ein Pro-Konto reicht für einen gemeinsamen Kalender aller darin.",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "tagline": "Für Sie, Ihre Partner und eine kleine Konstellation",
+        "cta": "Kostenlos starten"
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Für volle Leben mit vielen Kalendern",
+        "cta": "Pro gratis testen"
+      },
+      "team": {
+        "name": "Team",
+        "tagline": "Für Gemeinschaften und Organisatoren",
+        "cta": "Mit Team starten"
+      }
+    },
+    "limits": {
+      "ownedGroups": "Konstellationen",
+      "membersPerGroup": "Personen pro Konstellation"
+    }
+  },
+  "faq": {
+    "items": [
+      {
+        "q": "Wer sieht was?",
+        "a": "Sie entscheiden pro Kalender und pro Termin: Details, nur „Belegt“ (auf Wunsch mit Ersatztitel) oder gar nichts. Für alles, was Sie nicht selbst festlegen, gelten die Vorgaben des Kalenders."
+      },
+      {
+        "q": "Sehen meine Metamours, mit wem ich unterwegs bin?",
+        "a": "Nur wenn Sie es teilen. Sonst sehen sie, dass Sie belegt sind, oder den Ersatztitel, den Sie gewählt haben – nie den echten Titel, Notizen oder Ort."
+      },
+      {
+        "q": "Müssen wir die Kalender-App wechseln?",
+        "a": "Nein. Alle bekommen einen persönlichen Feed für Apple Kalender, Google Kalender, Outlook oder Thunderbird, der nur enthält, was sie sehen dürfen."
+      },
+      {
+        "q": "Kann ich zu mehr als einer Konstellation gehören?",
+        "a": "Ja. Jede Konstellation hat eigene Mitglieder und Kalender, und ein Termin kann mit jeder unterschiedlich geteilt werden."
+      },
+      {
+        "q": "Ist der kostenlose Tarif wirklich kostenlos?",
+        "a": "Ja, ohne Zeitlimit und ohne Kreditkarte. Neue Konten bekommen zusätzlich {trialDays} Tage lang die Pro-Limits; danach geht es im kostenlosen Tarif weiter."
+      },
+      {
+        "q": "Wie privat sind meine Daten?",
+        "a": "Sie liegen auf Servern in der EU, werden nie verkauft, nie für Werbung genutzt und nie an einen KI-Anbieter gesendet. Sie können alles exportieren und Ihr Konto jederzeit löschen."
+      }
+    ]
+  },
+  "cta": {
+    "title": "Probieren Sie es mit den Menschen in Ihrem Leben aus",
+    "text": "Kalender anlegen, Partner einladen und in der Kalender-App abonnieren – in wenigen Minuten.",
+    "button": "Kostenloses Konto anlegen"
+  },
+  "footer": {
+    "tagline": "Der gemeinsame Kalender für Partner und Konstellationen."
+  },
+  "legal": {
+    "pages": {
+      "privacy": {
+        "sections": {
+          "specialCategories": {
+            "title": "Besondere Kategorien personenbezogener Daten",
+            "text": "Kalendertermine in {name} können Informationen über Ihre Beziehungen und Ihr Privatleben enthalten – eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO). Sie werden nur mit Ihrer ausdrücklichen Einwilligung verarbeitet, die Sie bei der Registrierung gesondert erteilen und jederzeit durch Löschen Ihres Kontos widerrufen können. Sie werden nie für Werbung genutzt und nie an einen KI-Anbieter gesendet. [Betreiber: Datenschutz-Folgenabschätzung und Kontakt für Fragen dazu.]"
+          }
+        }
+      }
+    }
+  }
+}
