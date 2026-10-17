@@ -24,7 +24,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 COPY frontend/ ./
 ARG EDITION
-RUN VITE_EDITION="$EDITION" pnpm --filter app build
+# The leak check runs on exactly the assets this image ships (docs/product/editions.md §2.2).
+RUN VITE_EDITION="$EDITION" pnpm --filter app build \
+    && pnpm --filter app check:edition-leak --edition "$EDITION"
 
 FROM caddy:2-alpine AS runtime-base
 
@@ -40,6 +42,7 @@ RUN apk add --no-cache libcap \
 
 COPY deploy/caddy/web.Caddyfile /etc/caddy/Caddyfile
 COPY deploy/caddy/config.json.tmpl /srv/config.json
+COPY deploy/caddy/manifest.webmanifest.tmpl /srv/manifest.webmanifest.tmpl
 COPY --chmod=0555 deploy/docker/web-start.sh /usr/local/bin/web-start
 
 # The image name per edition (docs/product/editions.md §2.3); only the selected stage is built.

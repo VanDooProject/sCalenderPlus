@@ -42,6 +42,11 @@ test('creating over the plan limit explains it', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'New calendar' })
   await dialog.getByLabel('Name').fill(calendars.planLimitName)
   await dialog.getByRole('button', { name: 'Create calendar' }).click()
+  // The upgrade dialog (paywall.spec.ts) opens on top; the form keeps its own explanation.
+  await page
+    .getByRole('dialog', { name: 'Calendar limit reached' })
+    .getByRole('button', { name: 'OK' })
+    .click()
   await expect(dialog.getByTestId('form-error')).toContainText('See plans')
 })
 

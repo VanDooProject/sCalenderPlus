@@ -84,7 +84,7 @@ export const mockGrant: Grant = {
   etag: '"grant-0601-1"',
 }
 
-/** Creating a calendar with this name answers `402 plan_limit_reached`. */
+/** Creating a calendar with this name answers `402 plan_limit_reached` (Free: 3 of 3 calendars). */
 export const mockPlanLimitName = 'Over the limit'
 
 /** A calendar the mock user cannot see; one of its events is shared with them ("Shared with me"). */
@@ -513,7 +513,7 @@ export function calendarHandlers(http: ReturnType<typeof createOpenApiHttp<paths
     code: ErrorCode,
     status: number,
     instance: string,
-    extras: Partial<ProblemDetails> = {},
+    extras: Partial<ProblemDetails> & Record<string, unknown> = {},
   ): Response =>
     new Response(JSON.stringify(mockProblem(code, status, instance, extras)), {
       status,
@@ -544,7 +544,11 @@ export function calendarHandlers(http: ReturnType<typeof createOpenApiHttp<paths
       const body = await request.json()
       const groupId = body.groupId ?? null
       if (body.name.trim() === mockPlanLimitName) {
-        return problem('plan_limit_reached', 402, '/api/v1/calendars')
+        return problem('plan_limit_reached', 402, '/api/v1/calendars', {
+          limit: { key: 'owned_calendars', max: 3, used: 3 },
+          plan: 'free',
+          trialEndsAt: null,
+        })
       }
       const calendar: Calendar = {
         ...mockCalendar,

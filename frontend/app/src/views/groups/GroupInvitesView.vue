@@ -20,6 +20,7 @@ import SettingsCard from '@/components/SettingsCard.vue'
 import { useCurrentGroup } from '@/composables/currentGroup'
 import { groupKeys, useInvites } from '@/composables/groups'
 import { useForm, useValidators } from '@/composables/form'
+import { offerUpgrade } from '@/composables/paywall'
 import { useSession } from '@/composables/session'
 import { call } from '@/lib/apiError'
 import { groupErrorMessage } from '@/lib/groupErrors'
@@ -47,6 +48,12 @@ const expiryOptions = computed(() =>
   })),
 )
 
+/** members_per_group counts against the group's billing owner's plan. */
+const offerMemberUpgrade = (error: unknown) =>
+  offerUpgrade(error, {
+    owner: group.value && group.value.billingOwnerId === user.value?.id ? 'me' : 'other',
+  })
+
 const refreshInvites = () =>
   queryClient.invalidateQueries({ queryKey: groupKeys.invites(id.value) })
 
@@ -58,6 +65,7 @@ const emailForm = useForm(
     formRef: emailFormRef,
     validate: (v) => ({ email: rules.email(v.email) }),
     errorMessage: (error) => groupErrorMessage(t, error, { kind: 'other' }),
+    onError: offerMemberUpgrade,
   },
 )
 
@@ -82,6 +90,7 @@ const linkForm = useForm(
   {
     formRef: linkFormRef,
     errorMessage: (error) => groupErrorMessage(t, error, { kind: 'other' }),
+    onError: offerMemberUpgrade,
     validate: (v) => {
       const uses = Number(v.maxUses)
       return {

@@ -33,6 +33,7 @@ The edition is chosen at **build time** so poly-only code, wording and assets **
 - Edition-specific code lives in `frontend/app/src/editions/<edition>/` and is imported only through the Vite alias `@edition`, which points at the selected folder. The other folder is never imported, so it is never bundled.
 - Shared code imports the selected edition only as `@edition`, never `editions/poly/…`, `editions/standard/…` or an `@edition/…` subpath. The lint rule `scal/editions` (`frontend/eslint.config.js`, tested in `editionLint.spec.ts`) rejects all forms that make Vite bundle a folder: static imports, dynamic `import()` (also with a template string), `import.meta.glob()` and `new URL(…, import.meta.url)`; tests are exempt.
 - Static shell before `/config.json` loads: the build writes the edition's default name (`brand.json`) into `index.html`'s `<title>` and emits the edition's `favicon.svg` (default: `src/assets/favicon.svg`) as `/favicon.svg`. The poly favicon is a plain, discreet calendar glyph in the poly hue; the leak check matches it by content hash, so it can't end up in a standard build.
+- Installable app (PWA): the build also emits the edition's PNG icons (`icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, renderings of its favicon; default: `src/assets/icons/`) and `/manifest.webmanifest` with the edition's name, the theme colour of its hue (palette step 600) and those icons (`src/lib/webManifest.ts`). No description, so the home screen doesn't say what the app is for. The poly icons are matched by hash like the favicon; the manifest is one of the build's text files the leak check searches.
 
 ### 2.2 CI leak check
 
@@ -47,7 +48,7 @@ The poly build is checked the same way against the standard edition (`check:edit
 
 ### 2.3 Images
 
-- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
+- The web image is built per edition with build arg `EDITION`: `scalenderplus-web` (standard) and `scalenderplus-poly-web` (poly). Its build stage runs the leak check of §2.2 on exactly the assets the image ships. The image takes its name (OCI title, `SCAL_WEB_IMAGE`) from `EDITION` and refuses to start when the deployment's `WEB_IMAGE` names the other edition ([coolify.md §3](../deployment/coolify.md#3-docker-composeyml)).
 - `scalenderplus-api` and `scalenderplus-worker` are shared until poly-only backend modules exist (event directory, adult add-on). Those then go into **separate assemblies** that only the edition-specific api/worker images (`scalenderplus-poly-api`, `scalenderplus-poly-worker`) reference. *Spec only; not built yet.*
 
 ## 3. Runtime branding (white-label, no rebuild)
@@ -60,13 +61,13 @@ Caddy renders `brand: { name, logoUrl, hue, supportEmail, imprintUrl, privacyUrl
 
 | Variable | `brand.` key | Default |
 |---|---|---|
-| `PUBLIC_BRAND_NAME` | `name` | edition default (standard: "sCalenderPlus") |
+| `PUBLIC_BRAND_NAME` | `name` | edition default (standard: "sCalenderPlus"); also the installed app's name (`/manifest.webmanifest`, rendered by Caddy from the build's manifest) |
 | `PUBLIC_BRAND_LOGO_URL` | `logoUrl` | built-in logo |
-| `PUBLIC_BRAND_HUE` | `hue` | `268` — OKLCH hue (0–360) of the brand palette |
+| `PUBLIC_BRAND_HUE` | `hue` | `268` — OKLCH hue (0–360) of the brand palette; the app sets the browser's theme colour (`<meta name="theme-color">`) from it, the manifest keeps the edition's |
 | `PUBLIC_BRAND_SUPPORT_EMAIL` | `supportEmail` | none (support link hidden) |
-| `PUBLIC_BRAND_IMPRINT_URL` | `imprintUrl` | none |
-| `PUBLIC_BRAND_PRIVACY_URL` | `privacyUrl` | none |
-| `PUBLIC_BRAND_TERMS_URL` | `termsUrl` | none |
+| `PUBLIC_BRAND_IMPRINT_URL` | `imprintUrl` | none: links lead to the built-in template page `/legal/imprint`, marked for the operator |
+| `PUBLIC_BRAND_PRIVACY_URL` | `privacyUrl` | none: links lead to the built-in template page `/legal/privacy`, marked for the operator |
+| `PUBLIC_BRAND_TERMS_URL` | `termsUrl` | none: links lead to the built-in template page `/legal/terms`, marked for the operator |
 
 ### 3.2 Backend
 

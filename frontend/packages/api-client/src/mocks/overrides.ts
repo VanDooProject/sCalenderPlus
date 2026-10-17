@@ -304,6 +304,7 @@ export function overrideHandlers(http: ReturnType<typeof createOpenApiHttp<paths
         return problem('plan_limit_reached', 402, instance, {
           limit: { key: 'overrides_per_event', max: mockOverrideLimit, used: before.size },
           plan: 'free',
+          trialEndsAt: null,
         })
       }
       const items: Override[] = wanted.map((o) => ({

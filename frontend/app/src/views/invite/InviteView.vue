@@ -8,6 +8,7 @@ import { UiButton, UiSpinner, useToast } from '@scalenderplus/ui'
 import { api } from '@/api'
 import AuthHeading from '@/components/AuthHeading.vue'
 import FormAlert from '@/components/FormAlert.vue'
+import { offerUpgrade } from '@/composables/paywall'
 import { groupKeys, previewInvite } from '@/composables/groups'
 import { useLogout, useSession } from '@/composables/session'
 import { ApiError, call } from '@/lib/apiError'
@@ -81,7 +82,11 @@ const accept = useMutation({
     else if (isApiError(e, 'email_not_verified')) blocked.value = 'unverified'
     else if (isApiError(e, 'group_frozen')) blocked.value = 'frozen'
     else if (isApiError(e, 'token_invalid')) blocked.value = 'invalid'
-    else error.value = errorMessage(t, e)
+    else {
+      // The group is full: its billing owner's plan, not mine.
+      offerUpgrade(e, { owner: 'other' })
+      error.value = errorMessage(t, e)
+    }
   },
 })
 

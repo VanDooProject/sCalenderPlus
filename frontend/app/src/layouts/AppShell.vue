@@ -8,6 +8,7 @@ import BrandMark from '@/components/BrandMark.vue'
 import EmailVerificationBanner from '@/components/EmailVerificationBanner.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import EnvironmentBadge from '@/components/EnvironmentBadge.vue'
+import LegalLinks from '@/components/LegalLinks.vue'
 import LocaleMenu from '@/components/LocaleMenu.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
@@ -91,6 +92,19 @@ const drawerOpen = ref(false)
         </EmptyState>
         <RouterView v-else />
       </main>
+      <footer class="px-4 pb-4 text-center text-xs text-on-surface-muted sm:px-6 lg:px-8">
+        <LegalLinks>
+          <li>
+            <RouterLink
+              :to="{ name: 'help-calendar-apps' }"
+              class="rounded underline-offset-2 hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              data-testid="help-link"
+            >
+              {{ t('help.calendarApps.title') }}
+            </RouterLink>
+          </li>
+        </LegalLinks>
+      </footer>
     </div>
   </div>
 </template>

@@ -7,7 +7,103 @@
     "imprint": "Imprint",
     "privacy": "Privacy",
     "terms": "Terms",
-    "support": "Support"
+    "support": "Support",
+    "agreement": "By creating an account you agree to the {terms} and acknowledge the {privacy}.",
+    "termsLink": "terms of use",
+    "privacyLink": "privacy policy",
+    "help": "Help",
+    "external": "The operator of {app} publishes this page on its own website:",
+    "contact": "Contact:",
+    "template": {
+      "title": "Template",
+      "text": "The operator of this {app} instance hasn't published this page yet. This is a minimal template that shows what belongs here. Operators: publish your own page and set"
+    },
+    "pages": {
+      "imprint": {
+        "title": "Imprint",
+        "variable": "PUBLIC_BRAND_IMPRINT_URL",
+        "provider": {
+          "title": "Service provider",
+          "text": "[Name of the person or company operating this service] · [Postal address]"
+        },
+        "contact": {
+          "title": "Contact",
+          "text": "[Email address] · [Phone number, if required]"
+        },
+        "register": {
+          "title": "Register entry and VAT ID",
+          "text": "[Commercial register, register number and VAT identification number, where applicable]"
+        },
+        "responsible": {
+          "title": "Responsible for the content",
+          "text": "[Name and address of the person responsible for the content]"
+        }
+      },
+      "privacy": {
+        "title": "Privacy policy",
+        "variable": "PUBLIC_BRAND_PRIVACY_URL",
+        "controller": {
+          "title": "Who is responsible",
+          "text": "[Name and contact details of the operator of {app}; data protection officer, if appointed]"
+        },
+        "data": {
+          "title": "What {app} stores",
+          "text": "Your account (email address, display name, password hash, two-factor settings, language and time zone); the calendars, events, permissions, memberships and invitations you create or that are shared with you; secret links to your personal calendar feeds; security records such as sign-ins and the change history of shared calendars."
+        },
+        "cookies": {
+          "title": "Cookies and browser storage",
+          "text": "One session cookie keeps you signed in. Your choice of language and theme and dismissed notices are stored in your browser. {app} uses no tracking or advertising cookies."
+        },
+        "emails": {
+          "title": "Emails",
+          "text": "{app} sends emails to confirm your address, reset your password and deliver invitations you receive."
+        },
+        "calendarApps": {
+          "title": "Calendar apps you connect",
+          "text": "When you subscribe to a feed in another calendar app (for example Google Calendar or Outlook), that provider receives and keeps a copy of what you may see, under its own privacy policy."
+        },
+        "rights": {
+          "title": "Your rights",
+          "text": "You can access, correct and export your data, delete your account, object to processing and complain to a data protection supervisory authority."
+        },
+        "operator": {
+          "title": "To be completed by the operator",
+          "text": "[Purposes and legal bases, retention periods, hosting provider and other recipients, transfers outside the EU, contact for data protection requests]"
+        }
+      },
+      "terms": {
+        "title": "Terms of use",
+        "variable": "PUBLIC_BRAND_TERMS_URL",
+        "service": {
+          "title": "The service",
+          "text": "[Who offers {app}] provides shared calendars with permissions per event, usable in the browser and through calendar feeds."
+        },
+        "account": {
+          "title": "Your account",
+          "text": "Give accurate information, keep your password and second factor safe and treat your feed links like passwords."
+        },
+        "use": {
+          "title": "Acceptable use",
+          "text": "No unlawful content, no harassment or spam, no attempts to access other people's data or to disrupt the service."
+        },
+        "content": {
+          "title": "Your content",
+          "text": "What you add stays yours and is your responsibility. You allow the operator to store it and show it to the people you share it with."
+        },
+        "plans": {
+          "title": "Plans and payment",
+          "text": "[Plans, prices, billing and cancellation, if paid plans are offered]"
+        },
+        "end": {
+          "title": "Ending your use",
+          "text": "You can delete your account at any time. [Conditions under which the operator may suspend or end accounts]"
+        },
+        "operator": {
+          "title": "To be completed by the operator",
+          "text": "[Availability, changes to these terms, liability, governing law and place of jurisdiction]"
+        }
+      }
+    }
   },
   "environment": "Environment: {name}",
   "common": {
@@ -782,5 +878,104 @@
     "daysLeft": "Pro trial: {n} day left | Pro trial: {n} days left",
     "until": "Your account has the Pro plan's limits until {date}, then the Free plan's.",
     "dismiss": "Hide the trial notice"
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available.",
+    "reload": "Reload",
+    "later": "Later"
+  },
+  "paywall": {
+    "title": {
+      "owned_calendars": "Calendar limit reached",
+      "owned_groups": "Group limit reached",
+      "members_per_group": "This group is full",
+      "events_with_overrides": "Limit for custom permissions reached",
+      "overrides_per_event": "Too many custom permissions on this event",
+      "unknown": "Plan limit reached",
+      "feature": "Not included in this plan"
+    },
+    "label": {
+      "owned_calendars": "Calendars",
+      "owned_groups": "Groups you own",
+      "members_per_group": "Members of this group",
+      "events_with_overrides": "Upcoming events with custom permissions",
+      "overrides_per_event": "Custom permission entries on this event",
+      "unknown": "Used"
+    },
+    "used": "{used} of {max}",
+    "max": "Limit: {max}",
+    "plan": {
+      "free": "This is the limit of the Free plan.",
+      "trial": "This is the limit of Pro, which applies during the trial until {date}.",
+      "pro": "This is the limit of the Pro plan.",
+      "team": "This is the limit of the Team plan.",
+      "selfhost": "The operator of this server has set this limit.",
+      "unknown": "This is the limit of the current plan."
+    },
+    "feature": "This feature isn't part of the {plan} plan.",
+    "featureUnknownPlan": "This feature isn't part of the current plan.",
+    "planNames": {
+      "free": "Free",
+      "pro": "Pro",
+      "team": "Team",
+      "selfhost": "self-hosted"
+    },
+    "benefit": {
+      "owned_calendars": "Pro has room for many more calendars.",
+      "owned_groups": "Running several groups? Pro lets you own more of them.",
+      "members_per_group": "Your group is growing. Pro has room for many more members per group.",
+      "events_with_overrides": "Private and locked entries are Pro's superpower: unlimited with Pro.",
+      "overrides_per_event": "Pro allows many more custom permission entries per event.",
+      "unknown": "Pro raises this limit.",
+      "feature": "Pro includes it.",
+      "trial": "After the trial ends on {date}, the Free plan's limits apply unless you upgrade to Pro."
+    },
+    "ownerOnly": "This limit comes from the owner's plan, so only the owner can upgrade it.",
+    "comingSoon": "Upgrades are coming soon: there is no checkout during the beta.",
+    "notNow": "Not now",
+    "ok": "OK"
+  },
+  "help": {
+    "calendarApps": {
+      "title": "Calendar apps",
+      "intro": "Subscribe to your calendars from {app} in Apple Calendar, Google Calendar, Outlook or Thunderbird.",
+      "before": {
+        "title": "Before you start",
+        "link": "Each feed link is personal: it shows exactly what you may see in {app}, with busy-only and hidden events applied. A link starting with webcal:// opens a calendar app directly on devices that have one.",
+        "private": "Treat the link like a password: anyone who has it sees what you see. If it leaks, replace it with a new one; the old link stops working.",
+        "readOnly": "Subscribed calendars are read-only. Make changes in {app}; calendar apps pick them up when they next refresh."
+      },
+      "apple": {
+        "title": "Apple Calendar (Mac, iPhone, iPad)",
+        "mac": "On a Mac: in Calendar choose File → New Calendar Subscription, paste the link and click Subscribe. Choose iCloud as the location to see it on your other Apple devices as well.",
+        "ios": "On iPhone or iPad: tap a webcal:// link, or go to Settings → Calendar (iOS 18: Settings → Apps → Calendar) → Calendar Accounts → Add Account → Other → Add Subscribed Calendar and paste the link.",
+        "refresh": "Refresh: as often as you set it (Mac: Auto-refresh in the calendar's info, every 5 or 15 minutes is fine; iPhone and iPad: Fetch New Data in the calendar accounts settings)."
+      },
+      "google": {
+        "title": "Google Calendar",
+        "web": "On a computer, open Google Calendar in the browser. Next to “Other calendars” click + → From URL, paste the link and click Add calendar. If the link starts with webcal://, replace that part with https://.",
+        "mobile": "Calendars can't be added by link in the Google Calendar app, but once added on the web they show up there too (on Android, turn on Sync for the calendar in the app's settings).",
+        "refresh": "Refresh: Google decides, usually every few hours and sometimes only once a day. Neither you nor {app} can change this."
+      },
+      "outlook": {
+        "title": "Outlook",
+        "web": "Outlook on the web, Outlook.com and the new Outlook for Windows: in the calendar choose Add calendar → Subscribe from web, paste the link, give it a name and click Import.",
+        "classic": "Classic Outlook for Windows: in the calendar choose Add Calendar → From Internet, paste the link and confirm.",
+        "mobile": "Calendars subscribed in Outlook on the web also appear in Outlook for iPhone and Android.",
+        "refresh": "Refresh: Outlook decides, usually every few hours; a change can take up to a day to appear."
+      },
+      "thunderbird": {
+        "title": "Thunderbird",
+        "steps": "In the calendar, create a new calendar, choose On the Network, paste the link as its location and finish the wizard. Keep it read-only.",
+        "refresh": "Refresh: as often as you set it under Refresh calendar in the calendar's properties (every 15 or 30 minutes is plenty)."
+      },
+      "caveats": {
+        "title": "Good to know",
+        "delay": "Changes reach a calendar app only when it refreshes; {app} itself always shows the current state.",
+        "recall": "Removing someone's access stops future updates, but copies a calendar app has already downloaded stay there until its next refresh. Nobody can recall them sooner.",
+        "busy": "Busy-only events appear as “Busy” (or with their cover title) in calendar apps too; hidden events don't appear at all.",
+        "rate": "Links that are refreshed very often are slowed down; once every 15 minutes is enough."
+      }
+    }
   }
 }

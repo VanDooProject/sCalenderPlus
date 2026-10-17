@@ -129,5 +129,19 @@
       "group_not_selectable": "You can only choose constellations you belong to or that already have access to the calendar.",
       "user_not_selectable": "You can only choose people who share a constellation or this calendar with you."
     }
+  },
+  "paywall": {
+    "title": {
+      "owned_groups": "Constellation limit reached",
+      "members_per_group": "This constellation is full"
+    },
+    "label": {
+      "owned_groups": "Constellations you own",
+      "members_per_group": "Members of this constellation"
+    },
+    "benefit": {
+      "owned_groups": "Several constellations? Pro lets you own more of them.",
+      "members_per_group": "Your constellation is growing. Pro has room for many more members per constellation."
+    }
   }
 }

@@ -6,6 +6,7 @@ import { UiButton, UiDialog, UiField, UiSelect, useToast } from '@scalenderplus/
 import type { CalendarResponse, EventResponse } from '@scalenderplus/api-client'
 import { api } from '@/api'
 import FormAlert from '@/components/FormAlert.vue'
+import { offerUpgrade } from '@/composables/paywall'
 import { call } from '@/lib/apiError'
 import { levelAtLeast } from '@/lib/calendarLevels'
 import { errorMessage, isApiError } from '@/lib/errorMessages'
@@ -79,6 +80,8 @@ async function move() {
       error.value = t('event.move.changed')
       await queryClient.invalidateQueries({ queryKey: ['events'] })
     } else {
+      // A target with another owner counts the event's permissions against its plan.
+      offerUpgrade(e)
       error.value = errorMessage(t, e)
     }
   } finally {

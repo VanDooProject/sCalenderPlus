@@ -7,7 +7,103 @@
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "support": "Support"
+    "support": "Support",
+    "agreement": "Mit dem Erstellen eines Kontos stimmst du den {terms} zu und nimmst die {privacy} zur Kenntnis.",
+    "termsLink": "Nutzungsbedingungen",
+    "privacyLink": "Datenschutzerklärung",
+    "help": "Hilfe",
+    "external": "Der Betreiber von {app} veröffentlicht diese Seite auf seiner eigenen Website:",
+    "contact": "Kontakt:",
+    "template": {
+      "title": "Vorlage",
+      "text": "Der Betreiber dieser {app}-Instanz hat diese Seite noch nicht veröffentlicht. Dies ist eine minimale Vorlage, die zeigt, was hierher gehört. Betreiber: Veröffentlicht eure eigene Seite und setzt"
+    },
+    "pages": {
+      "imprint": {
+        "title": "Impressum",
+        "variable": "PUBLIC_BRAND_IMPRINT_URL",
+        "provider": {
+          "title": "Anbieter",
+          "text": "[Name der Person oder des Unternehmens, die diesen Dienst betreiben] · [Postanschrift]"
+        },
+        "contact": {
+          "title": "Kontakt",
+          "text": "[E-Mail-Adresse] · [Telefonnummer, falls erforderlich]"
+        },
+        "register": {
+          "title": "Registereintrag und USt-IdNr.",
+          "text": "[Handelsregister, Registernummer und Umsatzsteuer-Identifikationsnummer, soweit vorhanden]"
+        },
+        "responsible": {
+          "title": "Verantwortlich für den Inhalt",
+          "text": "[Name und Anschrift der für den Inhalt verantwortlichen Person]"
+        }
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "variable": "PUBLIC_BRAND_PRIVACY_URL",
+        "controller": {
+          "title": "Verantwortlicher",
+          "text": "[Name und Kontaktdaten des Betreibers von {app}; Datenschutzbeauftragte, falls benannt]"
+        },
+        "data": {
+          "title": "Was {app} speichert",
+          "text": "Dein Konto (E-Mail-Adresse, Anzeigename, Passwort-Hash, Einstellungen der Zwei-Faktor-Anmeldung, Sprache und Zeitzone); die Kalender, Termine, Berechtigungen, Mitgliedschaften und Einladungen, die du anlegst oder die mit dir geteilt werden; geheime Links zu deinen persönlichen Kalender-Feeds; Sicherheitsaufzeichnungen wie Anmeldungen und den Änderungsverlauf geteilter Kalender."
+        },
+        "cookies": {
+          "title": "Cookies und Browser-Speicher",
+          "text": "Ein Sitzungs-Cookie hält dich angemeldet. Deine Wahl von Sprache und Design sowie ausgeblendete Hinweise werden in deinem Browser gespeichert. {app} verwendet keine Tracking- oder Werbe-Cookies."
+        },
+        "emails": {
+          "title": "E-Mails",
+          "text": "{app} sendet E-Mails, um deine Adresse zu bestätigen, dein Passwort zurückzusetzen und dir Einladungen zuzustellen."
+        },
+        "calendarApps": {
+          "title": "Verbundene Kalender-Apps",
+          "text": "Wenn du einen Feed in einer anderen Kalender-App abonnierst (zum Beispiel Google Kalender oder Outlook), erhält und speichert dieser Anbieter eine Kopie dessen, was du sehen darfst, nach seiner eigenen Datenschutzerklärung."
+        },
+        "rights": {
+          "title": "Deine Rechte",
+          "text": "Du kannst deine Daten einsehen, berichtigen und exportieren, dein Konto löschen, der Verarbeitung widersprechen und dich bei einer Datenschutz-Aufsichtsbehörde beschweren."
+        },
+        "operator": {
+          "title": "Vom Betreiber zu ergänzen",
+          "text": "[Zwecke und Rechtsgrundlagen, Speicherdauer, Hosting-Anbieter und weitere Empfänger, Übermittlungen außerhalb der EU, Kontakt für Datenschutzanfragen]"
+        }
+      },
+      "terms": {
+        "title": "Nutzungsbedingungen",
+        "variable": "PUBLIC_BRAND_TERMS_URL",
+        "service": {
+          "title": "Der Dienst",
+          "text": "[Anbieter von {app}] stellt geteilte Kalender mit Berechtigungen pro Termin bereit, nutzbar im Browser und über Kalender-Feeds."
+        },
+        "account": {
+          "title": "Dein Konto",
+          "text": "Mache zutreffende Angaben, schütze dein Passwort und deinen zweiten Faktor und behandle deine Feed-Links wie Passwörter."
+        },
+        "use": {
+          "title": "Zulässige Nutzung",
+          "text": "Keine rechtswidrigen Inhalte, keine Belästigung oder Spam, keine Versuche, auf Daten anderer zuzugreifen oder den Dienst zu stören."
+        },
+        "content": {
+          "title": "Deine Inhalte",
+          "text": "Was du einträgst, bleibt deins und liegt in deiner Verantwortung. Du erlaubst dem Betreiber, es zu speichern und den Personen zu zeigen, mit denen du es teilst."
+        },
+        "plans": {
+          "title": "Tarife und Zahlung",
+          "text": "[Tarife, Preise, Abrechnung und Kündigung, falls kostenpflichtige Tarife angeboten werden]"
+        },
+        "end": {
+          "title": "Ende der Nutzung",
+          "text": "Du kannst dein Konto jederzeit löschen. [Bedingungen, unter denen der Betreiber Konten sperren oder beenden darf]"
+        },
+        "operator": {
+          "title": "Vom Betreiber zu ergänzen",
+          "text": "[Verfügbarkeit, Änderungen dieser Bedingungen, Haftung, anwendbares Recht und Gerichtsstand]"
+        }
+      }
+    }
   },
   "environment": "Umgebung: {name}",
   "common": {
@@ -782,5 +878,104 @@
     "daysLeft": "Pro-Testphase: noch {n} Tag | Pro-Testphase: noch {n} Tage",
     "until": "Dein Konto hat bis {date} die Limits des Pro-Plans, danach die des Free-Plans.",
     "dismiss": "Hinweis zur Testphase ausblenden"
+  },
+  "pwa": {
+    "updateAvailable": "Eine neue Version ist verfügbar.",
+    "reload": "Neu laden",
+    "later": "Später"
+  },
+  "paywall": {
+    "title": {
+      "owned_calendars": "Kalender-Limit erreicht",
+      "owned_groups": "Gruppen-Limit erreicht",
+      "members_per_group": "Diese Gruppe ist voll",
+      "events_with_overrides": "Limit für eigene Berechtigungen erreicht",
+      "overrides_per_event": "Zu viele eigene Berechtigungen für diesen Termin",
+      "unknown": "Limit des Tarifs erreicht",
+      "feature": "Nicht in diesem Tarif enthalten"
+    },
+    "label": {
+      "owned_calendars": "Kalender",
+      "owned_groups": "Gruppen in deinem Besitz",
+      "members_per_group": "Mitglieder dieser Gruppe",
+      "events_with_overrides": "Anstehende Termine mit eigenen Berechtigungen",
+      "overrides_per_event": "Einträge mit eigenen Berechtigungen für diesen Termin",
+      "unknown": "Genutzt"
+    },
+    "used": "{used} von {max}",
+    "max": "Limit: {max}",
+    "plan": {
+      "free": "Das ist das Limit des Free-Tarifs.",
+      "trial": "Das ist das Limit von Pro, das während der Testphase bis {date} gilt.",
+      "pro": "Das ist das Limit des Pro-Tarifs.",
+      "team": "Das ist das Limit des Team-Tarifs.",
+      "selfhost": "Der Betreiber dieses Servers hat dieses Limit festgelegt.",
+      "unknown": "Das ist das Limit des aktuellen Tarifs."
+    },
+    "feature": "Diese Funktion ist nicht Teil des Tarifs {plan}.",
+    "featureUnknownPlan": "Diese Funktion ist nicht Teil des aktuellen Tarifs.",
+    "planNames": {
+      "free": "Free",
+      "pro": "Pro",
+      "team": "Team",
+      "selfhost": "Selbst gehostet"
+    },
+    "benefit": {
+      "owned_calendars": "Pro bietet Platz für viel mehr Kalender.",
+      "owned_groups": "Mehrere Gruppen? Mit Pro kannst du mehr davon besitzen.",
+      "members_per_group": "Deine Gruppe wächst. Pro bietet Platz für viel mehr Mitglieder pro Gruppe.",
+      "events_with_overrides": "Private und gesperrte Einträge sind die Stärke von Pro: unbegrenzt mit Pro.",
+      "overrides_per_event": "Pro erlaubt viel mehr Einträge mit eigenen Berechtigungen pro Termin.",
+      "unknown": "Pro hebt dieses Limit an.",
+      "feature": "Pro enthält sie.",
+      "trial": "Nach dem Ende der Testphase am {date} gelten die Limits des Free-Tarifs, außer du wechselst zu Pro."
+    },
+    "ownerOnly": "Dieses Limit kommt aus dem Tarif des Besitzers, daher kann nur der Besitzer upgraden.",
+    "comingSoon": "Upgrades kommen bald: In der Beta gibt es noch keinen Bezahlvorgang.",
+    "notNow": "Nicht jetzt",
+    "ok": "OK"
+  },
+  "help": {
+    "calendarApps": {
+      "title": "Kalender-Apps",
+      "intro": "Abonniere deine Kalender aus {app} in Apple Kalender, Google Kalender, Outlook oder Thunderbird.",
+      "before": {
+        "title": "Bevor du beginnst",
+        "link": "Jeder Feed-Link ist persönlich: Er zeigt genau, was du in {app} sehen darfst: Termine, die du nur als belegt siehst, bleiben belegt, ausgeblendete fehlen. Ein Link, der mit webcal:// beginnt, öffnet auf Geräten mit Kalender-App diese direkt.",
+        "private": "Behandle den Link wie ein Passwort: Wer ihn hat, sieht, was du siehst. Gerät er in falsche Hände, ersetze ihn durch einen neuen; der alte Link funktioniert dann nicht mehr.",
+        "readOnly": "Abonnierte Kalender sind schreibgeschützt. Ändere Termine in {app}; Kalender-Apps übernehmen das bei ihrer nächsten Aktualisierung."
+      },
+      "apple": {
+        "title": "Apple Kalender (Mac, iPhone, iPad)",
+        "mac": "Auf dem Mac: In Kalender Ablage → Neues Kalenderabonnement wählen, den Link einfügen und auf Abonnieren klicken. Als Ort iCloud wählen, damit er auch auf deinen anderen Apple-Geräten erscheint.",
+        "ios": "Auf iPhone oder iPad: einen webcal://-Link antippen oder Einstellungen → Kalender (iOS 18: Einstellungen → Apps → Kalender) → Kalenderaccounts → Account hinzufügen → Andere → Kalenderabo hinzufügen öffnen und den Link einfügen.",
+        "refresh": "Aktualisierung: so oft, wie du es einstellst (Mac: Automatisch aktualisieren in den Kalenderinformationen, alle 5 oder 15 Minuten passt; iPhone und iPad: Datenabgleich in den Einstellungen der Kalenderaccounts)."
+      },
+      "google": {
+        "title": "Google Kalender",
+        "web": "Öffne Google Kalender am Computer im Browser. Neben „Weitere Kalender“ auf + → Per URL klicken, den Link einfügen und auf Kalender hinzufügen klicken. Beginnt der Link mit webcal://, ersetze diesen Teil durch https://.",
+        "mobile": "In der Google-Kalender-App lassen sich keine Kalender per Link hinzufügen, im Web hinzugefügte erscheinen dort aber auch (unter Android in den Einstellungen der App für den Kalender Synchronisieren einschalten).",
+        "refresh": "Aktualisierung: Google entscheidet, meist alle paar Stunden, manchmal nur einmal am Tag. Weder du noch {app} können das ändern."
+      },
+      "outlook": {
+        "title": "Outlook",
+        "web": "Outlook im Web, Outlook.com und das neue Outlook für Windows: im Kalender Kalender hinzufügen → Aus dem Internet abonnieren wählen, den Link einfügen, einen Namen vergeben und auf Importieren klicken.",
+        "classic": "Klassisches Outlook für Windows: im Kalender Kalender hinzufügen → Aus dem Internet wählen, den Link einfügen und bestätigen.",
+        "mobile": "In Outlook im Web abonnierte Kalender erscheinen auch in Outlook für iPhone und Android.",
+        "refresh": "Aktualisierung: Outlook entscheidet, meist alle paar Stunden; bis eine Änderung erscheint, kann es bis zu einem Tag dauern."
+      },
+      "thunderbird": {
+        "title": "Thunderbird",
+        "steps": "Lege im Kalender einen neuen Kalender an, wähle Im Netzwerk, füge den Link als Adresse ein und schließe den Assistenten ab. Lass ihn schreibgeschützt.",
+        "refresh": "Aktualisierung: so oft, wie du es in den Kalendereigenschaften unter Kalender aktualisieren einstellst (alle 15 oder 30 Minuten reicht)."
+      },
+      "caveats": {
+        "title": "Gut zu wissen",
+        "delay": "Änderungen erreichen eine Kalender-App erst bei ihrer Aktualisierung; {app} selbst zeigt immer den aktuellen Stand.",
+        "recall": "Entziehst du jemandem den Zugriff, enden künftige Aktualisierungen, aber Kopien, die eine Kalender-App schon geladen hat, bleiben dort bis zu ihrer nächsten Aktualisierung. Niemand kann sie früher zurückholen.",
+        "busy": "Termine, bei denen du nur siehst, dass jemand belegt ist, erscheinen auch in Kalender-Apps als „Belegt“ (oder mit ihrem Ersatztitel); ausgeblendete Termine erscheinen gar nicht.",
+        "rate": "Sehr häufig abgerufene Links werden gebremst; einmal alle 15 Minuten genügt."
+      }
+    }
   }
 }

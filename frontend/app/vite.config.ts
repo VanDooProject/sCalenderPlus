@@ -6,6 +6,13 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import vueI18n from '@intlify/unplugin-vue-i18n/vite'
 import { msw } from 'msw/vite'
+import { VitePWA } from 'vite-plugin-pwa'
+import {
+  brandThemeColor,
+  iconFiles,
+  networkOnlyNavigations,
+  webManifest,
+} from './src/lib/webManifest'
 
 // Same-origin in every environment: in dev Vite proxies backend paths to the api (port 5080),
 // in production the `web` container (Caddy) does.
@@ -39,29 +46,57 @@ function resolveEdition(mode: string): string {
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 /**
- * The edition's static brand before /config.json loads: its name as index.html's `<title>` and its
- * `favicon.svg` (else the default in src/assets) served and emitted as `/favicon.svg`, so another
- * edition's favicon never ends up in the build.
+ * The edition's static brand before /config.json loads: its name as index.html's `<title>`, its
+ * `favicon.svg` and PNG icons (`icons/`; else the defaults in src/assets) served and emitted at the
+ * root, and the web app manifest (`/manifest.webmanifest`: name, theme colour of its hue, icons), so
+ * another edition's name, favicon or icons never end up in the build.
  */
 function editionShell(edition: string): Plugin {
   const dir = `${editionsDir}/${edition}`
-  const brand = JSON.parse(readFileSync(`${dir}/brand.json`, 'utf8')) as { name: string }
-  const favicon = existsSync(`${dir}/favicon.svg`)
-    ? `${dir}/favicon.svg`
-    : fileURLToPath(new URL('./src/assets/favicon.svg', import.meta.url))
+  const brand = JSON.parse(readFileSync(`${dir}/brand.json`, 'utf8')) as {
+    name: string
+    hue: number
+  }
+  const assets = fileURLToPath(new URL('./src/assets', import.meta.url))
+  const own = (path: string) =>
+    existsSync(`${dir}/${path}`) ? `${dir}/${path}` : `${assets}/${path}`
+  const files: Record<string, { path: string; type: string }> = {
+    'favicon.svg': { path: own('favicon.svg'), type: 'image/svg+xml' },
+    ...Object.fromEntries(
+      iconFiles.map((name) => [name, { path: own(`icons/${name}`), type: 'image/png' }]),
+    ),
+  }
+  const manifest = `${JSON.stringify(webManifest(brand), null, 2)}\n`
+  const headTags = [
+    '<link rel="manifest" href="/manifest.webmanifest" />',
+    '<link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
+    `<meta name="theme-color" content="${brandThemeColor(brand.hue)}" />`,
+  ]
   return {
     name: 'scal-edition-shell',
     transformIndexHtml: (html) =>
-      html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(brand.name)}</title>`),
+      html
+        .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(brand.name)}</title>`)
+        .replace('</head>', `  ${headTags.join('\n    ')}\n  </head>`),
     configureServer(server) {
-      server.middlewares.use('/favicon.svg', (_req, res) => {
-        res.setHeader('Content-Type', 'image/svg+xml')
+      for (const [name, file] of Object.entries(files)) {
+        server.middlewares.use(`/${name}`, (_req, res) => {
+          res.setHeader('Content-Type', file.type)
+          res.setHeader('Cache-Control', 'no-cache')
+          res.end(readFileSync(file.path))
+        })
+      }
+      server.middlewares.use('/manifest.webmanifest', (_req, res) => {
+        res.setHeader('Content-Type', 'application/manifest+json')
         res.setHeader('Cache-Control', 'no-cache')
-        res.end(readFileSync(favicon))
+        res.end(manifest)
       })
     },
     generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'favicon.svg', source: readFileSync(favicon) })
+      for (const [name, file] of Object.entries(files)) {
+        this.emitFile({ type: 'asset', fileName: name, source: readFileSync(file.path) })
+      }
+      this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: manifest })
     },
   }
 }
@@ -93,6 +128,26 @@ export default defineConfig(({ mode }) => {
             }),
           ]),
       ...(mode === 'mock' ? [msw({ mode: 'worker-only' })] : []),
+      // Installable app with an offline shell: the service worker precaches the built app (HTML,
+      // scripts, styles, fonts, icons) and answers navigations with index.html. Nothing else is
+      // routed through it, so api responses, iCal feeds, /config.json and the manifest always come
+      // from the network and are never cached. Only production builds register it (src/pwa.ts; in
+      // dev and mock mode MSW owns the scope); a new version waits for the user (UpdatePrompt.vue).
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: false,
+        manifest: false,
+        devOptions: { enabled: false },
+        workbox: {
+          globPatterns: ['**/*.{html,js,css,woff2,svg,png}'],
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: networkOnlyNavigations(proxiedPaths),
+          runtimeCaching: [],
+          cleanupOutdatedCaches: true,
+          // Hashed file names: no cache-busting query needed.
+          dontCacheBustURLsMatching: /^assets\//,
+        },
+      }),
     ],
     resolve: {
       alias: {

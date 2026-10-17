@@ -3,6 +3,8 @@ import { nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { UiToaster } from '@scalenderplus/ui'
+import PaywallDialog from '@/components/PaywallDialog.vue'
+import UpdatePrompt from '@/components/UpdatePrompt.vue'
 import { useBrand } from '@/config'
 
 const { t, locale } = useI18n()
@@ -35,5 +37,7 @@ router.afterEach(async (to, from, failure) => {
 
 <template>
   <RouterView />
+  <PaywallDialog />
+  <UpdatePrompt />
   <UiToaster :label="t('a11y.notifications')" :close-label="t('common.close')" />
 </template>

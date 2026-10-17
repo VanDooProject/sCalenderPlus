@@ -104,6 +104,22 @@
 		file_server
 	}
 
+	# Web app manifest: the build's, with PUBLIC_BRAND_NAME as the installed app's name when set
+	# (manifest.webmanifest.tmpl). Not cached by the service worker either.
+	handle /manifest.webmanifest {
+		root * /srv
+		rewrite * /manifest.webmanifest.tmpl
+		header Content-Type "application/manifest+json"
+		header Cache-Control "no-cache"
+		templates {
+			mime application/manifest+json
+		}
+		file_server
+	}
+	handle /manifest.webmanifest.tmpl {
+		respond 404
+	}
+
 	@api path /api/* /ical/* /dav/* /.well-known/* /health/* /openapi/*
 	handle @api {
 		reverse_proxy {$API_UPSTREAM:api:8080}
@@ -113,6 +129,7 @@
 		root * /srv
 		@immutable path /assets/*
 		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		# Everything else revalidates, the service worker (sw.js) included, so a new version is found.
 		header ?Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server

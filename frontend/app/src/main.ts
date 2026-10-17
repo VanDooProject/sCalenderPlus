@@ -6,6 +6,7 @@ import { createAppContext } from './appContext'
 import { useTheme } from './composables/theme'
 import { applyBrand, configKey, loadConfig } from './config'
 import { detectLocale } from './i18n'
+import { registerServiceWorker } from './pwa'
 import './style.css'
 
 /** Mock mode (`vite --mode mock`): start MSW before the first request. Tree-shaken from builds. */
@@ -37,6 +38,7 @@ async function bootstrap() {
     .use(router)
     .use(VueQueryPlugin, { queryClient })
     .mount('#app')
+  void registerServiceWorker()
 }
 
 void bootstrap()

@@ -64,8 +64,8 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 - [ ] **feat(web): event permission editor** — Override list editor (user/group+role/everyone/anonymous → level ≤ edit), preview "who sees what", explain dialog, plan usage meter, "already-synced feeds can't be recalled" hint. *AC:* fullstack e2e: Mia hides event, Vic sees busy, Adam still manages.
 - [ ] **feat(web): calendar settings and sharing** — Grants, role defaults, share links, creator toggles, move event. *AC:* changes reflect in `myLevel` of other users (fullstack).
 - [ ] **feat(web): groups and members management** — Create group, invite (email/link/QR), roles, leave/transfer, revoke-shares option on removal. *AC:* invite link flow e2e.
-- [ ] **feat(web): PWA install and offline shell** — Manifest, icons, service worker for shell. *AC:* Lighthouse PWA installable.
-- [ ] **feat(web): paywall and limit UX** — Map `plan_limit_reached`/`feature_not_in_plan` to contextual upgrade dialogs (beta: "coming soon" instead of checkout). *AC:* mocked e2e shows dialog with correct numbers.
+- [x] **feat(web): PWA install and offline shell** — Edition manifest (runtime brand name via Caddy), icons, service worker precaching the app shell only (never api or `/ical/`), update prompt. *AC:* installable — Chromium reports no installability errors under the production CSP (the check behind Lighthouse's former PWA audit, removed in Lighthouse 12); shell loads offline.
+- [x] **feat(web): paywall and limit UX** — Map `plan_limit_reached`/`feature_not_in_plan` to contextual upgrade dialogs (beta: "coming soon" instead of checkout), "not now" for 14 days per limit. *AC:* mocked e2e shows dialog with correct numbers.
 
 ## M4 — iCal feeds, ICS upload and beta readiness
 
@@ -76,9 +76,9 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 - [ ] **feat(ical): anonymous share-link feeds** — `/ical/v1/s/{token}.ics`, link level as ceiling. *AC:* event with `anonymous → none` absent; `everyone → read` on a free_busy link still busy.
 - [ ] **test(ical): cross-parser validation** — Parse output with ical.js in Vitest and Ical.Net. *AC:* CI fails on unparsable output.
 - [ ] **feat(import): one-time ICS upload** — Preview + commit, limits per ical-caldav.md §2. *AC:* Google Calendar export imports with recurrence and exceptions intact; re-upload of the same file creates 0 duplicates (UID match).
-- [ ] **docs: native app subscription guide** — Apple, Google, Outlook, Thunderbird with refresh caveats. *AC:* linked from feed UI.
+- [x] **docs: native app subscription guide** — Apple, Google, Outlook, Thunderbird with refresh caveats ([guides/calendar-apps.md](guides/calendar-apps.md); in the app at `/help/calendar-apps`, en/de). *AC:* linked from the app footer (and from the feed UI once it exists).
 - [ ] **feat(api): account deletion** — `DELETE /me` with 14-day grace, lifecycle rules of permissions §4.6, blocks while sole owner of groups/calendars with members. *AC:* deleted user's feeds → 410; their user overrides gone; shared calendars survive.
-- [ ] **feat(web): legal pages (minimal)** — Imprint, privacy policy, terms; linked from app footer and sign-up. *AC:* links present on all app pages.
+- [x] **feat(web): legal pages (minimal)** — Imprint, privacy policy, terms; linked from app footer and sign-up; the deployment's `PUBLIC_BRAND_*_URL` pages when set, else built-in templates marked for the operator. *AC:* links present on all app pages.
 - [ ] **build(deploy): production environment and backups** — Prod Coolify project, `release.yml` deploy, backups to off-site S3, restore drill, uptime monitor. *AC:* documented restore into staging succeeds and smoke e2e passes on it.
 
 **→ Public beta (MVP).**
@@ -96,8 +96,8 @@ Spec: [product/editions.md](product/editions.md), [architecture/privacy-levels.m
 - [x] **feat(web): trial notice** — `GET /me/entitlements` as a query; "Pro trial: N days left" in the top bar while `trialEndsAt` is set (not for `selfhost`), dismissible per browser session, no checkout. *AC:* unit tests cover days left, plural forms (en/de), dismissal and no notice without a trial.
 - [x] **fix(ui): brand hue contrast** — Text-bearing brand steps darken for green to cyan hues (`--scal-brand-shade`). *AC:* Vitest checks every text-bearing token pair for hues 0–360 (step 5) in light and dark mode at ≥ 4.5:1.
 - [x] **build(web): edition title and favicon** — The build writes the edition's name into `index.html` and emits its favicon (poly: a discreet calendar glyph). *AC:* standard and poly builds pass the leak check; the poly favicon is not in the standard `dist/`.
-- [ ] **build(deploy): per-edition web image** — `web.Dockerfile` build arg `EDITION`; publish `scalenderplus-poly-web` alongside `scalenderplus-web` in `images.yml` and releases; compose files take the web image name from a variable (default `scalenderplus-web`). *AC:* both images published; leak check runs on the standard image's assets.
-- [ ] **feat(web): poly wording overlay** — Poly-only locale JSON merged over base messages ("group" → "constellation" / "Konstellation"). *AC:* i18n completeness test covers the overlay; standard build unchanged (leak check).
+- [x] **build(deploy): per-edition web image** — `web.Dockerfile` build arg `EDITION` (the image knows its name and refuses to start under another `WEB_IMAGE`); publish `scalenderplus-poly-web` alongside `scalenderplus-web` in `images.yml` and releases (`build-images.yml` matrix); compose files take the web image name from `WEB_IMAGE` (default `scalenderplus-web`). *AC:* both images published; the leak check runs on each image's own assets in its build stage (`check:edition-leak --edition $EDITION`) and on both CI builds.
+- [x] **feat(web): poly wording overlay** — Poly-only locale JSON (`src/editions/poly/locales/`) merged over base messages ("group" → "constellation" / "Konstellation"). *AC:* `editions.spec.ts` checks the overlay (only existing keys, same placeholders, no "group"/"Gruppe" left in the merged poly messages); standard build unchanged (leak check).
 - [ ] **feat(billing): trial-end reminder** — Email and in-app banner 7 days before `trialEndsAt`, once per account. *AC:* worker test sends exactly one email at day 83 with `Plans__TrialDays=90`.
 - [ ] **feat(ical): cover titles in feeds** — `free_busy` VEVENTs use `coverTitle` as `SUMMARY` (part of M4 feed rendering). *AC:* golden file for a busy event with cover title.
 - [ ] **feat(auth): special-category consent (poly)** — Explicit Art. 9 consent at sign-up, recorded with timestamp and text version. *AC:* sign-up without consent → 422; consent text version stored.

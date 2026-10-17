@@ -16,6 +16,8 @@ export interface FormOptions<T extends object> {
   formRef?: Ref<HTMLFormElement | undefined>
   /** The form-level sentence for an error (default: the message of its code). */
   errorMessage?: (error: unknown) => string
+  /** Also called with every error of a submit, e.g. to offer an upgrade for a `402`. */
+  onError?: (error: unknown) => void
 }
 
 /**
@@ -82,6 +84,7 @@ export function useForm<T extends object>(initial: T, options: FormOptions<T> = 
       return true
     } catch (error) {
       handleError(error)
+      options.onError?.(error)
       return false
     } finally {
       pending.value = false

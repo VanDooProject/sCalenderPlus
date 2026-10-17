@@ -6,6 +6,7 @@ import {
 } from 'vue-router'
 import type { QueryClient } from '@tanstack/vue-query'
 import { sessionQuery } from '@/composables/session'
+import { legalDocuments, legalRouteName } from '@/lib/legal'
 import { safeNext } from '@/lib/redirect'
 
 declare module 'vue-router' {
@@ -16,6 +17,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     /** Signed-in users are sent on (`next` or the calendar), e.g. login and register. */
     guestOnly?: boolean
+    /** AuthLayout: a wide reading column instead of the narrow form card (legal pages). */
+    wide?: boolean
   }
 }
 
@@ -85,6 +88,12 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
             ],
           },
           {
+            path: 'help/calendar-apps',
+            name: 'help-calendar-apps',
+            component: () => import('./views/help/CalendarAppsView.vue'),
+            meta: { title: 'help.calendarApps.title' },
+          },
+          {
             path: 'settings',
             component: () => import('./layouts/SettingsLayout.vue'),
             children: [
@@ -145,6 +154,14 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
             component: () => import('./views/invite/InviteView.vue'),
             meta: { title: 'invite.title' },
           },
+          // Public for everyone, signed in or not.
+          ...legalDocuments.map((doc) => ({
+            path: `legal/${doc}`,
+            name: legalRouteName(doc),
+            component: () => import('./views/legal/LegalView.vue'),
+            props: { doc },
+            meta: { title: `legal.pages.${doc}.title`, wide: true },
+          })),
         ],
       },
       {

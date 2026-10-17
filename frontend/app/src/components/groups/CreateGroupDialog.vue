@@ -7,6 +7,7 @@ import { UiButton, UiDialog, UiField, UiInput, useToast } from '@scalenderplus/u
 import { api } from '@/api'
 import FormAlert from '@/components/FormAlert.vue'
 import { useForm, useValidators } from '@/composables/form'
+import { offerUpgrade } from '@/composables/paywall'
 import { groupKeys } from '@/composables/groups'
 import { call } from '@/lib/apiError'
 
@@ -21,7 +22,12 @@ const formRef = ref<HTMLFormElement>()
 
 const form = useForm(
   { name: '', description: '' },
-  { formRef, validate: (v) => ({ name: rules.required(v.name) }) },
+  {
+    formRef,
+    validate: (v) => ({ name: rules.required(v.name) }),
+    // owned_groups counts my own groups: my plan.
+    onError: (error) => offerUpgrade(error, { owner: 'me' }),
+  },
 )
 
 watch(open, (isOpen) => {
