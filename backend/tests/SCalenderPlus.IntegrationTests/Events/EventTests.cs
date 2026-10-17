@@ -66,7 +66,7 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
             title = "  Training ",
             description = "Bring shoes",
             location = "Pitch 2",
-            url = "https://lions.example/training",
+            url = " HTTPS://Lions.Example/training ",
             status = "tentative",
             color = "#AA00FF",
             categories = (string[])["sport", "youth"],
@@ -82,6 +82,7 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
         Assert.Equal($"{id}@scalenderplus", (string?)ev["uid"]);
         Assert.Equal("Training", (string?)ev["title"]);
         Assert.Equal("Bring shoes", (string?)ev["description"]);
+        Assert.Equal("https://lions.example/training", (string?)ev["url"]); // stored normalized (Uri.AbsoluteUri)
         Assert.Equal("tentative", (string?)ev["status"]);
         Assert.Equal("opaque", (string?)ev["transparency"]);
         Assert.Equal("#aa00ff", (string?)ev["color"]);
@@ -182,6 +183,12 @@ public sealed class EventTests(PostgresFixture postgres) : IAsyncLifetime
         { """{"title":" ","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "title" },
         { """{"title":"x","status":"maybe","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "status" },
         { """{"title":"x","url":"javascript:alert(1)","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
+        { """{"title":"x","url":"https://x.example/a\r\nATTENDEE:mailto:eve@x.example","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" }, // iCal injection
+        { """{"title":"x","url":"https://x.example/a\nEND:VEVENT","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
+        { """{"title":"x","url":"https://x.example/a\u0085b","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
+        { """{"title":"x","url":"https://x.example/a\u2028b","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
+        { """{"title":"x","url":"https://x.example/a b","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
+        { """{"title":"x","url":"ftp://x.example/a","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "url" },
         { """{"title":"x","uid":"has space","start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.ValidationFailed, "uid" },
         { """{"title":"x","recurrence":{"rrule":"FREQ=HOURLY"},"start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.RecurrenceNotSupported, "recurrence.rrule" },
         { """{"title":"x","recurrence":{"rrule":"FREQ=WEEKLY;BYDAY=XX"},"start":{"date":"2026-11-02"},"end":{"date":"2026-11-03"}}""", ErrorCodes.RecurrenceInvalid, "recurrence.rrule" },
