@@ -20,6 +20,15 @@ import { asRole, canEditGroup } from '@/lib/groupRoles'
 
 /** `POST /calendars`: a personal calendar, or one of a group the user is admin or owner of. */
 const open = defineModel<boolean>('open', { default: false })
+const props = withDefaults(
+  defineProps<{
+    /** Prefills the name (the onboarding checklist suggests one). */
+    suggestedName?: string
+    /** Go to the new calendar's settings afterwards (the checklist stays where it is). */
+    openSettings?: boolean
+  }>(),
+  { suggestedName: '', openSettings: true },
+)
 
 const { t } = useI18n()
 const router = useRouter()
@@ -32,7 +41,7 @@ const formRef = ref<HTMLFormElement>()
 
 const personal = 'personal'
 const initial = () => ({
-  name: '',
+  name: props.suggestedName,
   owner: personal,
   color: fallbackColor as string,
   timeZone: user.value?.timeZone ?? 'UTC',
@@ -79,7 +88,9 @@ async function submit() {
     await queryClient.invalidateQueries({ queryKey: calendarsQueryKey, exact: true })
     open.value = false
     toast.success(t('calendarSettings.create.created', { name: data.name }))
-    await router.push({ name: 'calendar-settings', params: { calendarId: data.id } })
+    if (props.openSettings) {
+      await router.push({ name: 'calendar-settings', params: { calendarId: data.id } })
+    }
   })
 }
 </script>

@@ -468,7 +468,8 @@
       "revokeText": "The link or email invitation stops working right away.",
       "revoked": "Invitation revoked.",
       "noPermission": "Only admins and owners can invite people and see pending invitations.",
-      "verifyFirst": "Confirm your email address to invite people."
+      "verifyFirst": "Confirm your email address to invite people.",
+      "linkQr": "QR code of the invite link"
     },
     "settings": {
       "title": "Group details",
@@ -1155,6 +1156,46 @@
         "recall": "Removing someone's access stops future updates, but copies a calendar app has already downloaded stay there until its next refresh. Nobody can recall them sooner.",
         "busy": "Busy-only events appear as “Busy” (or with their cover title) in calendar apps too; hidden events don't appear at all.",
         "rate": "Links that are refreshed very often are slowed down; once every 15 minutes is enough."
+      }
+    }
+  },
+  "onboarding": {
+    "title": "Get started",
+    "description": "Three steps to share your calendar, about two minutes.",
+    "progress": "{done} of {total} done",
+    "progressLabel": "Setup progress",
+    "stepDone": "Done",
+    "stepOpen": "To do",
+    "optional": "Optional",
+    "hide": "Hide checklist",
+    "hidden": "Checklist hidden. You can reopen it from your account menu.",
+    "reopen": "Getting started",
+    "finishedTitle": "You're all set",
+    "finishedText": "Your calendar is ready, people are invited and your calendar app shows it all.",
+    "close": "Close checklist",
+    "steps": {
+      "calendar": {
+        "title": "Create your first calendar",
+        "text": "A personal calendar for your events. You can add more at any time.",
+        "action": "Create calendar"
+      },
+      "group": {
+        "title": "Invite your group",
+        "text": "Create a group and share an invite link or its QR code with the people you plan with.",
+        "create": "Create group",
+        "invite": "Create invite link",
+        "verifyFirst": "Confirm your email address first: invitations need a confirmed address."
+      },
+      "feed": {
+        "title": "Subscribe in your calendar app",
+        "text": "One personal link shows all your calendars in Apple Calendar, Google Calendar, Outlook or Thunderbird.",
+        "action": "Get feed link"
+      },
+      "event": {
+        "title": "Try per-event permissions",
+        "text": "Add an event with a cover title: people who only see when you are busy see it instead of “Busy”. Who sees what is set per event under Permissions.",
+        "action": "Add event",
+        "needsCalendar": "Create a calendar first."
       }
     }
   }

@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { setupWorker } from 'msw/browser'
 import {
   handlers,
+  mockNewUser,
   resetMockAuth,
   resetMockCalendars,
   resetMockFeeds,
@@ -34,6 +35,18 @@ function initialSession() {
   }
 }
 
+/**
+ * `localStorage['scal.mock.scenario'] = 'new-user'` starts as a brand-new account (no calendars,
+ * groups or feed links: the onboarding checklist's starting point).
+ */
+function newUserScenario() {
+  try {
+    return localStorage.getItem('scal.mock.scenario') === 'new-user'
+  } catch {
+    return false
+  }
+}
+
 export const worker = setupWorker(
   http.get('/config.json', () => HttpResponse.json(mockConfig())),
   ...handlers,
@@ -44,5 +57,6 @@ export async function startMockWorker() {
   resetMockGroups()
   resetMockCalendars()
   resetMockFeeds()
+  if (newUserScenario()) mockNewUser()
   await worker.start({ onUnhandledFrame: 'bypass', quiet: true })
 }

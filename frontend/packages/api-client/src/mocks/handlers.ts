@@ -1,11 +1,11 @@
 import { createOpenApiHttp } from 'openapi-msw'
 import type { paths } from '../schema'
-import { authHandlers, sessionGuard } from './auth'
-import { calendarHandlers } from './calendars'
+import { authHandlers, mockAuth, sessionGuard } from './auth'
+import { calendarHandlers, mockCalendars } from './calendars'
 import { entitlementHandlers } from './entitlements'
 import { eventHandlers } from './events'
-import { feedHandlers } from './feeds'
-import { groupHandlers } from './groups'
+import { feedHandlers, mockFeeds } from './feeds'
+import { groupHandlers, mockGroups } from './groups'
 import { overrideHandlers } from './overrides'
 
 export {
@@ -59,6 +59,29 @@ export {
   resetMockGroups,
   type MockGroupsState,
 } from './groups'
+
+/**
+ * Turns the (freshly reset) mock state into a brand-new account: no calendars, events, feed links
+ * or share links, and a member of no group (the groups of others stay, so invite links still
+ * work). The onboarding checklist starts from here (mock mode: `localStorage['scal.mock.scenario']
+ * = 'new-user'`).
+ */
+export function mockNewUser(): void {
+  Object.assign(mockCalendars, {
+    calendars: [],
+    events: [],
+    series: [],
+    grants: [],
+    prefs: {},
+    versions: {},
+    overrides: {},
+  })
+  mockGroups.groups = mockGroups.groups.filter(
+    (g) => !g.members.some((m) => m.userId === mockAuth.user.id),
+  )
+  Object.assign(mockFeeds, { tokens: [], shareLinks: [] })
+  mockAuth.user = { ...mockAuth.user, createdAt: new Date().toISOString() }
+}
 
 /**
  * MSW handlers typed against the generated `paths`: a contract change that the mocks don't follow

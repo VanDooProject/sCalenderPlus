@@ -1,18 +1,30 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { LogOut, ShieldCheck, UserRound } from '@lucide/vue'
+import { ListChecks, LogOut, ShieldCheck, UserRound } from '@lucide/vue'
 import { UiMenu, UiMenuItem, UiMenuSeparator, useToast } from '@scalenderplus/ui'
 import type { MeResponse } from '@scalenderplus/api-client'
+import { reopenOnboarding } from '@/composables/onboarding'
 import { useLogout } from '@/composables/session'
 import UserAvatar from './UserAvatar.vue'
 
-defineProps<{ user: MeResponse }>()
+const props = defineProps<{ user: MeResponse }>()
 
 const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const logout = useLogout()
+
+/** "Getting started" moves the focus to the checklist: the closing menu must not take it back. */
+let reopening = false
+function reopen() {
+  reopening = true
+  reopenOnboarding(props.user.id)
+}
+function onCloseAutoFocus(event: Event) {
+  if (reopening) event.preventDefault()
+  reopening = false
+}
 
 async function signOut() {
   await logout.mutateAsync()
@@ -22,7 +34,7 @@ async function signOut() {
 </script>
 
 <template>
-  <UiMenu testid="user-menu">
+  <UiMenu testid="user-menu" @close-auto-focus="onCloseAutoFocus">
     <template #trigger>
       <button
         type="button"
@@ -55,6 +67,9 @@ async function signOut() {
       <RouterLink :to="{ name: 'settings-security' }">
         <ShieldCheck aria-hidden="true" />{{ t('settings.security.title') }}
       </RouterLink>
+    </UiMenuItem>
+    <UiMenuItem data-testid="onboarding-reopen" @select="reopen">
+      <ListChecks aria-hidden="true" />{{ t('onboarding.reopen') }}
     </UiMenuItem>
     <UiMenuSeparator />
     <UiMenuItem data-testid="logout" @select="signOut">

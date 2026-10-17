@@ -143,5 +143,14 @@
       "owned_groups": "Several constellations? Pro lets you own more of them.",
       "members_per_group": "Your constellation is growing. Pro has room for many more members per constellation."
     }
+  },
+  "onboarding": {
+    "steps": {
+      "group": {
+        "title": "Invite your constellation",
+        "text": "Create a constellation and share an invite link or its QR code with the people you plan with.",
+        "create": "Create constellation"
+      }
+    }
   }
 }
