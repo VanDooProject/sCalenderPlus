@@ -1,6 +1,7 @@
 import type { createOpenApiHttp } from 'openapi-msw'
 import type { components, paths } from '../schema'
 import { mockAuth, mockProblem, mockUser } from './auth'
+import { mockEntitlements } from './entitlements'
 
 type Group = components['schemas']['GroupResponse']
 type Member = components['schemas']['MemberResponse']
@@ -78,6 +79,15 @@ export const mockMembers: Member[] = [
 }))
 
 /** A pending invite link of {@link mockGroup}. */
+/**
+ * Creating a group with this name answers `402 plan_limit_reached`: the mock user's reverse trial
+ * (Pro limits, `trialEndsAt` of `mockEntitlements`) owns 10 of 10 groups.
+ */
+export const mockGroupLimitName = 'One group too many'
+
+/** Inviting this address answers `402 plan_limit_reached`: the group has 15 of 15 members (Free). */
+export const mockFullGroupEmail = 'full@example.com'
+
 export const mockInvite: Invite = {
   id: '0192f2c4-0000-7000-8000-000000000201',
   groupId: mockGroup.id,
@@ -325,11 +335,12 @@ const statusOf: Partial<Record<ErrorCode, number>> = {
   not_found: 404,
   precondition_failed: 412,
   precondition_required: 428,
+  plan_limit_reached: 402,
 }
 
 /** Stateful handlers for `/groups*` and `/invites*` (rules as in api.md "Groups"). */
 export function groupHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>) {
-  const problem = (code: ErrorCode, instance: string, extras = {}) =>
+  const problem = (code: ErrorCode, instance: string, extras: Record<string, unknown> = {}) =>
     mockProblem(code, statusOf[code] ?? 400, instance, extras)
 
   /** The group if the mock user is a member (else a 404 problem, like the api). */
@@ -363,6 +374,16 @@ export function groupHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
         return response('default').json(
           problem('validation_failed', '/api/v1/groups', { errors: { name: ['Required.'] } }),
           { status: 400 },
+        )
+      }
+      if (name === mockGroupLimitName) {
+        return response('default').json(
+          problem('plan_limit_reached', '/api/v1/groups', {
+            limit: { key: 'owned_groups', max: 10, used: 10 },
+            plan: 'pro',
+            trialEndsAt: mockEntitlements.trialEndsAt,
+          }),
+          { status: 402 },
         )
       }
       const now = new Date().toISOString()
@@ -582,6 +603,16 @@ export function groupHandlers(http: ReturnType<typeof createOpenApiHttp<paths>>)
       }
       if (group.frozen) {
         return response('default').json(problem('group_frozen', instance), { status: 409 })
+      }
+      if (email?.toLowerCase() === mockFullGroupEmail) {
+        return response('default').json(
+          problem('plan_limit_reached', instance, {
+            limit: { key: 'members_per_group', max: 15, used: 15 },
+            plan: 'free',
+            trialEndsAt: null,
+          }),
+          { status: 402 },
+        )
       }
       if (email) {
         group.invites

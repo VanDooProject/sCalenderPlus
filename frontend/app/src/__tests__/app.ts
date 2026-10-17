@@ -5,6 +5,7 @@ import { useToast } from '@scalenderplus/ui'
 import App from '@/App.vue'
 import { configKey, defaultConfig, type AppConfig } from '@/config'
 import { createAppContext } from '@/appContext'
+import { closePaywall } from '@/composables/paywall'
 import type { Locale } from '@/i18n'
 
 const mounted: { unmount: () => void }[] = []
@@ -88,6 +89,7 @@ export async function submit(formId: string) {
 /** Unmounts the app like a page reload: browser storage stays. */
 export function unmountApp() {
   mounted.splice(0).forEach((wrapper) => wrapper.unmount())
+  closePaywall()
   document.body.innerHTML = ''
   useToast().clear()
 }

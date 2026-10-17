@@ -82,7 +82,7 @@ Set via `Plans__Free__EventsWithOverrides`, `Plans__Free__OverridesPerEvent`, `P
 | Org with > 1 Pro user in same group | Suggest Team (central billing, seats, admin console). |
 | Trial ends in 7 days (*planned*: email + in-app banner) | "Your Pro trial ends on {date}. Keep unlimited private entries and 150 members per group with Pro." |
 
-Paywalls appear **in context, after the user tried to do something**, with a one-click upgrade and a "not now" that never nags again for 14 days.
+Paywalls appear **in context, after the user tried to do something**, with a one-click upgrade and a "not now" that never nags again for 14 days. Implemented in the web app for the enforced limits ([overview.md §4.1](../architecture/overview.md#41-web-app-structure-implemented-m3)): the dialog shows the limit's numbers and the governing plan's wording from the `402` (Free, Pro trial with its end, paid Pro, Team, self-hosted); until billing exists (M5) it says "coming soon" instead of offering a checkout. Its messages avoid fixed Pro numbers, since every limit is configurable per deployment.
 
 ## Downgrade and payment-failure behaviour
 

@@ -7,6 +7,7 @@ import { UiButton, UiField, UiSelect, useToast } from '@scalenderplus/ui'
 import type { EventResponse } from '@scalenderplus/api-client'
 import { api } from '@/api'
 import FormAlert from '@/components/FormAlert.vue'
+import { offerUpgrade } from '@/composables/paywall'
 import { usePrincipalCandidates } from '@/composables/eventPermissions'
 import { call } from '@/lib/apiError'
 import { errorMessage, isApiError } from '@/lib/errorMessages'
@@ -189,8 +190,10 @@ async function save() {
       // Someone changed the permissions meanwhile: take the new version, keep the edits.
       await load(true)
       formError.value = t('permissions.errors.changed')
-    } else if (isApiError(error, 'plan_limit_reached')) {
-      formError.value = t('permissions.errors.planLimit')
+    } else if (offerUpgrade(error)) {
+      formError.value = isApiError(error, 'plan_limit_reached')
+        ? t('permissions.errors.planLimit')
+        : errorMessage(t, error)
     } else if (isApiError(error, 'calendar_frozen')) {
       formError.value = t('permissions.errors.frozen')
     } else {

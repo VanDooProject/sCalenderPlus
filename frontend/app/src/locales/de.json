@@ -787,5 +787,56 @@
     "updateAvailable": "Eine neue Version ist verfügbar.",
     "reload": "Neu laden",
     "later": "Später"
+  },
+  "paywall": {
+    "title": {
+      "owned_calendars": "Kalender-Limit erreicht",
+      "owned_groups": "Gruppen-Limit erreicht",
+      "members_per_group": "Diese Gruppe ist voll",
+      "events_with_overrides": "Limit für eigene Berechtigungen erreicht",
+      "overrides_per_event": "Zu viele eigene Berechtigungen für diesen Termin",
+      "unknown": "Limit des Tarifs erreicht",
+      "feature": "Nicht in diesem Tarif enthalten"
+    },
+    "label": {
+      "owned_calendars": "Kalender",
+      "owned_groups": "Gruppen in deinem Besitz",
+      "members_per_group": "Mitglieder dieser Gruppe",
+      "events_with_overrides": "Anstehende Termine mit eigenen Berechtigungen",
+      "overrides_per_event": "Einträge mit eigenen Berechtigungen für diesen Termin",
+      "unknown": "Genutzt"
+    },
+    "used": "{used} von {max}",
+    "max": "Limit: {max}",
+    "plan": {
+      "free": "Das ist das Limit des Free-Tarifs.",
+      "trial": "Das ist das Limit von Pro, das während der Testphase bis {date} gilt.",
+      "pro": "Das ist das Limit des Pro-Tarifs.",
+      "team": "Das ist das Limit des Team-Tarifs.",
+      "selfhost": "Der Betreiber dieses Servers hat dieses Limit festgelegt.",
+      "unknown": "Das ist das Limit des aktuellen Tarifs."
+    },
+    "feature": "Diese Funktion ist nicht Teil des Tarifs {plan}.",
+    "featureUnknownPlan": "Diese Funktion ist nicht Teil des aktuellen Tarifs.",
+    "planNames": {
+      "free": "Free",
+      "pro": "Pro",
+      "team": "Team",
+      "selfhost": "Selbst gehostet"
+    },
+    "benefit": {
+      "owned_calendars": "Pro bietet Platz für viel mehr Kalender.",
+      "owned_groups": "Mehrere Gruppen? Mit Pro kannst du mehr davon besitzen.",
+      "members_per_group": "Deine Gruppe wächst. Pro bietet Platz für viel mehr Mitglieder pro Gruppe.",
+      "events_with_overrides": "Private und gesperrte Einträge sind die Stärke von Pro: unbegrenzt mit Pro.",
+      "overrides_per_event": "Pro erlaubt viel mehr Einträge mit eigenen Berechtigungen pro Termin.",
+      "unknown": "Pro hebt dieses Limit an.",
+      "feature": "Pro enthält sie.",
+      "trial": "Nach dem Ende der Testphase am {date} gelten die Limits des Free-Tarifs, außer du wechselst zu Pro."
+    },
+    "ownerOnly": "Dieses Limit kommt aus dem Tarif des Besitzers, daher kann nur der Besitzer upgraden.",
+    "comingSoon": "Upgrades kommen bald: In der Beta gibt es noch keinen Bezahlvorgang.",
+    "notNow": "Nicht jetzt",
+    "ok": "OK"
   }
 }

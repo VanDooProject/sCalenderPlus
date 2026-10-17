@@ -28,6 +28,10 @@ export const groups = {
   max: '0192f2c4-0000-7000-8000-000000000003',
   vic: '0192f2c4-0000-7000-8000-000000000004',
   inviteToken: 'mock-invite-token',
+  /** Creating a group with this name: 402, trial Pro owns 10 of 10 groups. */
+  limitName: 'One group too many',
+  /** Inviting this address to "FC Lions": 402, 15 of 15 members on Free. */
+  fullEmail: 'full@example.com',
 } as const
 
 /** Mock mode starts signed in; this makes every page load of `page` start signed out. */

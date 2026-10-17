@@ -10,6 +10,7 @@ import TimeZonePicker from '@/components/TimeZonePicker.vue'
 import CalendarColorPicker from './CalendarColorPicker.vue'
 import { calendarsQueryKey } from '@/composables/calendars'
 import { useForm, useValidators } from '@/composables/form'
+import { offerUpgrade } from '@/composables/paywall'
 import { useGroups } from '@/composables/groups'
 import { useSession } from '@/composables/session'
 import { call } from '@/lib/apiError'
@@ -40,7 +41,16 @@ const form = useForm(initial(), {
   formRef,
   validate: (v) => ({ name: rules.required(v.name) }),
   errorMessage: (error) => calendarErrorMessage(t, error),
+  // owned_calendars of the owner: me, or the group's billing owner.
+  onError: (error) => offerUpgrade(error, { owner: ownerOf(submittedOwner) }),
 })
+let submittedOwner = personal
+
+function ownerOf(owner: string): 'me' | 'other' {
+  if (owner === personal) return 'me'
+  const group = groups.data.value?.find((g) => g.id === owner)
+  return group && group.billingOwnerId === user.value?.id ? 'me' : 'other'
+}
 
 const ownerOptions = computed(() => [
   { value: personal, label: t('calendarSettings.create.personal') },
@@ -55,6 +65,7 @@ watch(open, (isOpen) => {
 
 async function submit() {
   await form.submit(async (v) => {
+    submittedOwner = v.owner
     const { data } = await call(
       api.POST('/api/v1/calendars', {
         body: {

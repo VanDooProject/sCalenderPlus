@@ -787,5 +787,56 @@
     "updateAvailable": "A new version is available.",
     "reload": "Reload",
     "later": "Later"
+  },
+  "paywall": {
+    "title": {
+      "owned_calendars": "Calendar limit reached",
+      "owned_groups": "Group limit reached",
+      "members_per_group": "This group is full",
+      "events_with_overrides": "Limit for custom permissions reached",
+      "overrides_per_event": "Too many custom permissions on this event",
+      "unknown": "Plan limit reached",
+      "feature": "Not included in this plan"
+    },
+    "label": {
+      "owned_calendars": "Calendars",
+      "owned_groups": "Groups you own",
+      "members_per_group": "Members of this group",
+      "events_with_overrides": "Upcoming events with custom permissions",
+      "overrides_per_event": "Custom permission entries on this event",
+      "unknown": "Used"
+    },
+    "used": "{used} of {max}",
+    "max": "Limit: {max}",
+    "plan": {
+      "free": "This is the limit of the Free plan.",
+      "trial": "This is the limit of Pro, which applies during the trial until {date}.",
+      "pro": "This is the limit of the Pro plan.",
+      "team": "This is the limit of the Team plan.",
+      "selfhost": "The operator of this server has set this limit.",
+      "unknown": "This is the limit of the current plan."
+    },
+    "feature": "This feature isn't part of the {plan} plan.",
+    "featureUnknownPlan": "This feature isn't part of the current plan.",
+    "planNames": {
+      "free": "Free",
+      "pro": "Pro",
+      "team": "Team",
+      "selfhost": "self-hosted"
+    },
+    "benefit": {
+      "owned_calendars": "Pro has room for many more calendars.",
+      "owned_groups": "Running several groups? Pro lets you own more of them.",
+      "members_per_group": "Your group is growing. Pro has room for many more members per group.",
+      "events_with_overrides": "Private and locked entries are Pro's superpower: unlimited with Pro.",
+      "overrides_per_event": "Pro allows many more custom permission entries per event.",
+      "unknown": "Pro raises this limit.",
+      "feature": "Pro includes it.",
+      "trial": "After the trial ends on {date}, the Free plan's limits apply unless you upgrade to Pro."
+    },
+    "ownerOnly": "This limit comes from the owner's plan, so only the owner can upgrade it.",
+    "comingSoon": "Upgrades are coming soon: there is no checkout during the beta.",
+    "notNow": "Not now",
+    "ok": "OK"
   }
 }

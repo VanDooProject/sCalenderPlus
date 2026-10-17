@@ -129,5 +129,19 @@
       "group_not_selectable": "Du kannst nur Konstellationen wählen, in denen du bist oder die schon Zugriff auf den Kalender haben.",
       "user_not_selectable": "Du kannst nur Personen wählen, die eine Konstellation oder diesen Kalender mit dir teilen."
     }
+  },
+  "paywall": {
+    "title": {
+      "owned_groups": "Konstellationen-Limit erreicht",
+      "members_per_group": "Diese Konstellation ist voll"
+    },
+    "label": {
+      "owned_groups": "Konstellationen in deinem Besitz",
+      "members_per_group": "Mitglieder dieser Konstellation"
+    },
+    "benefit": {
+      "owned_groups": "Mehrere Konstellationen? Mit Pro kannst du mehr davon besitzen.",
+      "members_per_group": "Deine Konstellation wächst. Pro bietet Platz für viel mehr Mitglieder pro Konstellation."
+    }
   }
 }

@@ -94,7 +94,7 @@ export function mockProblem(
   code: ErrorCode,
   status: number,
   instance: string,
-  extras: Partial<ProblemDetails> = {},
+  extras: Partial<ProblemDetails> & Record<string, unknown> = {},
 ): ProblemDetails {
   return {
     type: `https://scalenderplus.app/problems/${code.replaceAll('_', '-')}`,
