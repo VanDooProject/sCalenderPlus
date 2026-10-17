@@ -206,6 +206,97 @@ public sealed class FeedTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_edit_of_hidden_fields_leaves_a_busy_viewer_s_etag_and_last_modified_unchanged()
+    {
+        var training = await _olga.CreateEventIdAsync(EventApi.Timed(_club, title: "Training", start: FeedApi.Soon(2), end: FeedApi.Soon(2, 20)));
+        var eve = FeedApi.PathOf(await _eve.CreateFeedTokenAsync("calendar", _club)); // free_busy
+        var vic = FeedApi.PathOf(await _vic.CreateFeedTokenAsync("calendar", _club)); // read
+        using var eveBefore = await _host.GetFeedAsync(eve);
+        var eveETag = eveBefore.Headers.ETag!.ToString();
+        var eveLastModified = eveBefore.Content.Headers.LastModified;
+        var vicETag = await ETagAsync(vic);
+
+        // Title, description and location change: the internal state changes (the feed is rendered again) …
+        using var patch = await _olga.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{training}", new { title = "Training (secret)", description = "Gate code 1234", location = "Pitch 3" }, "*");
+        Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
+        _commands.Commands.Clear();
+        _commands.Recording = true;
+        using var conditional = await _host.GetFeedAsync(eve, ifNoneMatch: eveETag);
+        _commands.Recording = false;
+
+        // … but the busy body is the same: same ETag, 304, same Last-Modified.
+        Assert.Equal(HttpStatusCode.NotModified, conditional.StatusCode);
+        Assert.NotEmpty(_commands.EventQueries); // rendered again, and still 304: the ETag is the body's
+        Assert.Equal(eveETag, conditional.Headers.ETag!.ToString());
+        using var eveAfter = await _host.GetFeedAsync(eve);
+        Assert.Equal(eveETag, eveAfter.Headers.ETag!.ToString());
+        Assert.Equal(eveLastModified, eveAfter.Content.Headers.LastModified);
+        using var since = await _host.GetFeedAsync(eve, ifModifiedSince: eveLastModified);
+        Assert.Equal(HttpStatusCode.NotModified, since.StatusCode);
+
+        // Readers see the edit.
+        Assert.NotEqual(vicETag, await ETagAsync(vic));
+        Assert.Single(FeedApi.Events(await _host.FeedTextAsync(vic), "🔒 Training (secret)"));
+    }
+
+    [Fact]
+    public async Task A_stored_url_with_line_breaks_cannot_inject_properties()
+    {
+        const string Injected = "https://x.example/a\r\nATTENDEE:mailto:eve@evil.example\r\nEND:VEVENT\r\nBEGIN:VEVENT\nX-EVIL:1\u0085X-NEL:1";
+        var training = await _olga.CreateEventIdAsync(EventApi.Timed(_club, title: "Training", start: FeedApi.Soon(2), end: FeedApi.Soon(2, 20)));
+
+        // The api refuses it …
+        using var refused = await _olga.SendJsonAsync(HttpMethod.Patch, $"/api/v1/events/{training}", new { url = Injected }, "*");
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+
+        // … and a row stored before validation (or by an import) still renders as one URL line.
+        await _host.QueryAsync(db => db.Events.Where(e => e.Id == training).ExecuteUpdateAsync(
+            s => s.SetProperty(e => e.Url, Injected).SetProperty(e => e.Location, "Pitch\r\nORGANIZER:mailto:eve@evil.example"),
+            Ct));
+        using var response = await _host.GetFeedAsync(FeedApi.PathOf(await _vic.CreateFeedTokenAsync("calendar", _club)));
+        var body = await response.Content.ReadAsStringAsync(Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var lines = body.Split("\r\n");
+        Assert.DoesNotContain(lines, l => l.StartsWith("ATTENDEE", StringComparison.Ordinal) || l.StartsWith("ORGANIZER", StringComparison.Ordinal) || l.StartsWith("X-EVIL", StringComparison.Ordinal));
+        Assert.Equal(1, lines.Count(l => l == "BEGIN:VEVENT"));
+        Assert.Equal(1, lines.Count(l => l == "END:VEVENT"));
+        Assert.DoesNotContain('\n', body.Replace("\r\n", string.Empty, StringComparison.Ordinal));
+        Assert.DoesNotContain('\u0085', body);
+        Assert.Contains("URL:https://x.example/aATTENDEE:mailto:eve@evil.exampleEND:VEVENTBEGIN:VEVENTX-EVIL:1X-NEL:1\r\n", body.Replace("\r\n ", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_calendars_of_shared_events_are_part_of_the_feed_state()
+    {
+        var personal = await _olga.CreateCalendarAsync("Olga private");
+        var shared = await _olga.CreateEventIdAsync(EventApi.Timed(personal, title: "Dinner", start: FeedApi.Soon(2), end: FeedApi.Soon(2, 21)));
+        await _olga.SetOverridesAsync(shared, EventApi.User(_eveId, "read"));
+        var path = FeedApi.PathOf(await _eve.CreateFeedTokenAsync("shared_with_me"));
+        var etag = await ETagAsync(path);
+
+        // A setting of the calendar Eve cannot see changes the state: the feed is evaluated again (not served from
+        // the cache). The body, and so the ETag, stays the same while Eve's levels do — rule 6 (creators manage
+        // their own events) needs contribute on the calendar, which a stranger to it never has.
+        using var setting = await _olga.SendJsonAsync(HttpMethod.Patch, $"/api/v1/calendars/{personal}", new { creatorsManageOwnEvents = false }, ifMatch: "*");
+        Assert.Equal(HttpStatusCode.OK, setting.StatusCode);
+        _commands.Commands.Clear();
+        _commands.Recording = true;
+        using var after = await _host.GetFeedAsync(path, ifNoneMatch: etag);
+        _commands.Recording = false;
+        Assert.Equal(HttpStatusCode.NotModified, after.StatusCode);
+        Assert.NotEmpty(_commands.EventQueries);
+
+        // Unchanged again: the cached render answers without an event query.
+        _commands.Commands.Clear();
+        _commands.Recording = true;
+        using var unchanged = await _host.GetFeedAsync(path, ifNoneMatch: etag);
+        _commands.Recording = false;
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        Assert.Empty(_commands.EventQueries);
+    }
+
+    [Fact]
     public async Task Membership_changes_reach_the_feed_at_the_next_poll()
     {
         await _olga.CreateEventIdAsync(EventApi.Timed(_club, title: "Training", start: FeedApi.Soon(2), end: FeedApi.Soon(2, 20)));
