@@ -28,6 +28,12 @@ sCalenderPlus is a shared calendar SaaS whose core idea is **different permissio
 | [architecture/llm-import.md](architecture/llm-import.md) | Scheduled import pipeline, LLM extraction, dedupe, review queue, cost and safety controls |
 | [architecture/api.md](architecture/api.md) | REST v1 conventions, auth, RFC 9457 errors, resources, OpenAPI and typed client generation |
 
+## Guides
+
+| Document | Contents |
+|---|---|
+| [guides/calendar-apps.md](guides/calendar-apps.md) | Subscribing to feeds in Apple Calendar, Google Calendar, Outlook and Thunderbird, with each app's refresh behaviour (also in the app at `/help/calendar-apps`) |
+
 ## Development and operations
 
 | Document | Contents |

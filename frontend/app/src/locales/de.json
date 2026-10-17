@@ -934,5 +934,48 @@
     "comingSoon": "Upgrades kommen bald: In der Beta gibt es noch keinen Bezahlvorgang.",
     "notNow": "Nicht jetzt",
     "ok": "OK"
+  },
+  "help": {
+    "calendarApps": {
+      "title": "Kalender-Apps",
+      "intro": "Abonniere deine Kalender aus {app} in Apple Kalender, Google Kalender, Outlook oder Thunderbird.",
+      "before": {
+        "title": "Bevor du beginnst",
+        "link": "Jeder Feed-Link ist persönlich: Er zeigt genau, was du in {app} sehen darfst: Termine, die du nur als belegt siehst, bleiben belegt, ausgeblendete fehlen. Ein Link, der mit webcal:// beginnt, öffnet auf Geräten mit Kalender-App diese direkt.",
+        "private": "Behandle den Link wie ein Passwort: Wer ihn hat, sieht, was du siehst. Gerät er in falsche Hände, ersetze ihn durch einen neuen; der alte Link funktioniert dann nicht mehr.",
+        "readOnly": "Abonnierte Kalender sind schreibgeschützt. Ändere Termine in {app}; Kalender-Apps übernehmen das bei ihrer nächsten Aktualisierung."
+      },
+      "apple": {
+        "title": "Apple Kalender (Mac, iPhone, iPad)",
+        "mac": "Auf dem Mac: In Kalender Ablage → Neues Kalenderabonnement wählen, den Link einfügen und auf Abonnieren klicken. Als Ort iCloud wählen, damit er auch auf deinen anderen Apple-Geräten erscheint.",
+        "ios": "Auf iPhone oder iPad: einen webcal://-Link antippen oder Einstellungen → Kalender (iOS 18: Einstellungen → Apps → Kalender) → Kalenderaccounts → Account hinzufügen → Andere → Kalenderabo hinzufügen öffnen und den Link einfügen.",
+        "refresh": "Aktualisierung: so oft, wie du es einstellst (Mac: Automatisch aktualisieren in den Kalenderinformationen, alle 5 oder 15 Minuten passt; iPhone und iPad: Datenabgleich in den Einstellungen der Kalenderaccounts)."
+      },
+      "google": {
+        "title": "Google Kalender",
+        "web": "Öffne Google Kalender am Computer im Browser. Neben „Weitere Kalender“ auf + → Per URL klicken, den Link einfügen und auf Kalender hinzufügen klicken. Beginnt der Link mit webcal://, ersetze diesen Teil durch https://.",
+        "mobile": "In der Google-Kalender-App lassen sich keine Kalender per Link hinzufügen, im Web hinzugefügte erscheinen dort aber auch (unter Android in den Einstellungen der App für den Kalender Synchronisieren einschalten).",
+        "refresh": "Aktualisierung: Google entscheidet, meist alle paar Stunden, manchmal nur einmal am Tag. Weder du noch {app} können das ändern."
+      },
+      "outlook": {
+        "title": "Outlook",
+        "web": "Outlook im Web, Outlook.com und das neue Outlook für Windows: im Kalender Kalender hinzufügen → Aus dem Internet abonnieren wählen, den Link einfügen, einen Namen vergeben und auf Importieren klicken.",
+        "classic": "Klassisches Outlook für Windows: im Kalender Kalender hinzufügen → Aus dem Internet wählen, den Link einfügen und bestätigen.",
+        "mobile": "In Outlook im Web abonnierte Kalender erscheinen auch in Outlook für iPhone und Android.",
+        "refresh": "Aktualisierung: Outlook entscheidet, meist alle paar Stunden; bis eine Änderung erscheint, kann es bis zu einem Tag dauern."
+      },
+      "thunderbird": {
+        "title": "Thunderbird",
+        "steps": "Lege im Kalender einen neuen Kalender an, wähle Im Netzwerk, füge den Link als Adresse ein und schließe den Assistenten ab. Lass ihn schreibgeschützt.",
+        "refresh": "Aktualisierung: so oft, wie du es in den Kalendereigenschaften unter Kalender aktualisieren einstellst (alle 15 oder 30 Minuten reicht)."
+      },
+      "caveats": {
+        "title": "Gut zu wissen",
+        "delay": "Änderungen erreichen eine Kalender-App erst bei ihrer Aktualisierung; {app} selbst zeigt immer den aktuellen Stand.",
+        "recall": "Entziehst du jemandem den Zugriff, enden künftige Aktualisierungen, aber Kopien, die eine Kalender-App schon geladen hat, bleiben dort bis zu ihrer nächsten Aktualisierung. Niemand kann sie früher zurückholen.",
+        "busy": "Termine, bei denen du nur siehst, dass jemand belegt ist, erscheinen auch in Kalender-Apps als „Belegt“ (oder mit ihrem Ersatztitel); ausgeblendete Termine erscheinen gar nicht.",
+        "rate": "Sehr häufig abgerufene Links werden gebremst; einmal alle 15 Minuten genügt."
+      }
+    }
   }
 }

@@ -934,5 +934,48 @@
     "comingSoon": "Upgrades are coming soon: there is no checkout during the beta.",
     "notNow": "Not now",
     "ok": "OK"
+  },
+  "help": {
+    "calendarApps": {
+      "title": "Calendar apps",
+      "intro": "Subscribe to your calendars from {app} in Apple Calendar, Google Calendar, Outlook or Thunderbird.",
+      "before": {
+        "title": "Before you start",
+        "link": "Each feed link is personal: it shows exactly what you may see in {app}, with busy-only and hidden events applied. A link starting with webcal:// opens a calendar app directly on devices that have one.",
+        "private": "Treat the link like a password: anyone who has it sees what you see. If it leaks, replace it with a new one; the old link stops working.",
+        "readOnly": "Subscribed calendars are read-only. Make changes in {app}; calendar apps pick them up when they next refresh."
+      },
+      "apple": {
+        "title": "Apple Calendar (Mac, iPhone, iPad)",
+        "mac": "On a Mac: in Calendar choose File → New Calendar Subscription, paste the link and click Subscribe. Choose iCloud as the location to see it on your other Apple devices as well.",
+        "ios": "On iPhone or iPad: tap a webcal:// link, or go to Settings → Calendar (iOS 18: Settings → Apps → Calendar) → Calendar Accounts → Add Account → Other → Add Subscribed Calendar and paste the link.",
+        "refresh": "Refresh: as often as you set it (Mac: Auto-refresh in the calendar's info, every 5 or 15 minutes is fine; iPhone and iPad: Fetch New Data in the calendar accounts settings)."
+      },
+      "google": {
+        "title": "Google Calendar",
+        "web": "On a computer, open Google Calendar in the browser. Next to “Other calendars” click + → From URL, paste the link and click Add calendar. If the link starts with webcal://, replace that part with https://.",
+        "mobile": "Calendars can't be added by link in the Google Calendar app, but once added on the web they show up there too (on Android, turn on Sync for the calendar in the app's settings).",
+        "refresh": "Refresh: Google decides, usually every few hours and sometimes only once a day. Neither you nor {app} can change this."
+      },
+      "outlook": {
+        "title": "Outlook",
+        "web": "Outlook on the web, Outlook.com and the new Outlook for Windows: in the calendar choose Add calendar → Subscribe from web, paste the link, give it a name and click Import.",
+        "classic": "Classic Outlook for Windows: in the calendar choose Add Calendar → From Internet, paste the link and confirm.",
+        "mobile": "Calendars subscribed in Outlook on the web also appear in Outlook for iPhone and Android.",
+        "refresh": "Refresh: Outlook decides, usually every few hours; a change can take up to a day to appear."
+      },
+      "thunderbird": {
+        "title": "Thunderbird",
+        "steps": "In the calendar, create a new calendar, choose On the Network, paste the link as its location and finish the wizard. Keep it read-only.",
+        "refresh": "Refresh: as often as you set it under Refresh calendar in the calendar's properties (every 15 or 30 minutes is plenty)."
+      },
+      "caveats": {
+        "title": "Good to know",
+        "delay": "Changes reach a calendar app only when it refreshes; {app} itself always shows the current state.",
+        "recall": "Removing someone's access stops future updates, but copies a calendar app has already downloaded stay there until its next refresh. Nobody can recall them sooner.",
+        "busy": "Busy-only events appear as “Busy” (or with their cover title) in calendar apps too; hidden events don't appear at all.",
+        "rate": "Links that are refreshed very often are slowed down; once every 15 minutes is enough."
+      }
+    }
   }
 }

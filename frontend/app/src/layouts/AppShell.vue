@@ -93,7 +93,17 @@ const drawerOpen = ref(false)
         <RouterView v-else />
       </main>
       <footer class="px-4 pb-4 text-center text-xs text-on-surface-muted sm:px-6 lg:px-8">
-        <LegalLinks />
+        <LegalLinks>
+          <li>
+            <RouterLink
+              :to="{ name: 'help-calendar-apps' }"
+              class="rounded underline-offset-2 hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              data-testid="help-link"
+            >
+              {{ t('help.calendarApps.title') }}
+            </RouterLink>
+          </li>
+        </LegalLinks>
       </footer>
     </div>
   </div>

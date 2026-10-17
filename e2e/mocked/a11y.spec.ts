@@ -34,6 +34,7 @@ const signedInPages = [
   ['invite (signed in)', `/invite?token=${groups.inviteToken}`, 'Join Choir'],
   ['calendar settings', `/calendars/${calendars.lions}/settings`, 'FC Lions – Club: settings'],
   ['frozen calendar settings', `/calendars/${calendars.frozen}/settings`, 'Old team: settings'],
+  ['calendar apps help', '/help/calendar-apps', 'Calendar apps'],
 ] as const
 
 for (const scheme of ['light', 'dark'] as const) {

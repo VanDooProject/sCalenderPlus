@@ -88,6 +88,12 @@ export function createAppRouter({ history = createWebHistory(), queryClient }: A
             ],
           },
           {
+            path: 'help/calendar-apps',
+            name: 'help-calendar-apps',
+            component: () => import('./views/help/CalendarAppsView.vue'),
+            meta: { title: 'help.calendarApps.title' },
+          },
+          {
             path: 'settings',
             component: () => import('./layouts/SettingsLayout.vue'),
             children: [

@@ -3,7 +3,7 @@ import { groups, startSignedOut } from './fixtures'
 
 /**
  * Legal links on every page (built-in template pages unless /config.json names the deployment's
- * own).
+ * own) and the calendar apps guide.
  */
 
 const appPages = ['/calendar', '/groups', `/groups/${groups.lions}/members`, '/settings/profile']
@@ -44,4 +44,13 @@ test('configured legal pages are linked directly', async ({ page }) => {
   await expect(
     page.getByRole('navigation', { name: 'Legal' }).getByRole('link', { name: 'Imprint' }),
   ).toHaveAttribute('href', 'https://example.com/imprint')
+})
+
+test('the calendar apps guide is linked from the footer', async ({ page }) => {
+  await page.goto('/calendar')
+  await page.getByTestId('help-link').click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Calendar apps' })).toBeVisible()
+  for (const app of ['Apple Calendar', 'Google Calendar', 'Outlook', 'Thunderbird']) {
+    await expect(page.getByRole('heading', { level: 2, name: new RegExp(app) })).toBeVisible()
+  }
 })

@@ -15,7 +15,7 @@ function withBrand(brand: Partial<BrandConfig>) {
 }
 
 describe('legal links', () => {
-  it.each(['/calendar', '/groups', '/settings/profile', '/nowhere'])(
+  it.each(['/calendar', '/groups', '/settings/profile', '/help/calendar-apps', '/nowhere'])(
     'are on the app page %s',
     async (path) => {
       await mountApp(path)
@@ -83,5 +83,18 @@ describe('legal pages', () => {
     await until(() => queryTestId('legal-page-terms') !== null)
     expect(router.currentRoute.value.name).toBe('legal-terms')
     expect(text(byTestId('legal-page-terms'))).toContain('Nutzungsbedingungen')
+  })
+})
+
+describe('calendar apps guide', () => {
+  it('covers Apple, Google, Outlook and Thunderbird with their refresh behaviour', async () => {
+    await mountApp('/help/calendar-apps')
+    await until(() => queryTestId('help-calendar-apps') !== null)
+
+    for (const app of ['apple', 'google', 'outlook', 'thunderbird']) {
+      expect(text(byTestId(`help-${app}`))).toContain('Refresh:')
+    }
+    expect(text(byTestId('help-google'))).toContain('From URL')
+    expect(byTestId('help-link').getAttribute('href')).toBe('/help/calendar-apps')
   })
 })
