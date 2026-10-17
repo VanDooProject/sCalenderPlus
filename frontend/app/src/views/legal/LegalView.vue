@@ -39,7 +39,8 @@ const app = computed(() => brand.name)
     <template v-else>
       <UiAlert variant="warning" :title="t('legal.template.title')" data-testid="legal-template">
         {{ t('legal.template.text', { app }) }}
-        <code class="font-mono text-xs">{{ t(`legal.pages.${doc}.variable`) }}</code>
+        <code class="font-mono text-xs">{{ t(`legal.pages.${doc}.variable`) }}</code
+        >.
       </UiAlert>
       <section v-for="section in sections" :key="section" class="flex flex-col gap-1.5">
         <h2 class="text-base font-semibold">{{ t(`legal.pages.${doc}.${section}.title`) }}</h2>

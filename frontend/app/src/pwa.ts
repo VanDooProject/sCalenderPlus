@@ -15,7 +15,13 @@ const updateCheckInterval = 60 * 60 * 1000
 
 export async function registerServiceWorker(): Promise<void> {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
-  const { registerSW } = await import('virtual:pwa-register')
+  let registerSW: typeof import('virtual:pwa-register').registerSW
+  try {
+    ;({ registerSW } = await import('virtual:pwa-register'))
+  } catch {
+    // The chunk didn't load (e.g. offline before the worker was installed): next visit.
+    return
+  }
   const update = registerSW({
     immediate: true,
     onNeedRefresh: () => {
