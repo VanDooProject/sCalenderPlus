@@ -10,14 +10,18 @@
   },
   "scripts": {
     "generate": "openapi-typescript ../../../backend/openapi/v1.json -o src/schema.d.ts && prettier --write --log-level warn src/schema.d.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
+    "ical.js": "^2.2.1",
     "msw": "^3.0.2",
     "openapi-msw": "^2.1.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.9",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
