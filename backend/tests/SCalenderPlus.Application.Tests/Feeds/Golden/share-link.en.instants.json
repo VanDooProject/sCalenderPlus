@@ -1,0 +1,17 @@
+{
+  "events": [
+    {
+      "uid": "01990000-0000-7000-8000-000000000001@scalenderplus",
+      "recurrenceId": null,
+      "start": "2026-11-03T09:00:00Z",
+      "end": "2026-11-03T10:00:00Z"
+    },
+    {
+      "uid": "01990000-0000-7000-8000-000000000006@scalenderplus",
+      "recurrenceId": null,
+      "start": "2026-11-14T08:00:00Z",
+      "end": "2026-11-14T14:00:00Z"
+    }
+  ],
+  "occurrences": {}
+}
