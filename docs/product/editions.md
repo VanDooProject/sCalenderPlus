@@ -65,9 +65,9 @@ Caddy renders `brand: { name, logoUrl, hue, supportEmail, imprintUrl, privacyUrl
 | `PUBLIC_BRAND_LOGO_URL` | `logoUrl` | built-in logo |
 | `PUBLIC_BRAND_HUE` | `hue` | `268` — OKLCH hue (0–360) of the brand palette; the app sets the browser's theme colour (`<meta name="theme-color">`) from it, the manifest keeps the edition's |
 | `PUBLIC_BRAND_SUPPORT_EMAIL` | `supportEmail` | none (support link hidden) |
-| `PUBLIC_BRAND_IMPRINT_URL` | `imprintUrl` | none |
-| `PUBLIC_BRAND_PRIVACY_URL` | `privacyUrl` | none |
-| `PUBLIC_BRAND_TERMS_URL` | `termsUrl` | none |
+| `PUBLIC_BRAND_IMPRINT_URL` | `imprintUrl` | none: links lead to the built-in template page `/legal/imprint`, marked for the operator |
+| `PUBLIC_BRAND_PRIVACY_URL` | `privacyUrl` | none: links lead to the built-in template page `/legal/privacy`, marked for the operator |
+| `PUBLIC_BRAND_TERMS_URL` | `termsUrl` | none: links lead to the built-in template page `/legal/terms`, marked for the operator |
 
 ### 3.2 Backend
 

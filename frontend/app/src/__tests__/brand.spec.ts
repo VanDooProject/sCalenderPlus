@@ -20,7 +20,9 @@ describe('runtime branding', () => {
     expect(byTestId('app-title').textContent?.trim()).toBe('sCalenderPlus')
     expect(document.title).toBe('Sign in · sCalenderPlus')
     expect(queryTestId('brand-logo')).toBeNull()
-    expect(queryTestId('legal-links')).toBeNull()
+    // Without configured pages the legal links lead to the built-in templates.
+    expect(byTestId('legal-imprint').getAttribute('href')).toBe('/legal/imprint')
+    expect(queryTestId('legal-support')).toBeNull()
   })
 
   it('names the app after the configured brand', async () => {
@@ -55,6 +57,6 @@ describe('runtime branding', () => {
     expect(byTestId('legal-imprint').getAttribute('href')).toBe('https://example.com/imprint')
     expect(byTestId('legal-terms').getAttribute('href')).toBe('/terms')
     expect(byTestId('legal-support').getAttribute('href')).toBe('mailto:help@example.com')
-    expect(queryTestId('legal-privacy')).toBeNull()
+    expect(byTestId('legal-privacy').getAttribute('href')).toBe('/legal/privacy')
   })
 })

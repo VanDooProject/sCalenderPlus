@@ -7,7 +7,103 @@
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "support": "Support"
+    "support": "Support",
+    "agreement": "Mit dem Erstellen eines Kontos stimmst du den {terms} zu und nimmst die {privacy} zur Kenntnis.",
+    "termsLink": "Nutzungsbedingungen",
+    "privacyLink": "Datenschutzerklärung",
+    "help": "Hilfe",
+    "external": "Der Betreiber von {app} veröffentlicht diese Seite auf seiner eigenen Website:",
+    "contact": "Kontakt:",
+    "template": {
+      "title": "Vorlage",
+      "text": "Der Betreiber dieser {app}-Instanz hat diese Seite noch nicht veröffentlicht. Dies ist eine minimale Vorlage, die zeigt, was hierher gehört. Betreiber: Veröffentlicht eure eigene Seite und setzt"
+    },
+    "pages": {
+      "imprint": {
+        "title": "Impressum",
+        "variable": "PUBLIC_BRAND_IMPRINT_URL",
+        "provider": {
+          "title": "Anbieter",
+          "text": "[Name der Person oder des Unternehmens, die diesen Dienst betreiben] · [Postanschrift]"
+        },
+        "contact": {
+          "title": "Kontakt",
+          "text": "[E-Mail-Adresse] · [Telefonnummer, falls erforderlich]"
+        },
+        "register": {
+          "title": "Registereintrag und USt-IdNr.",
+          "text": "[Handelsregister, Registernummer und Umsatzsteuer-Identifikationsnummer, soweit vorhanden]"
+        },
+        "responsible": {
+          "title": "Verantwortlich für den Inhalt",
+          "text": "[Name und Anschrift der für den Inhalt verantwortlichen Person]"
+        }
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "variable": "PUBLIC_BRAND_PRIVACY_URL",
+        "controller": {
+          "title": "Verantwortlicher",
+          "text": "[Name und Kontaktdaten des Betreibers von {app}; Datenschutzbeauftragte, falls benannt]"
+        },
+        "data": {
+          "title": "Was {app} speichert",
+          "text": "Dein Konto (E-Mail-Adresse, Anzeigename, Passwort-Hash, Einstellungen der Zwei-Faktor-Anmeldung, Sprache und Zeitzone); die Kalender, Termine, Berechtigungen, Mitgliedschaften und Einladungen, die du anlegst oder die mit dir geteilt werden; geheime Links zu deinen persönlichen Kalender-Feeds; Sicherheitsaufzeichnungen wie Anmeldungen und den Änderungsverlauf geteilter Kalender."
+        },
+        "cookies": {
+          "title": "Cookies und Browser-Speicher",
+          "text": "Ein Sitzungs-Cookie hält dich angemeldet. Deine Wahl von Sprache und Design sowie ausgeblendete Hinweise werden in deinem Browser gespeichert. {app} verwendet keine Tracking- oder Werbe-Cookies."
+        },
+        "emails": {
+          "title": "E-Mails",
+          "text": "{app} sendet E-Mails, um deine Adresse zu bestätigen, dein Passwort zurückzusetzen und dir Einladungen zuzustellen."
+        },
+        "calendarApps": {
+          "title": "Verbundene Kalender-Apps",
+          "text": "Wenn du einen Feed in einer anderen Kalender-App abonnierst (zum Beispiel Google Kalender oder Outlook), erhält und speichert dieser Anbieter eine Kopie dessen, was du sehen darfst, nach seiner eigenen Datenschutzerklärung."
+        },
+        "rights": {
+          "title": "Deine Rechte",
+          "text": "Du kannst deine Daten einsehen, berichtigen und exportieren, dein Konto löschen, der Verarbeitung widersprechen und dich bei einer Datenschutz-Aufsichtsbehörde beschweren."
+        },
+        "operator": {
+          "title": "Vom Betreiber zu ergänzen",
+          "text": "[Zwecke und Rechtsgrundlagen, Speicherdauer, Hosting-Anbieter und weitere Empfänger, Übermittlungen außerhalb der EU, Kontakt für Datenschutzanfragen]"
+        }
+      },
+      "terms": {
+        "title": "Nutzungsbedingungen",
+        "variable": "PUBLIC_BRAND_TERMS_URL",
+        "service": {
+          "title": "Der Dienst",
+          "text": "[Anbieter von {app}] stellt geteilte Kalender mit Berechtigungen pro Termin bereit, nutzbar im Browser und über Kalender-Feeds."
+        },
+        "account": {
+          "title": "Dein Konto",
+          "text": "Mache zutreffende Angaben, schütze dein Passwort und deinen zweiten Faktor und behandle deine Feed-Links wie Passwörter."
+        },
+        "use": {
+          "title": "Zulässige Nutzung",
+          "text": "Keine rechtswidrigen Inhalte, keine Belästigung oder Spam, keine Versuche, auf Daten anderer zuzugreifen oder den Dienst zu stören."
+        },
+        "content": {
+          "title": "Deine Inhalte",
+          "text": "Was du einträgst, bleibt deins und liegt in deiner Verantwortung. Du erlaubst dem Betreiber, es zu speichern und den Personen zu zeigen, mit denen du es teilst."
+        },
+        "plans": {
+          "title": "Tarife und Zahlung",
+          "text": "[Tarife, Preise, Abrechnung und Kündigung, falls kostenpflichtige Tarife angeboten werden]"
+        },
+        "end": {
+          "title": "Ende der Nutzung",
+          "text": "Du kannst dein Konto jederzeit löschen. [Bedingungen, unter denen der Betreiber Konten sperren oder beenden darf]"
+        },
+        "operator": {
+          "title": "Vom Betreiber zu ergänzen",
+          "text": "[Verfügbarkeit, Änderungen dieser Bedingungen, Haftung, anwendbares Recht und Gerichtsstand]"
+        }
+      }
+    }
   },
   "environment": "Umgebung: {name}",
   "common": {

@@ -78,7 +78,7 @@ MVP (public beta) = M0–M4 (M4 includes beta readiness: prod, backups, legal, a
 - [ ] **feat(import): one-time ICS upload** — Preview + commit, limits per ical-caldav.md §2. *AC:* Google Calendar export imports with recurrence and exceptions intact; re-upload of the same file creates 0 duplicates (UID match).
 - [ ] **docs: native app subscription guide** — Apple, Google, Outlook, Thunderbird with refresh caveats. *AC:* linked from feed UI.
 - [ ] **feat(api): account deletion** — `DELETE /me` with 14-day grace, lifecycle rules of permissions §4.6, blocks while sole owner of groups/calendars with members. *AC:* deleted user's feeds → 410; their user overrides gone; shared calendars survive.
-- [ ] **feat(web): legal pages (minimal)** — Imprint, privacy policy, terms; linked from app footer and sign-up. *AC:* links present on all app pages.
+- [x] **feat(web): legal pages (minimal)** — Imprint, privacy policy, terms; linked from app footer and sign-up; the deployment's `PUBLIC_BRAND_*_URL` pages when set, else built-in templates marked for the operator. *AC:* links present on all app pages.
 - [ ] **build(deploy): production environment and backups** — Prod Coolify project, `release.yml` deploy, backups to off-site S3, restore drill, uptime monitor. *AC:* documented restore into staging succeeds and smoke e2e passes on it.
 
 **→ Public beta (MVP).**

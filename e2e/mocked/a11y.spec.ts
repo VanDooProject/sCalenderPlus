@@ -17,6 +17,8 @@ const signedOutPages = [
     'Email address confirmed',
   ],
   ['invite (signed out)', `/invite?token=${groups.inviteToken}`, 'Join Choir'],
+  ['imprint', '/legal/imprint', 'Imprint'],
+  ['privacy policy', '/legal/privacy', 'Privacy policy'],
 ] as const
 
 const signedInPages = [

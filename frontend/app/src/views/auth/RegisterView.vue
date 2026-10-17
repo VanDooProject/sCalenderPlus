@@ -7,6 +7,7 @@ import { UiButton, UiField, UiInput } from '@scalenderplus/ui'
 import { api } from '@/api'
 import AuthHeading from '@/components/AuthHeading.vue'
 import FormAlert from '@/components/FormAlert.vue'
+import LegalLink from '@/components/LegalLink.vue'
 import PasswordInput from '@/components/PasswordInput.vue'
 import TextLink from '@/components/TextLink.vue'
 import { useForm, useValidators } from '@/composables/form'
@@ -120,6 +121,27 @@ async function submit() {
           data-testid="register-password"
         />
       </UiField>
+      <i18n-t
+        keypath="legal.agreement"
+        tag="p"
+        scope="global"
+        class="text-xs leading-relaxed text-on-surface-muted"
+        data-testid="register-legal"
+      >
+        <template #terms>
+          <LegalLink doc="terms" class="font-medium text-primary" data-testid="register-terms">{{
+            t('legal.termsLink')
+          }}</LegalLink>
+        </template>
+        <template #privacy>
+          <LegalLink
+            doc="privacy"
+            class="font-medium text-primary"
+            data-testid="register-privacy"
+            >{{ t('legal.privacyLink') }}</LegalLink
+          >
+        </template>
+      </i18n-t>
       <UiButton
         type="submit"
         size="lg"
