@@ -7,6 +7,7 @@ using SCalenderPlus.Application.Accounts;
 using SCalenderPlus.Application.Auditing;
 using SCalenderPlus.Application.Email;
 using SCalenderPlus.Application.Errors;
+using SCalenderPlus.Application.Feeds;
 using SCalenderPlus.Application.Groups;
 using SCalenderPlus.Application.Persistence;
 using SCalenderPlus.Core.Users;
@@ -54,7 +55,7 @@ internal static partial class AuthEndpoints
             .WithDescription("Always answers 202 (no user enumeration); only registered addresses receive an email.");
         auth.MapPost("/reset-password", ResetPasswordAsync).WithName("ResetPassword").AllowAnonymous().RequireRateLimiting(RateLimitingSetup.Auth)
             .WithSummary("Set a new password with the token from the reset link")
-            .WithDescription("Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions.");
+            .WithDescription("Also confirms the email address (the link proved ownership), lifts a lockout and ends all other sessions. rotateFeedTokens: true also replaces the secrets of all the account's iCal feed links (old URLs 404 at once; get new ones by rotating, needsNewLink).");
 
         return auth;
     }
@@ -272,6 +273,7 @@ internal static partial class AuthEndpoints
         IAppDbContext db,
         IAuditLog audit,
         GroupInviteService invites,
+        FeedTokenService feedTokens,
         CancellationToken cancellationToken)
     {
         var user = await users.FindByIdAsync(request.UserId.ToString()).ConfigureAwait(false);
@@ -352,6 +354,7 @@ internal static partial class AuthEndpoints
         IAppDbContext db,
         IAuditLog audit,
         GroupInviteService invites,
+        FeedTokenService feedTokens,
         CancellationToken cancellationToken)
     {
         var user = await users.FindByIdAsync(request.UserId.ToString()).ConfigureAwait(false);
@@ -375,6 +378,11 @@ internal static partial class AuthEndpoints
             await users.SetLockoutEndDateAsync(user, null).ConfigureAwait(false);
             await users.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
             audit.Record(AccountAuditActions.PasswordReset, AccountAuditActions.ResourceType, user.Id.ToString(), null, null, user.Id);
+            if (request.RotateFeedTokens == true)
+            {
+                await feedTokens.RotateAllForPasswordResetAsync(user.Id, ct).ConfigureAwait(false);
+            }
+
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
             if (!wasConfirmed)
             {

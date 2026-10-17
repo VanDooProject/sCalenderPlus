@@ -78,6 +78,12 @@ public sealed class ResetPasswordRequest
     [Required]
     [StringLength(IdentitySetup.MaxPasswordLength)]
     public string NewPassword { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Also replace the secrets of all my iCal feed links (default false): their old URLs stop working at once. The
+    /// new URLs are not shown here (no session yet); the links are marked <c>needsNewLink</c> until rotated.
+    /// </summary>
+    public bool? RotateFeedTokens { get; init; }
 }
 
 /// <summary>The signed-in user's account and profile.</summary>

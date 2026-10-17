@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -17,6 +19,7 @@ namespace SCalenderPlus.Api.RateLimiting;
 /// IPv6 grouped by /64), fixed windows, on the anonymous auth endpoints.</item>
 /// <item><see cref="InviteCreate"/> and <see cref="InviteAccept"/> policies: per signed-in user, fixed windows
 /// (invite-email spam, invite-token guessing); <see cref="InvitePreview"/> per client IP (anonymous token guessing).</item>
+/// <item><see cref="Feed"/> policy: per feed token (the URL path, hashed), token bucket (60/h, burst 10).</item>
 /// <item>Global limiter: per signed-in user for cookie sessions (generous sliding window); per API token by
 /// plan once tokens exist (<see cref="ApiTokenAuthenticationType"/>); anonymous requests are only limited by
 /// the endpoint policies.</item>
@@ -30,6 +33,7 @@ public static class RateLimitingSetup
     public const string InviteCreate = "invite-create";
     public const string InviteAccept = "invite-accept";
     public const string InvitePreview = "invite-preview";
+    public const string Feed = "feed";
 
     /// <summary>
     /// <see cref="ClaimsIdentity.AuthenticationType"/> the API token handler (v1) will give its identities; it
@@ -45,8 +49,9 @@ public static class RateLimitingSetup
             .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
             .ValidateDataAnnotations()
             .Validate(
-                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept) && Valid(o.InvitePreview),
-                "RateLimiting: every PermitLimit must be ≥ 1 and every Window between 1 second and 1 day.")
+                o => Valid(o.Auth) && Valid(o.SignUp) && Valid(o.Session) && Valid(o.InviteCreate) && Valid(o.InviteAccept) && Valid(o.InvitePreview)
+                    && o.Feed is { TokenLimit: >= 1, TokensPerPeriod: >= 1 } && o.Feed.ReplenishmentPeriod >= TimeSpan.FromSeconds(1) && o.Feed.ReplenishmentPeriod <= TimeSpan.FromDays(1),
+                "RateLimiting: every PermitLimit/TokenLimit must be ≥ 1 and every Window/ReplenishmentPeriod between 1 second and 1 day.")
             .ValidateOnStart();
 
         services.AddRateLimiter(_ => { });
@@ -60,6 +65,7 @@ public static class RateLimitingSetup
             options.AddPolicy(InviteCreate, context => FixedWindowPerUser(context, InviteCreate, settings.InviteCreate));
             options.AddPolicy(InviteAccept, context => FixedWindowPerUser(context, InviteAccept, settings.InviteAccept));
             options.AddPolicy(InvitePreview, context => FixedWindowPerClient(context, InvitePreview, settings.InvitePreview));
+            options.AddPolicy(Feed, context => BucketPerFeed(context, settings.Feed));
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => GlobalPartition(context.User, settings));
         });
         return services;
@@ -139,6 +145,22 @@ public static class RateLimitingSetup
                 PermitLimit = limit.PermitLimit,
                 Window = limit.Window,
                 QueueLimit = 0,
+            });
+
+    /// <summary>
+    /// Per feed: the partition is the SHA-256 of the request path (it contains the secret, which must not sit in
+    /// memory as a dictionary key in clear). Unknown tokens get buckets too, so guessing is throttled per URL.
+    /// </summary>
+    private static RateLimitPartition<string> BucketPerFeed(HttpContext context, BucketLimit limit) =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            Feed + ":" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(context.Request.Path.Value ?? string.Empty))),
+            _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = limit.TokenLimit,
+                TokensPerPeriod = limit.TokensPerPeriod,
+                ReplenishmentPeriod = limit.ReplenishmentPeriod,
+                QueueLimit = 0,
+                AutoReplenishment = true,
             });
 
     private static async ValueTask OnRejectedAsync(OnRejectedContext context, CancellationToken cancellationToken)

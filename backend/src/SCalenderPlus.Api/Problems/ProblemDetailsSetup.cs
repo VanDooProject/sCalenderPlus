@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using SCalenderPlus.Application.Errors;
+using SCalenderPlus.Infrastructure.Hosting;
 
 namespace SCalenderPlus.Api.Problems;
 
@@ -51,7 +52,8 @@ public static class ProblemDetailsSetup
             CamelCaseErrorKeys(validation.Errors);
         }
 
-        problem.Instance ??= context.HttpContext.Request.Path;
+        // Feed URLs carry their secret in the path (e.g. a 429 of a feed): the instance keeps only /ical/[REDACTED].
+        problem.Instance ??= SecretRedaction.Redact(context.HttpContext.Request.Path.Value ?? string.Empty);
         problem.Extensions[CodeMember] = code;
         problem.Extensions[TraceIdMember] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
 

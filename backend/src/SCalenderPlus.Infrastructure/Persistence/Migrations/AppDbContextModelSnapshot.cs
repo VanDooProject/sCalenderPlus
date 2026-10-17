@@ -318,6 +318,66 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                     b.ToTable("user_calendar_prefs", (string)null);
                 });
 
+            modelBuilder.Entity("SCalenderPlus.Core.Calendars.ShareLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CalendarId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calendar_id");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Instant?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<Instant?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<short>("Level")
+                        .HasColumnType("smallint")
+                        .HasColumnName("level");
+
+                    b.Property<Instant?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_share_links");
+
+                    b.HasIndex("CalendarId")
+                        .HasDatabaseName("ix_share_links_calendar_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_share_links_token_hash");
+
+                    b.ToTable("share_links", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_share_links_level", "level IN (1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("SCalenderPlus.Core.Events.CalendarChange", b =>
                 {
                     b.Property<long>("Seq")
@@ -348,6 +408,9 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CalendarId", "Seq")
                         .HasDatabaseName("ix_calendar_changes_calendar_id_seq");
+
+                    b.HasIndex("EventId", "Seq")
+                        .HasDatabaseName("ix_calendar_changes_event_id_seq");
 
                     b.ToTable("calendar_changes", (string)null);
                 });
@@ -672,6 +735,87 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_event_overrides_level", "level BETWEEN 0 AND 3");
 
                             t.HasCheckConstraint("ck_event_overrides_principal", "(principal_type = 0 AND principal_id IS NOT NULL AND min_role IS NULL) OR (principal_type = 1 AND principal_id IS NOT NULL AND min_role IS NOT NULL) OR (principal_type IN (2, 3) AND principal_id IS NULL AND min_role IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("SCalenderPlus.Core.Feeds.FeedToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CalendarId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calendar_id");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("IncludePastDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("include_past_days");
+
+                    b.Property<short>("LabelMode")
+                        .HasColumnType("smallint")
+                        .HasColumnName("label_mode");
+
+                    b.Property<Instant?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("NeedsNewLink")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_new_link");
+
+                    b.Property<Instant?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Instant?>("RotatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rotated_at");
+
+                    b.Property<short>("Scope")
+                        .HasColumnType("smallint")
+                        .HasColumnName("scope");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_feed_tokens");
+
+                    b.HasIndex("CalendarId")
+                        .HasDatabaseName("ix_feed_tokens_calendar_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_feed_tokens_token_hash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_feed_tokens_user_id");
+
+                    b.ToTable("feed_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_feed_tokens_include_past_days", "include_past_days BETWEEN 0 AND 365");
+
+                            t.HasCheckConstraint("ck_feed_tokens_scope", "(scope = 0 AND calendar_id IS NOT NULL) OR (scope IN (1, 2) AND calendar_id IS NULL)");
                         });
                 });
 
@@ -1191,6 +1335,16 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_calendar_prefs_asp_net_users_user_id");
                 });
 
+            modelBuilder.Entity("SCalenderPlus.Core.Calendars.ShareLink", b =>
+                {
+                    b.HasOne("SCalenderPlus.Core.Calendars.Calendar", null)
+                        .WithMany()
+                        .HasForeignKey("CalendarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_share_links_calendars_calendar_id");
+                });
+
             modelBuilder.Entity("SCalenderPlus.Core.Events.CalendarChange", b =>
                 {
                     b.HasOne("SCalenderPlus.Core.Calendars.Calendar", null)
@@ -1229,6 +1383,22 @@ namespace SCalenderPlus.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_event_overrides_events_event_id");
+                });
+
+            modelBuilder.Entity("SCalenderPlus.Core.Feeds.FeedToken", b =>
+                {
+                    b.HasOne("SCalenderPlus.Core.Calendars.Calendar", null)
+                        .WithMany()
+                        .HasForeignKey("CalendarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_feed_tokens_calendars_calendar_id");
+
+                    b.HasOne("SCalenderPlus.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_feed_tokens_users_user_id");
                 });
 
             modelBuilder.Entity("SCalenderPlus.Core.Groups.Group", b =>

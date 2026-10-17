@@ -258,6 +258,95 @@ public sealed class EventQueryService(
     }
 
     /// <summary>
+    /// The events of an iCal feed (ical-caldav.md §1.2): series masters (with their exceptions, never expanded) and
+    /// single events overlapping <c>[from, ∞)</c> in <paramref name="included"/> — whatever the principal's calendar
+    /// level there: the engine decides per event — plus, with <paramref name="sharedWithMe"/>, the events whose
+    /// overrides name the user (or one of their groups) in calendars outside <paramref name="notShared"/> ("Shared
+    /// with me", rule 7). Resolved once per event (untraced engine); <c>none</c> and transparent events seen at
+    /// <c>free_busy</c> are left out. At most <paramref name="limit"/> rows per part, the latest ending first
+    /// ("oldest past events dropped first").
+    /// </summary>
+    /// <param name="notShared">The calendars the user sees (their events are not "shared with me").</param>
+    public async Task<IReadOnlyList<EventView>> FeedAsync(
+        PrincipalContext principal,
+        IReadOnlyList<(Calendar Calendar, CalendarAcl Acl)> included,
+        bool sharedWithMe,
+        IReadOnlyCollection<Guid> notShared,
+        Instant from,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        ArgumentNullException.ThrowIfNull(included);
+        ArgumentNullException.ThrowIfNull(notShared);
+        var calendarsById = included.ToDictionary(c => c.Calendar.Id, c => (c.Calendar, c.Acl));
+        var includedIds = calendarsById.Keys.ToHashSet();
+        var rows = calendarsById.Count == 0
+            ? []
+            : await db.Events.FromSql(FeedSql([.. calendarsById.Keys], from, limit)).AsNoTracking()
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        if (sharedWithMe && principal.UserId is { } userId)
+        {
+            var groupIds = principal.Groups.Keys.ToList();
+            var excluded = notShared.Concat(calendarsById.Keys).Distinct().ToList();
+            var shared = await db.Events.AsNoTracking()
+                .Where(e => e.DeletedAt == null
+                    && !excluded.Contains(e.CalendarId)
+                    && (e.Rrule == null ? e.EndUtc >= from : e.SeriesUntilUtc == null || e.SeriesUntilUtc >= from)
+                    && db.EventOverrides.Any(o => o.EventId == e.Id && o.Level > EventLevel.None
+                        && ((o.PrincipalType == PrincipalType.User && o.PrincipalId == userId)
+                            || (o.PrincipalType == PrincipalType.Group && groupIds.Contains(o.PrincipalId!.Value)))))
+                .OrderBy(e => e.Rrule != null && e.SeriesUntilUtc == null ? 0 : 1) // infinite series end last
+                .ThenByDescending(e => e.Rrule == null ? e.EndUtc : e.SeriesUntilUtc).ThenBy(e => e.Id)
+                .Take(limit)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            if (shared.Count > 0)
+            {
+                rows.AddRange(shared);
+                var missing = shared.Select(r => r.CalendarId).Distinct().Where(id => !calendarsById.ContainsKey(id)).ToList();
+                var extra = await db.Calendars.AsNoTracking().Where(c => missing.Contains(c.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+                var extraAcls = await calendars.AclsAsync(extra, cancellationToken).ConfigureAwait(false);
+                foreach (var calendar in extra)
+                {
+                    calendarsById[calendar.Id] = (calendar, extraAcls[calendar.Id]);
+                }
+            }
+        }
+
+        await LoadExceptionsAsync(rows, cancellationToken).ConfigureAwait(false);
+        var eventOverrides = await OverridesAsync(rows, cancellationToken).ConfigureAwait(false);
+        var views = new List<EventView>(rows.Count);
+        foreach (var ev in rows)
+        {
+            var (calendar, acl) = calendarsById[ev.CalendarId];
+            var level = EventVisibility.Effective(PermissionEngine.ResolveLevel(principal, acl, ev.ToAcl(eventOverrides.GetValueOrDefault(ev.Id))), ev.Transparency);
+            if (level != EventLevel.None)
+            {
+                views.Add(new EventView(ev, calendar, acl, level, !includedIds.Contains(ev.CalendarId), null));
+            }
+        }
+
+        return views;
+    }
+
+    /// <summary>
+    /// The candidate query of a feed: live events of <paramref name="calendarIds"/> whose <c>occurs_range</c> reaches
+    /// <paramref name="from"/> or later (GiST index per calendar, like <see cref="WindowSql"/>), the latest ending
+    /// first, at most <paramref name="limit"/>.
+    /// </summary>
+    public static FormattableString FeedSql(Guid[] calendarIds, Instant from, int limit) =>
+        $"""
+        SELECT e.* FROM unnest({calendarIds}::uuid[]) AS c(id)
+        CROSS JOIN LATERAL (
+            SELECT *, xmin FROM events
+            WHERE calendar_id = c.id AND deleted_at IS NULL AND occurs_range && tstzrange({from}, 'infinity'::timestamptz, '[)')
+        ) AS e
+        ORDER BY upper(e.occurs_range) DESC, e.id
+        LIMIT {limit}
+        """;
+
+    /// <summary>
     /// The candidate query of a window: live events of <paramref name="calendarIds"/> whose <c>occurs_range</c>
     /// overlaps <c>[from, to)</c>, by the start of that range (an earlier moved exception counts for a series), at
     /// most <paramref name="limit"/>. A lateral join per calendar keeps both

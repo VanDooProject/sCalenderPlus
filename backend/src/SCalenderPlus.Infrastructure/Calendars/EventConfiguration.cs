@@ -116,6 +116,9 @@ internal sealed class EventConfiguration :
         builder.Property(c => c.Change).HasConversion<short>();
         builder.HasIndex(c => new { c.CalendarId, c.Seq });
 
+        // ETag of "Shared with me" feeds: the latest change of the events shared with a user (ical-caldav.md §1.4).
+        builder.HasIndex(c => new { c.EventId, c.Seq });
+
         // The log of a deleted calendar goes with it; event ids stay without FK (events are soft-deleted, then purged).
         builder.HasOne<Calendar>().WithMany().HasForeignKey(c => c.CalendarId).OnDelete(DeleteBehavior.Cascade);
     }

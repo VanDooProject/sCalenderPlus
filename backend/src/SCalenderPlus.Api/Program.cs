@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.ResponseCompression;
 using SCalenderPlus.Api.Auth;
+using SCalenderPlus.Api.Feeds;
 using SCalenderPlus.Api.Hosting;
 using SCalenderPlus.Api.OpenApi;
 using SCalenderPlus.Api.Problems;
@@ -53,6 +55,16 @@ public sealed class Program
         builder.Services.AddValidation();
         builder.Services.AddApiDocument();
 
+        // iCal feeds only (ical-caldav.md §1.4): they are large and polled often; JSON responses stay uncompressed
+        // (secrets and attacker-chosen text in one compressed response invite BREACH-style attacks).
+        builder.Services.AddResponseCompression(o =>
+        {
+            o.EnableForHttps = true;
+            o.MimeTypes = ["text/calendar"];
+            o.Providers.Add<BrotliCompressionProvider>();
+            o.Providers.Add<GzipCompressionProvider>();
+        });
+
         // JSON numbers only: the web defaults also accept "5" for an integer, which made the OpenAPI document (and
         // the typed client) declare every integer as `integer | string`.
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
@@ -70,6 +82,7 @@ public sealed class Program
         app.UseForwardedHeaders();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+        app.UseResponseCompression();
         app.UseRouting();
         app.UseAuthentication();
         app.UseRateLimiter();
@@ -79,6 +92,7 @@ public sealed class Program
         app.MapPlatformHealthEndpoints();
         app.MapApiDocument();
         app.MapApiV1();
+        app.MapFeedEndpoints();
 
         return await HostRunner.RunAsync(app).ConfigureAwait(false);
     }

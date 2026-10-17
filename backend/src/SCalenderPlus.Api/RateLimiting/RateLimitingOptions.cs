@@ -34,6 +34,13 @@ public sealed class RateLimitingOptions
     [Required]
     public WindowLimit Session { get; set; } = new() { PermitLimit = 600, Window = TimeSpan.FromMinutes(1) };
 
+    /// <summary>
+    /// Per iCal feed token (token bucket, ical-caldav.md §1.4): 60 requests per hour with bursts of 10 — calendar apps
+    /// poll at most every few minutes; more is a misconfigured client or a leaked URL.
+    /// </summary>
+    [Required]
+    public BucketLimit Feed { get; set; } = new() { TokenLimit = 10, TokensPerPeriod = 1, ReplenishmentPeriod = TimeSpan.FromMinutes(1) };
+
     /// <summary>Per API token and minute, by plan (plans.md "API rate limit"); applied once API tokens exist (v1).</summary>
     [Required]
     public PlanLimits TokenPlans { get; set; } = new();
@@ -46,6 +53,19 @@ public sealed class WindowLimit
 
     [Range(typeof(TimeSpan), "00:00:01", "1.00:00:00")]
     public TimeSpan Window { get; set; }
+}
+
+/// <summary>A token bucket: bursts of <see cref="TokenLimit"/>, refilled by <see cref="TokensPerPeriod"/> every <see cref="ReplenishmentPeriod"/>.</summary>
+public sealed class BucketLimit
+{
+    [Range(1, 1_000_000)]
+    public int TokenLimit { get; set; }
+
+    [Range(1, 1_000_000)]
+    public int TokensPerPeriod { get; set; }
+
+    [Range(typeof(TimeSpan), "00:00:01", "1.00:00:00")]
+    public TimeSpan ReplenishmentPeriod { get; set; }
 }
 
 /// <summary>Requests per minute per API token.</summary>

@@ -43,7 +43,7 @@ public sealed class AuthorizationMatrixTests(MatrixScenario scenario) : IClassFi
         var anonymous = AuthorizationMatrix.AnonymousOperations.Single(a => a.Operation.ToString() == id);
         using var client = scenario.CreateAnonymousClient();
 
-        using var response = await SendAsync(client, anonymous.Operation, routeValues: null, body: anonymous.Body?.Invoke(scenario));
+        using var response = await SendAsync(client, anonymous.Operation, anonymous.RouteValues?.Invoke(scenario), anonymous.Body?.Invoke(scenario));
 
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
