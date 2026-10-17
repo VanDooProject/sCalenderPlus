@@ -109,7 +109,7 @@ public sealed class AccountDeletionTests(PostgresFixture postgres) : IAsyncLifet
 
         var email = Assert.Single(await _host.EmailsToAsync(_miaEmail));
         Assert.Equal("Your account will be deleted", email.Subject);
-        Assert.Contains("https://app.example.test/settings/profile", email.TextBody, StringComparison.Ordinal);
+        Assert.Contains("https://app.example.test/settings/security", email.TextBody, StringComparison.Ordinal);
         var job = await _host.QueryAsync(db => db.Set<Job>().AsNoTracking().SingleAsync(j => j.Type == "account.purge", Ct));
         Assert.Equal(purgeAt, job.RunAt.ToDateTimeOffset());
         Assert.Contains(await _host.AuditEventsAsync(_miaId), a => a.Action == "user.deletion_requested");

@@ -24,8 +24,8 @@ public sealed class AccountEmails(IOptions<AppOptions> options, IOptions<BrandOp
 
     public const string LoginPath = "/login";
 
-    /// <summary>Web app route with the account's danger zone: cancel a scheduled deletion there.</summary>
-    public const string AccountSettingsPath = "/settings/profile";
+    /// <summary>Web app route with the account's danger zone (security settings): cancel a scheduled deletion there.</summary>
+    public const string AccountSettingsPath = "/settings/security";
     public const string ForgotPasswordPath = "/forgot-password";
 
     public EmailMessage EmailConfirmation(string to, string displayName, string locale, Guid userId, string token)

@@ -144,5 +144,14 @@
       "owned_groups": "Mehrere Konstellationen? Mit Pro kannst du mehr davon besitzen.",
       "members_per_group": "Deine Konstellation wächst. Pro bietet Platz für viel mehr Mitglieder pro Konstellation."
     }
+  },
+  "accountDeletion": {
+    "effects": {
+      "shared": "Konstellationskalender bleiben bei ihren Konstellationen; Termine, die du dort eingetragen hast, bleiben ohne deinen Namen. Deine Mitgliedschaften und Freigaben für dich enden."
+    },
+    "blockers": {
+      "group": "Du bist einziger Inhaber dieser Konstellation | Einziger Inhaber, 1 weiteres Mitglied: mache zuerst jemand anderen zum Inhaber | Einziger Inhaber, {n} weitere Mitglieder: mache zuerst jemand anderen zum Inhaber",
+      "calendar": "Dein Kalender, nicht geteilt | Dein Kalender, geteilt mit 1 Person oder Konstellation: beende das Teilen oder lösche ihn | Dein Kalender, geteilt mit {n} Personen oder Konstellationen: beende das Teilen oder lösche ihn"
+    }
   }
 }

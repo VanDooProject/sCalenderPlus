@@ -20,6 +20,7 @@ import QrCode from '@/components/QrCode.vue'
 import ReauthDialog, { type ReauthBody } from '@/components/ReauthDialog.vue'
 import RecoveryCodes from '@/components/RecoveryCodes.vue'
 import SettingsCard from '@/components/SettingsCard.vue'
+import AccountDeletionCard from '@/components/settings/AccountDeletionCard.vue'
 import { useForm, useValidators } from '@/composables/form'
 import { sessionQueryKey, useSession } from '@/composables/session'
 import { call } from '@/lib/apiError'
@@ -267,6 +268,8 @@ async function regenerate(body: ReauthBody) {
         </UiButton>
       </div>
     </SettingsCard>
+
+    <AccountDeletionCard />
 
     <ReauthDialog
       v-model:open="disableOpen"

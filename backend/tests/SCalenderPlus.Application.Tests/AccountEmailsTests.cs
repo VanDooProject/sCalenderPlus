@@ -46,7 +46,7 @@ public sealed class AccountEmailsTests
         var message = _emails.DeletionScheduled("mia@example.test", "Mia", locale, zone, NodaTime.Instant.FromUtc(2026, 10, 31, 8, 0));
 
         Assert.Contains(sentence, message.TextBody, StringComparison.Ordinal);
-        Assert.Contains("https://app.example.test/settings/profile", message.TextBody, StringComparison.Ordinal);
+        Assert.Contains("https://app.example.test/settings/security", message.TextBody, StringComparison.Ordinal);
     }
 
     [Fact]

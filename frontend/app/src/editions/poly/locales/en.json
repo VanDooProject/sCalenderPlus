@@ -144,5 +144,14 @@
       "owned_groups": "Several constellations? Pro lets you own more of them.",
       "members_per_group": "Your constellation is growing. Pro has room for many more members per constellation."
     }
+  },
+  "accountDeletion": {
+    "effects": {
+      "shared": "Constellation calendars stay with their constellations; events you added there stay without your name. Your memberships and the access you were given end."
+    },
+    "blockers": {
+      "group": "You are its only owner | Only owner, 1 other member: make someone else an owner first | Only owner, {n} other members: make someone else an owner first",
+      "calendar": "Your calendar, not shared | Your calendar, shared with 1 person or constellation: stop sharing it or delete it | Your calendar, shared with {n} people or constellations: stop sharing it or delete it"
+    }
   }
 }

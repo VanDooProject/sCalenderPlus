@@ -269,6 +269,31 @@
       "unsupported_components": "The file also contains tasks or notes; only events are imported. | The file also contains tasks or notes; only events are imported."
     }
   },
+  "accountDeletion": {
+    "title": "Delete account",
+    "description": "Your account is deleted {days} days after you ask for it. Until then you can change your mind.",
+    "effects": {
+      "personal": "Your personal calendars and their events, your feed links and your settings are deleted.",
+      "shared": "Group calendars stay with their groups; events you added there stay without your name. Your memberships and the access you were given end.",
+      "feeds": "Your calendar subscriptions stop at once.",
+      "grace": "You can sign in and cancel for {days} days; after that the deletion is final."
+    },
+    "blockedIntro": "Before your account can be deleted, hand these over or stop sharing them:",
+    "blockedNow": "Something changed in the meantime: hand over or stop sharing what is listed first.",
+    "blockers": {
+      "group": "You are its only owner | Only owner, 1 other member: make someone else an owner first | Only owner, {n} other members: make someone else an owner first",
+      "calendar": "Your calendar, not shared | Your calendar, shared with 1 person or group: stop sharing it or delete it | Your calendar, shared with {n} people or groups: stop sharing it or delete it"
+    },
+    "delete": "Delete account",
+    "confirmTitle": "Delete your account?",
+    "confirmText": "Confirm with your password or an authenticator code. Your account is deleted in {days} days; you can cancel until then.",
+    "scheduled": "Your account will be deleted on {date}. Until then you can cancel the deletion here.",
+    "cancel": "Cancel deletion",
+    "scheduledToast": "Your account is scheduled for deletion. We sent you an email.",
+    "cancelledToast": "Deletion cancelled. Your account stays.",
+    "banner": "Your account will be deleted on {date}.",
+    "bannerAction": "Cancel deletion"
+  },
   "calendarSettings": {
     "title": "{name}: settings",
     "back": "Back to the calendar",

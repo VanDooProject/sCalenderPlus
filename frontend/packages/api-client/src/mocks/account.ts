@@ -17,8 +17,8 @@ export interface MockAccountState {
 /** A blocker the tests can put in: the mock user is the only owner of a group with members. */
 export const mockSoleOwnerBlocker: Blocker = {
   type: 'group',
-  id: '0192f2c4-0000-7000-8000-000000000201',
-  name: 'Lions',
+  id: '0192f2c4-0000-7000-8000-000000000101', // "FC Lions" of the group mocks
+  name: 'FC Lions',
   reason: 'sole_owner',
   count: 3,
 }
@@ -26,8 +26,8 @@ export const mockSoleOwnerBlocker: Blocker = {
 /** A blocker the tests can put in: a personal calendar of the mock user shared with others. */
 export const mockSharedCalendarBlocker: Blocker = {
   type: 'calendar',
-  id: '0192f2c4-0000-7000-8000-000000000102',
-  name: 'Family',
+  id: '0192f2c4-0000-7000-8000-000000000302', // "Mia" of the calendar mocks
+  name: 'Mia',
   reason: 'shared',
   count: 2,
 }

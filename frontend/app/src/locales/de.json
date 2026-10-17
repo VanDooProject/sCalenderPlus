@@ -269,6 +269,31 @@
       "unsupported_components": "Die Datei enthält auch Aufgaben oder Notizen; importiert werden nur Termine. | Die Datei enthält auch Aufgaben oder Notizen; importiert werden nur Termine."
     }
   },
+  "accountDeletion": {
+    "title": "Konto löschen",
+    "description": "Dein Konto wird {days} Tage nach deinem Antrag gelöscht. Bis dahin kannst du es dir anders überlegen.",
+    "effects": {
+      "personal": "Deine persönlichen Kalender mit ihren Terminen, deine Feed-Links und deine Einstellungen werden gelöscht.",
+      "shared": "Gruppenkalender bleiben bei ihren Gruppen; Termine, die du dort eingetragen hast, bleiben ohne deinen Namen. Deine Mitgliedschaften und Freigaben für dich enden.",
+      "feeds": "Deine Kalender-Abos liefern sofort keine Termine mehr.",
+      "grace": "Du kannst dich {days} Tage lang anmelden und abbrechen; danach ist die Löschung endgültig."
+    },
+    "blockedIntro": "Bevor dein Konto gelöscht werden kann, übergib diese oder beende das Teilen:",
+    "blockedNow": "In der Zwischenzeit hat sich etwas geändert: übergib zuerst, was aufgeführt ist, oder beende das Teilen.",
+    "blockers": {
+      "group": "Du bist einziger Inhaber dieser Gruppe | Einziger Inhaber, 1 weiteres Mitglied: mache zuerst jemand anderen zum Inhaber | Einziger Inhaber, {n} weitere Mitglieder: mache zuerst jemand anderen zum Inhaber",
+      "calendar": "Dein Kalender, nicht geteilt | Dein Kalender, geteilt mit 1 Person oder Gruppe: beende das Teilen oder lösche ihn | Dein Kalender, geteilt mit {n} Personen oder Gruppen: beende das Teilen oder lösche ihn"
+    },
+    "delete": "Konto löschen",
+    "confirmTitle": "Dein Konto löschen?",
+    "confirmText": "Bestätige mit deinem Passwort oder einem Code aus der Authenticator-App. Dein Konto wird in {days} Tagen gelöscht; bis dahin kannst du abbrechen.",
+    "scheduled": "Dein Konto wird am {date} gelöscht. Bis dahin kannst du die Löschung hier abbrechen.",
+    "cancel": "Löschung abbrechen",
+    "scheduledToast": "Dein Konto wird gelöscht. Wir haben dir eine E-Mail geschickt.",
+    "cancelledToast": "Löschung abgebrochen. Dein Konto bleibt bestehen.",
+    "banner": "Dein Konto wird am {date} gelöscht.",
+    "bannerAction": "Löschung abbrechen"
+  },
   "calendarSettings": {
     "title": "{name}: Einstellungen",
     "back": "Zurück zum Kalender",
