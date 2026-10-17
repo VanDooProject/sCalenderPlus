@@ -70,9 +70,15 @@ public sealed class AccountDeletionTests(PostgresFixture postgres) : IAsyncLifet
         Assert.Contains(blockers, b => (string)b!["type"]! == "group" && (Guid)b["id"]! == _lions && (string)b["reason"]! == "sole_owner" && (int)b["count"]! == 2);
         Assert.Contains(blockers, b => (string)b!["type"]! == "calendar" && (Guid)b["id"]! == _olgas && (string)b["reason"]! == "shared" && (string)b["name"]! == "Olga's");
 
+        // A calendar of a group Olga is alone in goes with her account too: shared with Vic, it blocks as well.
+        var solo = await _olga.CreateGroupAsync("Solo");
+        var soloCalendar = await _olga.CreateCalendarAsync("Solo cal", solo);
+        await _host.GrantAsync(soloCalendar, _vicId, CalendarLevel.Read);
+        Assert.Contains((await GetJsonAsync(_olga, "/api/v1/me/deletion"))["blockers"]!.AsArray(), b => (Guid)b!["id"]! == soloCalendar && (string)b["reason"]! == "shared");
+
         using var refused = await DeleteMeAsync(_olga, new { password = ApiTestHost.Password });
         var problem = await ProblemResponse.AssertProblemAsync(refused, HttpStatusCode.Conflict, "account_deletion_blocked");
-        Assert.Equal(2, problem["blockers"]!.AsArray().Count);
+        Assert.Equal(3, problem["blockers"]!.AsArray().Count);
         Assert.Null(await DeletedAtAsync(_olgaId));
     }
 

@@ -11,7 +11,10 @@ namespace SCalenderPlus.Application.Accounts;
 
 /// <summary>Something that has to be handed over or unshared before the account can be scheduled for deletion.</summary>
 /// <param name="Type"><c>group</c> or <c>calendar</c>.</param>
-/// <param name="Reason"><c>sole_owner</c> (a group with other members and no other owner) or <c>shared</c> (an own calendar with grants to others).</param>
+/// <param name="Reason">
+/// <c>sole_owner</c> (a group with other members and no other owner) or <c>shared</c> (a calendar that would go with
+/// the account — personal, or of a group it is alone in — with grants to others).
+/// </param>
 /// <param name="Count">The group's other members, or the calendar's grants.</param>
 public sealed record DeletionBlocker(string Type, Guid Id, string Name, string Reason, int Count);
 
@@ -45,8 +48,11 @@ public sealed class AccountDeletionService(IAppDbContext db, IJobScheduler jobs,
             where others > 0 && otherOwners == 0
             select new { g.Id, g.Name, others })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+        // Calendars that go with the account: personal ones, and those of groups it is the only member of.
         var calendars = await db.Calendars.AsNoTracking()
-            .Where(c => c.OwnerUserId == userId)
+            .Where(c => c.OwnerUserId == userId
+                || db.GroupMembers.Any(m => m.GroupId == c.OwnerGroupId && m.UserId == userId
+                    && !db.GroupMembers.Any(o => o.GroupId == c.OwnerGroupId && o.UserId != userId)))
             .Select(c => new { c.Id, c.Name, Grants = db.CalendarGrants.Count(g => g.CalendarId == c.Id) })
             .Where(c => c.Grants > 0)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
