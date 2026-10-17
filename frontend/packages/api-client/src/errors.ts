@@ -22,6 +22,7 @@ const errorCodeSet = {
   group_frozen: true,
   group_has_calendars: true,
   ics_invalid: true,
+  ics_too_complex: true,
   ics_too_many_events: true,
   insufficient_permission: true,
   internal_error: true,

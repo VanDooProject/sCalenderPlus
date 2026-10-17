@@ -1217,6 +1217,7 @@ export interface components {
       | 'group_frozen'
       | 'group_has_calendars'
       | 'ics_invalid'
+      | 'ics_too_complex'
       | 'ics_too_many_events'
       | 'insufficient_permission'
       | 'internal_error'

@@ -116,6 +116,9 @@ public static class ErrorCodes
     /// <summary>An uploaded file has more events than one upload takes (5,000 VEVENTs); carries <c>limit: { max }</c>.</summary>
     public const string IcsTooManyEvents = "ics_too_many_events";
 
+    /// <summary>An uploaded file takes too long to process (thousands of long recurring series): split it.</summary>
+    public const string IcsTooComplex = "ics_too_complex";
+
     /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";
 

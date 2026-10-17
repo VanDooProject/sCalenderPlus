@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using NodaTime;
 using NodaTime.Text;
+using SCalenderPlus.Application.Errors;
 using SCalenderPlus.Core.Events;
 using SCalenderPlus.Core.Recurrence;
 
@@ -34,10 +36,19 @@ public static class IcsImportPlanner
 
     private static readonly LocalDatePattern _datePattern = LocalDatePattern.CreateWithInvariantCulture("uuuuMMdd");
 
-    public static IcsImportPlan Plan(IReadOnlyList<IcsComponent> calendars, DateTimeZone calendarZone, Guid calendarId, Guid creatorId, Instant now)
+    /// <summary>
+    /// Time a plan may take: series are bounded one by one (COUNT ≤ 5,000, a rule that never matches gives up after
+    /// 1,000,000 days), but 5,000 of them could still keep a request busy for half a minute.
+    /// </summary>
+    public static readonly TimeSpan DefaultBudget = TimeSpan.FromSeconds(10);
+
+    /// <exception cref="AppException"><c>422 ics_too_complex</c> when planning takes longer than <paramref name="budget"/>.</exception>
+    public static IcsImportPlan Plan(IReadOnlyList<IcsComponent> calendars, DateTimeZone calendarZone, Guid calendarId, Guid creatorId, Instant now, TimeSpan? budget = null)
     {
         ArgumentNullException.ThrowIfNull(calendars);
         ArgumentNullException.ThrowIfNull(calendarZone);
+        var clock = Stopwatch.StartNew();
+        var limit = budget ?? DefaultBudget;
         var items = new List<IcsImportItem>();
         var warnings = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var calendar in calendars)
@@ -65,6 +76,11 @@ public static class IcsImportPlanner
 
             foreach (var (_, masters, overrides) in groups)
             {
+                if (clock.Elapsed > limit)
+                {
+                    throw new AppException(ErrorCodes.IcsTooComplex, "The file takes too long to process (many long recurring series). Split it into smaller files.");
+                }
+
                 if (masters.Count == 0)
                 {
                     items.AddRange(overrides.Select(o => Guarded(o, context, () => Orphan(o, context))));
@@ -505,7 +521,7 @@ public static class IcsImportPlanner
 
         var categories = vevent.All("CATEGORIES")
             .SelectMany(p => IcsReader.SplitList(p.Value))
-            .Select(c => c.Replace(',', ' ').Trim())
+            .Select(c => new string([.. c.Replace(',', ' ').Where(ch => !char.IsControl(ch))]).Trim())
             .Where(c => c.Length > 0)
             .Select(c => c.Length > Event.CategoryMaxLength ? c[..Event.CategoryMaxLength].TrimEnd() : c)
             .Distinct(StringComparer.Ordinal)

@@ -249,4 +249,14 @@ public sealed class IcsImportPlannerTests
         Assert.Contains(IcsImportCodes.TimeAdjusted, item.Warnings);
         Assert.Equal(_berlin.Id, item.Event.TimeZone);
     }
+
+    [Fact]
+    public void Planning_stops_at_its_time_budget()
+    {
+        var roots = IcsReader.Read(Calendar("BEGIN:VEVENT", "UID:a@x", "SUMMARY:A", "DTSTART;VALUE=DATE:20261022", "END:VEVENT"), 10, out _, out _)!;
+
+        var error = Assert.Throws<Errors.AppException>(() => IcsImportPlanner.Plan(roots, _berlin, CalendarId, CreatorId, Now, TimeSpan.FromTicks(-1)));
+
+        Assert.Equal(Errors.ErrorCodes.IcsTooComplex, error.Code);
+    }
 }

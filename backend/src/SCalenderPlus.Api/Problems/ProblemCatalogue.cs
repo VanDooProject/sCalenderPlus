@@ -52,6 +52,7 @@ public static class ProblemCatalogue
         [ErrorCodes.OverrideInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Invalid permission entries"),
         [ErrorCodes.IcsInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Not a valid iCalendar file"),
         [ErrorCodes.IcsTooManyEvents] = new(StatusCodes.Status422UnprocessableEntity, "Too many events in the file"),
+        [ErrorCodes.IcsTooComplex] = new(StatusCodes.Status422UnprocessableEntity, "File too complex"),
         [ErrorCodes.EmailDomainNotAllowed] = new(StatusCodes.Status422UnprocessableEntity, "Email domain not allowed"),
         [ErrorCodes.RateLimited] = new(StatusCodes.Status429TooManyRequests, "Too many requests"),
         [ErrorCodes.InternalError] = new(StatusCodes.Status500InternalServerError, "Internal server error"),
