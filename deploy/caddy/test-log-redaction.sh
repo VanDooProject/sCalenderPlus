@@ -46,6 +46,8 @@ for path in \
   "//ical/v1/$secret.ics" \
   "/%69cal/v1/$secret.ics" \
   "/ical%2Fv1/$secret.ics" \
+  "/ical%5Cv1/$secret.ics" \
+  "/ical\\v1/$secret.ics" \
   "/ical/v1/x.ics?token=$secret"; do
   curl -s -o /dev/null -H "Referer: https://app.example.test/ical/v1/s/$link_secret.ics" "$base$path" || true
 done

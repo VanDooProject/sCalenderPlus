@@ -39,4 +39,4 @@ Refresh behaviour comes from [sync.md](../architecture/sync.md): feeds are polle
 - Changes reach a calendar app only when it refreshes; our own web app is always current.
 - Removing someone's access stops future updates, but copies a calendar app already downloaded stay there until its next refresh. Nobody can recall them sooner ([sync.md §4](../architecture/sync.md#4-what-we-control)).
 - Busy-only events appear as "Busy" (or with their cover title) in calendar apps too; hidden events don't appear.
-- Feeds are rate-limited per link (60 requests per hour); refreshing every 15 minutes is enough.
+- Feeds are rate-limited per link (60 requests per hour) and per network (600 requests per hour from one IP address or IPv6 /64), so a household with many subscribed devices is fine; refreshing every 15 minutes is enough.
