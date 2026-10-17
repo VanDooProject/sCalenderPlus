@@ -28,6 +28,7 @@ const signedInPages = [
   ['groups', '/groups', 'Groups'],
   ['profile', '/settings/profile', 'Settings'],
   ['security', '/settings/security', 'Settings'],
+  ['calendar feeds', '/settings/feeds', 'Settings'],
   ['group members', `/groups/${groups.lions}/members`, 'FC Lions'],
   ['group invites', `/groups/${groups.lions}/invites`, 'FC Lions'],
   ['group settings', `/groups/${groups.lions}/settings`, 'FC Lions'],
