@@ -41,6 +41,7 @@ internal static class CalendarEndpoints
         calendars.MapGrantEndpoints();
         calendars.MapPrefsEndpoints(v1);
         calendars.MapShareLinkEndpoints(v1);
+        calendars.MapIcsUploadEndpoints();
 
         return calendars;
     }

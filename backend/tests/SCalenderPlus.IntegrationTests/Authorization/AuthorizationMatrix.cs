@@ -606,6 +606,23 @@ public static class AuthorizationMatrix
             .Expect(Actors.OtherUser, HttpStatusCode.NotFound)
             .Expect(Actors.User, HttpStatusCode.OK),
 
+        // ICS upload (M4): calendar contribute (permissions.md §4.5 "create events") and a verified email; dry runs
+        // here, so no case changes the calendar.
+        .. For("POST", "/api/v1/calendars/{id}/ics-upload")
+            .WithRoute(LionsCalendar)
+            .WithQuery("dryRun=true")
+            .WithBody(_ => IcsFile())
+            .Expect(Actors.Anonymous, HttpStatusCode.Unauthorized)
+            .Expect(Actors.UnverifiedUser, HttpStatusCode.Forbidden, "email_not_verified")
+            .Expect(Actors.OtherTenant, HttpStatusCode.NotFound)
+            .Expect(Actors.NonMember, HttpStatusCode.NotFound)
+            .Expect(Actors.CalendarFreeBusy, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupViewer, HttpStatusCode.Forbidden)
+            .Expect(Actors.GroupMember, HttpStatusCode.OK)
+            .Expect(Actors.CalendarEditor, HttpStatusCode.OK)
+            .Expect(Actors.GroupAdmin, HttpStatusCode.OK)
+            .Expect(Actors.GroupOwner, HttpStatusCode.OK),
+
         // Share links (M4): calendar manage (permissions.md §4.5); creating needs a verified email.
         .. For("GET", "/api/v1/calendars/{id}/share-links")
             .WithRoute(LionsCalendar)
@@ -650,6 +667,9 @@ public static class AuthorizationMatrix
     private static IReadOnlyDictionary<string, string> IfMatchAny => new Dictionary<string, string>(StringComparer.Ordinal) { ["If-Match"] = "*" };
 
     private static IReadOnlyDictionary<string, string> Lions(MatrixScenario s) => Route(s, "group:lions");
+
+    private static StringContent IcsFile() =>
+        new("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:matrix@example.test\r\nSUMMARY:Matrix\r\nDTSTART;VALUE=DATE:20261102\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", System.Text.Encoding.UTF8, "text/calendar");
 
     private static IReadOnlyDictionary<string, string> LionsCalendar(MatrixScenario s) => Route(s, "calendar:lions");
 

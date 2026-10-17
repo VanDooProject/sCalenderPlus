@@ -49,7 +49,7 @@ All errors are `application/problem+json`:
 | 402 | `plan_limit_reached` (+ `limit`, `plan`, `trialEndsAt`), `feature_not_in_plan` (+ `feature`) |
 | 412 / 428 | `precondition_failed`, `precondition_required` |
 | 413 / 415 | `payload_too_large`, `unsupported_media_type` |
-| 422 | `recurrence_invalid` (malformed RRULE/RDATE/EXDATE, UNTIL before the start), `recurrence_not_supported` (valid RFC 5545 outside the supported subset, naming the part), `time_zone_invalid`, `email_domain_not_allowed`, `override_invalid` (+ `violations`) (all + `errors` with the field, like `validation_failed`) |
+| 422 | `recurrence_invalid` (malformed RRULE/RDATE/EXDATE, UNTIL before the start), `recurrence_not_supported` (valid RFC 5545 outside the supported subset, naming the part), `time_zone_invalid`, `email_domain_not_allowed`, `override_invalid` (+ `violations`) (all + `errors` with the field, like `validation_failed`), `ics_invalid`, `ics_too_many_events` (+ `limit`) (ICS upload) |
 | 429 | `rate_limited` |
 | 500 / 503 | `internal_error` (no details; correlate via `traceId`), `service_unavailable` |
 
@@ -115,7 +115,7 @@ Auth endpoints (`/api/v1/auth/…`): `register`, `login` (password → may answe
 | **Revisions** (v1) | `GET /events/{id}/revisions`, `POST /events/{id}/revisions/{rev}/restore` |
 | **Availability** (v1) | `POST /availability` (principals + window → busy blocks, respecting permissions) |
 | **Feeds** | `GET/POST /feed-tokens`, `POST /feed-tokens/rotate-all`, `GET/PATCH/DELETE /feed-tokens/{id}`, `POST /feed-tokens/{id}/rotate` (implemented, M4); the feeds themselves are `GET /ical/v1/{token}.ics` and `GET /ical/v1/s/{token}.ics` (outside `/api/v1`, see "Feeds") |
-| **ICS upload** (MVP) | `POST /calendars/{id}/ics-upload?dryRun=true\|false` |
+| **ICS upload** (MVP) | `POST /calendars/{id}/ics-upload?dryRun=true\|false` (implemented, M4, see "ICS upload") |
 | **Imports** (v1) | `GET/POST /calendars/{id}/import-sources`, `GET/PATCH/DELETE /import-sources/{id}`, `POST /import-sources/{id}/dry-run`, `POST /import-sources/{id}/run`, `GET /import-sources/{id}/runs`, `GET /import-candidates?state=pending`, `POST /import-candidates/decide` (bulk) |
 | **Changes** (later, with CalDAV/native apps) | `GET /changes?since={seq}&calendarIds=` (incremental sync; must also emit deletes when an event becomes `none` for the caller) |
 | **Notifications** (v1) | `GET /notifications`, `POST /notifications/read`, `PUT /me/push-subscriptions` |
@@ -260,6 +260,15 @@ For `free_busy` events the API returns only `id`, `calendarId`, `start`, `end`, 
 - Order: by `start.utc` (all-day: the padded start), then id. At most **5,000** events: beyond, the first 5,000 are returned with `truncated: true` (query a smaller window).
 - Queries (permissions.md §8): the caller's memberships, candidate calendars, their grants, then **one SQL query** over the GiST index `(calendar_id, occurs_range)` — a `LATERAL` join per visible calendar so both index columns are used (`EventQueryService.WindowSql`) — plus overrides only for events with `has_overrides` and one lookup of creator names. With 100,000 events in 20 calendars (10 visible, ≈ 1,000 events a month), a month takes ≈ 2.5 ms in PostgreSQL and p95 ≈ 80 ms end to end on a developer machine (`EventWindowPerformanceTests`: EXPLAIN must show the GiST index; the 150 ms budget is asserted locally, CI only logs it and asserts a 1 s ceiling because shared runners are too noisy for a tight timing assertion).
 - `expand=occurrences` returns series as their occurrences (`occurrenceId = {eventId}:{recurrenceId}`) for calendar views; without `expand` series masters (for sync clients) — see "Recurring events". The candidate query orders by the start of `occurs_range` (a series' earliest occurrence).
+
+### ICS upload (implemented, M4)
+
+One-time import of an `.ics` file into a calendar ([ical-caldav.md §2](ical-caldav.md#2-ics-import), `Application/Import/IcsImportService`): `POST /calendars/{id}/ics-upload?dryRun=true|false` with the file as the body (`Content-Type: text/calendar`, UTF-8; other types `415 unsupported_media_type`). `dryRun` defaults to `true` (preview); the commit sends the same file again with `dryRun=false` — the api keeps nothing between the two.
+
+- Needs calendar level `contribute` (creating events; below → `403`, none → `404`), a verified email (`403 email_not_verified`) and a calendar that is not frozen (`409 calendar_frozen`). At most 5 MB (`413 payload_too_large`) and 5,000 VEVENTs (`422 ics_too_many_events` + `limit: { max }`); not iCalendar → `422 ics_invalid`.
+- `200 { calendarId, dryRun, counts: { total, created, duplicates, skipped, series, modifiedOccurrences, cancelledOccurrences }, warnings: [{ code, count }], items: [{ uid, title, start, end, allDay, rrule, modifiedOccurrences, cancelledOccurrences, action: create|duplicate|skip, reason, warnings }] }` — the same report for preview and commit (`created` = would be created in a preview). Items are the file's events in file order (a series once). Reasons: `exists`, `duplicate_in_file` (duplicates); `start_missing`, `time_invalid`, `recurrence_not_supported`, `recurrence_invalid`, `cancelled` (skipped). Warnings: `time_zone_unknown`, `floating_time`, `title_missing`, `truncated`, `url_invalid`, `private_event`, `end_before_start`, `time_adjusted_dst`, `uid_generated`, `dates_capped`, `rdate_period_ignored`, `occurrence_not_found`, `occurrence_ignored`, `orphan_occurrence`, `unsupported_components`.
+- Dedupe by UID: an event whose UID a live event of the calendar has is a duplicate — re-uploading a file creates nothing; existing events are not updated. The uploader is the creator of every event; no overrides are set; no plan limit applies.
+- Effects (commit): events and exceptions inserted in one transaction under the calendar's advisory lock, one `calendar_changes` upsert per event, one audit record `calendar.ics_imported` (resource `calendar`, after: the counts).
 
 ### Feeds (implemented, M4)
 

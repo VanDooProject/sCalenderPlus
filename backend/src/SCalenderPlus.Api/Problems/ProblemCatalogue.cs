@@ -49,6 +49,8 @@ public static class ProblemCatalogue
         [ErrorCodes.TimeZoneInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Invalid time zone"),
         [ErrorCodes.RecurrenceNotSupported] = new(StatusCodes.Status422UnprocessableEntity, "Recurrence not supported"),
         [ErrorCodes.OverrideInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Invalid permission entries"),
+        [ErrorCodes.IcsInvalid] = new(StatusCodes.Status422UnprocessableEntity, "Not a valid iCalendar file"),
+        [ErrorCodes.IcsTooManyEvents] = new(StatusCodes.Status422UnprocessableEntity, "Too many events in the file"),
         [ErrorCodes.EmailDomainNotAllowed] = new(StatusCodes.Status422UnprocessableEntity, "Email domain not allowed"),
         [ErrorCodes.RateLimited] = new(StatusCodes.Status429TooManyRequests, "Too many requests"),
         [ErrorCodes.InternalError] = new(StatusCodes.Status500InternalServerError, "Internal server error"),

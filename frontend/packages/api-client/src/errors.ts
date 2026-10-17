@@ -20,6 +20,8 @@ const errorCodeSet = {
   feature_not_in_plan: true,
   group_frozen: true,
   group_has_calendars: true,
+  ics_invalid: true,
+  ics_too_many_events: true,
   insufficient_permission: true,
   internal_error: true,
   invalid_credentials: true,

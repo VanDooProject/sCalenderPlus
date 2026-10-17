@@ -675,6 +675,8 @@
       "feature_not_in_plan": "Diese Funktion ist in deinem Tarif nicht enthalten.",
       "group_frozen": "Diese Gruppe ist schreibgeschützt, weil das Tariflimit überschritten ist.",
       "group_has_calendars": "Lösche oder verschiebe zuerst die Kalender der Gruppe.",
+      "ics_invalid": "Die Datei ist keine gültige Kalenderdatei (.ics).",
+      "ics_too_many_events": "Die Datei enthält mehr als 5.000 Termine. Teile sie in kleinere Dateien auf.",
       "insufficient_permission": "Dazu fehlt dir die Berechtigung.",
       "internal_error": "Bei uns ist etwas schiefgelaufen. Bitte versuche es erneut.",
       "invalid_credentials": "E-Mail-Adresse oder Passwort ist falsch.",

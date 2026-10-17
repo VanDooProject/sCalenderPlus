@@ -675,6 +675,8 @@
       "feature_not_in_plan": "This feature is not included in your plan.",
       "group_frozen": "This group is read-only because the plan limit was exceeded.",
       "group_has_calendars": "Delete or move the group's calendars first.",
+      "ics_invalid": "The file is not a valid calendar (.ics) file.",
+      "ics_too_many_events": "The file has more than 5,000 events. Split it into smaller files.",
       "insufficient_permission": "You don't have permission to do this.",
       "internal_error": "Something went wrong on our side. Please try again.",
       "invalid_credentials": "Email address or password is incorrect.",

@@ -6,6 +6,7 @@ import { entitlementHandlers } from './entitlements'
 import { eventHandlers } from './events'
 import { feedHandlers } from './feeds'
 import { groupHandlers } from './groups'
+import { importHandlers } from './imports'
 import { overrideHandlers } from './overrides'
 
 export {
@@ -45,6 +46,7 @@ export {
   resetMockFeeds,
   type MockFeedsState,
 } from './feeds'
+export { mockIcsReport, mockImports, resetMockImports } from './imports'
 export { mockExplain, mockOverrideLimit } from './overrides'
 export {
   mockFullGroupEmail,
@@ -85,4 +87,6 @@ export const handlers = [
   ...overrideHandlers(http),
 
   ...feedHandlers(http),
+
+  ...importHandlers(http),
 ]

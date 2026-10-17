@@ -2217,6 +2217,71 @@
         ]
       }
     },
+    "/api/v1/calendars/{id}/ics-upload": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Import an .ics file into the calendar (contribute; preview with dryRun=true, the default)",
+        "description": "Body: the iCalendar file (Content-Type text/calendar, UTF-8, at most 5 MB and 5,000 VEVENTs: 413 payload_too_large / 422 ics_too_many_events; not iCalendar: 422 ics_invalid). Series keep their RRULE, EXDATEs and RECURRENCE-ID overrides (as exceptions; cancelled ones as cancelled occurrences); TZIDs map to IANA zones (Windows names of Outlook exports too), floating times use X-WR-TIMEZONE or the calendar's zone. Events whose UID the calendar already has are duplicates and left out, so uploading the same file again creates nothing. The uploader becomes the creator; no permission overrides are set. Needs calendar level contribute (below: 403; none: 404), a verified email (403 email_not_verified) and a calendar that is not frozen (409 calendar_frozen).",
+        "operationId": "UploadIcs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "text/calendar": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IcsUploadResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (RFC 9457 problem details with a stable `code`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/me/calendar-prefs": {
       "get": {
         "tags": [
@@ -4107,6 +4172,8 @@
           "feature_not_in_plan",
           "group_frozen",
           "group_has_calendars",
+          "ics_invalid",
+          "ics_too_many_events",
           "insufficient_permission",
           "internal_error",
           "invalid_credentials",
@@ -5067,6 +5134,174 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "IcsUploadCounts": {
+        "required": [
+          "total",
+          "created",
+          "duplicates",
+          "skipped",
+          "series",
+          "modifiedOccurrences",
+          "cancelledOccurrences"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "series": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modifiedOccurrences": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelledOccurrences": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "IcsUploadItem": {
+        "required": [
+          "uid",
+          "title",
+          "start",
+          "end",
+          "allDay",
+          "rrule",
+          "modifiedOccurrences",
+          "cancelledOccurrences",
+          "action",
+          "reason",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "start": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeResponse"
+              }
+            ]
+          },
+          "end": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventTimeResponse"
+              }
+            ]
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "rrule": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "modifiedOccurrences": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelledOccurrences": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "IcsUploadResponse": {
+        "required": [
+          "calendarId",
+          "dryRun",
+          "counts",
+          "warnings",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/IcsUploadCounts"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IcsUploadWarning"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IcsUploadItem"
+            }
+          }
+        }
+      },
+      "IcsUploadWarning": {
+        "required": [
+          "code",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

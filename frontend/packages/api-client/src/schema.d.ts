@@ -631,6 +631,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/calendars/{id}/ics-upload': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Import an .ics file into the calendar (contribute; preview with dryRun=true, the default)
+     * @description Body: the iCalendar file (Content-Type text/calendar, UTF-8, at most 5 MB and 5,000 VEVENTs: 413 payload_too_large / 422 ics_too_many_events; not iCalendar: 422 ics_invalid). Series keep their RRULE, EXDATEs and RECURRENCE-ID overrides (as exceptions; cancelled ones as cancelled occurrences); TZIDs map to IANA zones (Windows names of Outlook exports too), floating times use X-WR-TIMEZONE or the calendar's zone. Events whose UID the calendar already has are duplicates and left out, so uploading the same file again creates nothing. The uploader becomes the creator; no permission overrides are set. Needs calendar level contribute (below: 403; none: 404), a verified email (403 email_not_verified) and a calendar that is not frozen (409 calendar_frozen).
+     */
+    post: operations['UploadIcs']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/me/calendar-prefs': {
     parameters: {
       query?: never
@@ -1133,6 +1153,8 @@ export interface components {
       | 'feature_not_in_plan'
       | 'group_frozen'
       | 'group_has_calendars'
+      | 'ics_invalid'
+      | 'ics_too_many_events'
       | 'insufficient_permission'
       | 'internal_error'
       | 'invalid_credentials'
@@ -1372,6 +1394,50 @@ export interface components {
       errors?: {
         [key: string]: string[]
       }
+    }
+    IcsUploadCounts: {
+      /** Format: int32 */
+      total: number
+      /** Format: int32 */
+      created: number
+      /** Format: int32 */
+      duplicates: number
+      /** Format: int32 */
+      skipped: number
+      /** Format: int32 */
+      series: number
+      /** Format: int32 */
+      modifiedOccurrences: number
+      /** Format: int32 */
+      cancelledOccurrences: number
+    }
+    IcsUploadItem: {
+      uid: string
+      title: string
+      start: null | components['schemas']['EventTimeResponse']
+      end: null | components['schemas']['EventTimeResponse']
+      allDay: boolean
+      rrule: null | string
+      /** Format: int32 */
+      modifiedOccurrences: number
+      /** Format: int32 */
+      cancelledOccurrences: number
+      action: string
+      reason: null | string
+      warnings: string[]
+    }
+    IcsUploadResponse: {
+      /** Format: uuid */
+      calendarId: string
+      dryRun: boolean
+      counts: components['schemas']['IcsUploadCounts']
+      warnings: components['schemas']['IcsUploadWarning'][]
+      items: components['schemas']['IcsUploadItem'][]
+    }
+    IcsUploadWarning: {
+      code: string
+      /** Format: int32 */
+      count: number
     }
     InviteListResponse: {
       items: components['schemas']['InviteResponse'][]
@@ -3142,6 +3208,43 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['IssuedShareLinkResponse']
+        }
+      }
+      /** @description Error (RFC 9457 problem details with a stable `code`). */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails']
+        }
+      }
+    }
+  }
+  UploadIcs: {
+    parameters: {
+      query?: {
+        dryRun?: boolean
+      }
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'text/calendar': string
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IcsUploadResponse']
         }
       }
       /** @description Error (RFC 9457 problem details with a stable `code`). */

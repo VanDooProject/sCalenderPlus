@@ -104,6 +104,12 @@ public static class ErrorCodes
     /// </summary>
     public const string OverrideInvalid = "override_invalid";
 
+    /// <summary>An uploaded file is not an iCalendar object (no VCALENDAR, unbalanced components, broken content lines).</summary>
+    public const string IcsInvalid = "ics_invalid";
+
+    /// <summary>An uploaded file has more events than one upload takes (5,000 VEVENTs); carries <c>limit: { max }</c>.</summary>
+    public const string IcsTooManyEvents = "ics_too_many_events";
+
     /// <summary>Sign-up with an email domain that is blocked (disposable-email providers, operator blocklist); carries <c>errors.email</c>.</summary>
     public const string EmailDomainNotAllowed = "email_domain_not_allowed";
 
