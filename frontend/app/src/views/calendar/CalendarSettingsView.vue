@@ -22,6 +22,7 @@ import SettingsCard from '@/components/SettingsCard.vue'
 import TimeZonePicker from '@/components/TimeZonePicker.vue'
 import CalendarColorPicker from '@/components/calendar/CalendarColorPicker.vue'
 import GrantsCard from '@/components/calendar/GrantsCard.vue'
+import IcsImportCard from '@/components/calendar/IcsImportCard.vue'
 import LevelHelp from '@/components/calendar/LevelHelp.vue'
 import { calendarsQueryKey } from '@/composables/calendars'
 import { calendarKeys, useCalendar, useCalendarChange } from '@/composables/calendarSettings'
@@ -34,6 +35,7 @@ import {
   canDeleteCalendar,
   canManageCalendar,
   isLowering,
+  levelAtLeast,
   roleDefaultLevels,
 } from '@/lib/calendarLevels'
 import { isApiError } from '@/lib/errorMessages'
@@ -452,6 +454,8 @@ async function deleteCalendar() {
       </form>
 
       <GrantsCard v-if="manageable" :calendar="calendar" :my-level="myLevel" :run="run" />
+
+      <IcsImportCard v-if="levelAtLeast(myLevel, 'contribute')" :calendar="calendar" />
 
       <SettingsCard
         v-if="canDeleteCalendar(myLevel)"

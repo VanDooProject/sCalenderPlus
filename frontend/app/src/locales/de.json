@@ -210,6 +210,65 @@
     "settings": "Kalendereinstellungen",
     "settingsOf": "Einstellungen von {name}"
   },
+  "icsImport": {
+    "cardTitle": "Termine importieren",
+    "cardDescription": "Übernimm deine Termine aus Google Kalender, Outlook oder Apple Kalender: exportiere sie als .ics-Datei und lade sie hier hoch. Du siehst vorher, was hinzugefügt wird.",
+    "open": ".ics-Datei importieren",
+    "frozen": "Solange der Kalender eingefroren ist, ist kein Import möglich.",
+    "title": "In {name} importieren",
+    "description": "Wiederkehrende Termine behalten ihre Regeln sowie geänderte und abgesagte Termine. Termine, die der Kalender schon hat, werden übersprungen – ein erneuter Import derselben Datei fügt nichts hinzu.",
+    "noFile": "Keine Datei ausgewählt",
+    "choose": "Datei auswählen",
+    "chooseAnother": "Andere Datei auswählen",
+    "hint": "Eine .ics-Datei mit bis zu 5 MB und 5.000 Terminen. In Google Kalender: Einstellungen → Importieren und exportieren → Exportieren. In Outlook: den Kalender als iCalendar-Datei speichern.",
+    "tooLarge": "Die Datei ist größer als 5 MB. Exportiere einen kürzeren Zeitraum oder teile den Kalender auf.",
+    "counts": {
+      "created": "Nichts Neues | 1 neuer Termin | {n} neue Termine",
+      "duplicates": "Keiner schon vorhanden | 1 schon vorhanden | {n} schon vorhanden",
+      "skipped": "Keiner übersprungen | 1 nicht importierbar | {n} nicht importierbar",
+      "series": "{series} mit {modified} und {cancelled}.",
+      "seriesCount": "Keine Terminserien | 1 Terminserie | {n} Terminserien"
+    },
+    "recurring": "Wiederkehrend",
+    "modified": "keinen geänderten Terminen | 1 geänderten Termin | {n} geänderten Terminen",
+    "cancelled": "keinen abgesagten Terminen | 1 abgesagten Termin | {n} abgesagten Terminen",
+    "listLabel": "Termine in der Datei",
+    "more": "und {n} weitere",
+    "nothing": "Es gibt nichts Neues zu importieren: alle Termine dieser Datei sind schon im Kalender oder nicht importierbar.",
+    "submit": "Importieren | 1 Termin importieren | {n} Termine importieren",
+    "done": "Nichts importiert | 1 Termin importiert | {n} Termine importiert",
+    "actions": {
+      "create": "Neu",
+      "duplicate": "Schon vorhanden",
+      "skip": "Übersprungen"
+    },
+    "reasons": {
+      "exists": "schon in diesem Kalender",
+      "duplicate_in_file": "kommt in der Datei doppelt vor",
+      "start_missing": "hat keinen Beginn",
+      "time_invalid": "die Zeit ist nicht lesbar",
+      "recurrence_not_supported": "diese Art der Wiederholung wird nicht unterstützt (z. B. stündlich)",
+      "recurrence_invalid": "die Wiederholungsregel ist ungültig",
+      "cancelled": "abgesagt"
+    },
+    "warnings": {
+      "time_zone_unknown": "1 Termin hat eine unbekannte Zeitzone: seine Zeiten gelten in der Zeitzone des Kalenders. | {n} Termine haben eine unbekannte Zeitzone: ihre Zeiten gelten in der Zeitzone des Kalenders.",
+      "floating_time": "1 Termin hat keine Zeitzone: seine Zeiten gelten in der Zeitzone des Kalenders. | {n} Termine haben keine Zeitzone: ihre Zeiten gelten in der Zeitzone des Kalenders.",
+      "title_missing": "1 Termin hat keinen Titel und wird als „(No title)“ importiert. | {n} Termine haben keinen Titel und werden als „(No title)“ importiert.",
+      "truncated": "1 Termin hat zu lange Texte; sie werden gekürzt. | {n} Termine haben zu lange Texte; sie werden gekürzt.",
+      "url_invalid": "1 Termin hat einen ungültigen Link, der weggelassen wird. | {n} Termine haben einen ungültigen Link, der weggelassen wird.",
+      "private_event": "1 Termin ist in der Datei als privat markiert. Alle, die diesen Kalender sehen, sehen ihn – schränke ihn nach dem Import bei Bedarf ein. | {n} Termine sind in der Datei als privat markiert. Alle, die diesen Kalender sehen, sehen sie – schränke sie nach dem Import bei Bedarf ein.",
+      "end_before_start": "1 Termin endet vor seinem Beginn; er bekommt keine Dauer. | {n} Termine enden vor ihrem Beginn; sie bekommen keine Dauer.",
+      "time_adjusted_dst": "1 Termin beginnt zu einer Uhrzeit, die es wegen der Zeitumstellung nicht gibt; er wird nach hinten verschoben. | {n} Termine beginnen zu einer Uhrzeit, die es wegen der Zeitumstellung nicht gibt; sie werden nach hinten verschoben.",
+      "uid_generated": "1 Termin hat keine verwendbare ID; er bekommt eine, sodass ein erneuter Import trotzdem nichts doppelt anlegt. | {n} Termine haben keine verwendbare ID; sie bekommen eine, sodass ein erneuter Import trotzdem nichts doppelt anlegt.",
+      "dates_capped": "1 Terminserie hat zu viele zusätzliche oder ausgenommene Termine; nur die ersten werden übernommen. | {n} Terminserien haben zu viele zusätzliche oder ausgenommene Termine; nur die ersten werden übernommen.",
+      "rdate_period_ignored": "1 Terminserie hat zusätzliche Termine als Zeiträume; sie werden weggelassen. | {n} Terminserien haben zusätzliche Termine als Zeiträume; sie werden weggelassen.",
+      "occurrence_not_found": "1 Terminserie hat Änderungen für Termine, die es in ihr nicht gibt; sie werden weggelassen. | {n} Terminserien haben Änderungen für Termine, die es in ihnen nicht gibt; sie werden weggelassen.",
+      "occurrence_ignored": "1 Termin hat Änderungen einzelner Termine, die nicht importiert werden können; sie werden weggelassen. | {n} Termine haben Änderungen einzelner Termine, die nicht importiert werden können; sie werden weggelassen.",
+      "orphan_occurrence": "1 geänderter Termin hat keine Terminserie in der Datei; er wird einzeln importiert. | {n} geänderte Termine haben keine Terminserie in der Datei; sie werden einzeln importiert.",
+      "unsupported_components": "Die Datei enthält auch Aufgaben oder Notizen; importiert werden nur Termine. | Die Datei enthält auch Aufgaben oder Notizen; importiert werden nur Termine."
+    }
+  },
   "calendarSettings": {
     "title": "{name}: Einstellungen",
     "back": "Zurück zum Kalender",
