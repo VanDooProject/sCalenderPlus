@@ -72,7 +72,7 @@ Items marked ★ are proactive additions not in the original brief, with the rea
 | ★ Attachments (files) | later | Storage costs; links cover most needs initially. |
 | ★ Event comments | later | Nice for clubs, but not core. |
 | ★ Per-occurrence permission overrides | later | MVP: exceptions inherit series ACL (keeps engine simple). |
-| ★ Cover titles (`coverTitle` shown to `free_busy` viewers instead of "Busy") | MVP (built) | "Busy with Alex" is more useful than "Busy" and still reveals nothing private; built in API and web app, feeds use it from M4 ([privacy-levels.md §5](../architecture/privacy-levels.md#5-cover-titles)). |
+| ★ Cover titles (`coverTitle` shown to `free_busy` viewers instead of "Busy") | MVP (built) | "Busy with Alex" is more useful than "Busy" and still reveals nothing private; built in API, web app and iCal feeds ([privacy-levels.md §5](../architecture/privacy-levels.md#5-cover-titles)). |
 
 ## 5. Views and UX
 

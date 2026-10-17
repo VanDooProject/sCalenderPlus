@@ -60,7 +60,7 @@ Built now for level C; kept clear in level B so busy-only consumers can render i
 | `free_busy` viewers | see `coverTitle` (if set) instead of the generic "Busy"; still never description, location or the real title |
 | `read` and above | see the real `title` **and** `coverTitle`, so editors know what outsiders see |
 
-Status: **built** in the API and web app (event dialog, busy rendering). **From M4** feeds use it: `free_busy` VEVENTs get `SUMMARY:<coverTitle>` instead of the busy label; the same projection applies to CalDAV (M8) and Google/Microsoft sync.
+Status: **built** in the API, the web app (event dialog, busy rendering) and the iCal feeds (M4): `free_busy` VEVENTs get `SUMMARY:<coverTitle>` instead of the busy label, also per occurrence ([ical-caldav.md §1.3](ical-caldav.md#13-permission-projection-and-access-labels)); the same projection applies to CalDAV (M8) and Google/Microsoft sync.
 
 ## 6. Rollout recommendation
 
