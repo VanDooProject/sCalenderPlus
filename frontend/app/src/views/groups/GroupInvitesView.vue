@@ -15,6 +15,7 @@ import {
 import type { GroupRole, InviteResponse } from '@scalenderplus/api-client'
 import { api } from '@/api'
 import FormAlert from '@/components/FormAlert.vue'
+import QrCode from '@/components/QrCode.vue'
 import RoleBadge from '@/components/groups/RoleBadge.vue'
 import SettingsCard from '@/components/SettingsCard.vue'
 import { useCurrentGroup } from '@/composables/currentGroup'
@@ -297,6 +298,11 @@ const expires = (invite: InviteResponse) =>
                     <Copy class="size-4" aria-hidden="true" />{{ t('groups.invites.copyLink') }}
                   </UiButton>
                 </div>
+                <QrCode
+                  :value="createdLink"
+                  :label="t('groups.invites.linkQr')"
+                  class="mt-1 size-36 self-start"
+                />
               </div>
             </div>
             <template #footer>

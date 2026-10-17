@@ -12,6 +12,10 @@ import { groupKeys } from '@/composables/groups'
 import { call } from '@/lib/apiError'
 
 const open = defineModel<boolean>('open', { default: false })
+/** The page of the new group to go to (the onboarding checklist goes on to its invites). */
+const props = withDefaults(defineProps<{ next?: 'group-members' | 'group-invites' }>(), {
+  next: 'group-members',
+})
 
 const { t } = useI18n()
 const router = useRouter()
@@ -45,7 +49,7 @@ async function submit() {
     await queryClient.invalidateQueries({ queryKey: groupKeys.list() })
     open.value = false
     toast.success(t('groups.createDialog.created', { name: data.name }))
-    await router.push({ name: 'group-members', params: { groupId: data.id } })
+    await router.push({ name: props.next, params: { groupId: data.id } })
   })
 }
 </script>

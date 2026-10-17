@@ -15,6 +15,8 @@ withDefaults(
   { align: 'end' },
 )
 const open = defineModel<boolean>('open', { default: false })
+/** Closing returns the focus to the trigger; `preventDefault()` keeps it where an item moved it. */
+defineEmits<{ closeAutoFocus: [event: Event] }>()
 </script>
 
 <template>
@@ -28,6 +30,7 @@ const open = defineModel<boolean>('open', { default: false })
         :side-offset="6"
         :data-testid="testid"
         class="z-50 min-w-56 animate-scale-in rounded-xl border border-border bg-surface-raised p-1 text-on-surface shadow-overlay"
+        @close-auto-focus="$emit('closeAutoFocus', $event)"
       >
         <slot />
       </DropdownMenuContent>

@@ -468,7 +468,8 @@
       "revokeText": "Der Link oder die E-Mail-Einladung funktioniert dann sofort nicht mehr.",
       "revoked": "Einladung widerrufen.",
       "noPermission": "Nur Admins und Inhaber können Leute einladen und offene Einladungen sehen.",
-      "verifyFirst": "Bestätige deine E-Mail-Adresse, um Leute einzuladen."
+      "verifyFirst": "Bestätige deine E-Mail-Adresse, um Leute einzuladen.",
+      "linkQr": "QR-Code des Einladungslinks"
     },
     "settings": {
       "title": "Gruppendetails",
@@ -1155,6 +1156,46 @@
         "recall": "Entziehst du jemandem den Zugriff, enden künftige Aktualisierungen, aber Kopien, die eine Kalender-App schon geladen hat, bleiben dort bis zu ihrer nächsten Aktualisierung. Niemand kann sie früher zurückholen.",
         "busy": "Termine, bei denen du nur siehst, dass jemand belegt ist, erscheinen auch in Kalender-Apps als „Belegt“ (oder mit ihrem Ersatztitel); ausgeblendete Termine erscheinen gar nicht.",
         "rate": "Sehr häufig abgerufene Links werden gebremst; einmal alle 15 Minuten genügt."
+      }
+    }
+  },
+  "onboarding": {
+    "title": "Los geht’s",
+    "description": "Drei Schritte, bis dein Kalender geteilt ist – etwa zwei Minuten.",
+    "progress": "{done} von {total} erledigt",
+    "progressLabel": "Fortschritt der Einrichtung",
+    "stepDone": "Erledigt",
+    "stepOpen": "Offen",
+    "optional": "Optional",
+    "hide": "Checkliste ausblenden",
+    "hidden": "Checkliste ausgeblendet. Du kannst sie im Kontomenü wieder öffnen.",
+    "reopen": "Erste Schritte",
+    "finishedTitle": "Alles eingerichtet",
+    "finishedText": "Dein Kalender ist bereit, Leute sind eingeladen und deine Kalender-App zeigt alles an.",
+    "close": "Checkliste schließen",
+    "steps": {
+      "calendar": {
+        "title": "Lege deinen ersten Kalender an",
+        "text": "Ein persönlicher Kalender für deine Termine. Weitere kannst du jederzeit anlegen.",
+        "action": "Kalender anlegen"
+      },
+      "group": {
+        "title": "Lade deine Gruppe ein",
+        "text": "Lege eine Gruppe an und teile einen Einladungslink oder seinen QR-Code mit den Leuten, mit denen du planst.",
+        "create": "Gruppe anlegen",
+        "invite": "Einladungslink erstellen",
+        "verifyFirst": "Bestätige zuerst deine E-Mail-Adresse: Einladungen brauchen eine bestätigte Adresse."
+      },
+      "feed": {
+        "title": "In deiner Kalender-App abonnieren",
+        "text": "Ein persönlicher Link zeigt alle deine Kalender in Apple Kalender, Google Kalender, Outlook oder Thunderbird.",
+        "action": "Feed-Link holen"
+      },
+      "event": {
+        "title": "Probiere Rechte pro Termin aus",
+        "text": "Lege einen Termin mit Ersatztitel an: Wer nur sieht, wann du belegt bist, sieht ihn statt „Belegt“. Wer was sieht, stellst du pro Termin unter Berechtigungen ein.",
+        "action": "Termin anlegen",
+        "needsCalendar": "Lege zuerst einen Kalender an."
       }
     }
   }

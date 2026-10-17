@@ -10,6 +10,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import EnvironmentBadge from '@/components/EnvironmentBadge.vue'
 import LegalLinks from '@/components/LegalLinks.vue'
 import LocaleMenu from '@/components/LocaleMenu.vue'
+import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import TrialNotice from '@/components/TrialNotice.vue'
@@ -90,7 +91,10 @@ const drawerOpen = ref(false)
             {{ t('common.retry') }}
           </UiButton>
         </EmptyState>
-        <RouterView v-else />
+        <template v-else>
+          <OnboardingChecklist v-if="user" />
+          <RouterView />
+        </template>
       </main>
       <footer class="px-4 pb-4 text-center text-xs text-on-surface-muted sm:px-6 lg:px-8">
         <LegalLinks>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Temporal } from 'temporal-polyfill'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/vue-query'
@@ -210,6 +210,23 @@ useLinkedEvent((event, edit) => {
     detailsOpen.value = true
   }
 })
+
+/**
+ * `?new=1` (the onboarding checklist's "Add event"): the new event dialog once the calendars are
+ * known; the parameter is removed first so closing the dialog does not reopen it.
+ */
+watch(
+  [() => route.query.new, () => calendars.isSuccess.value],
+  ([value, loaded]) => {
+    if (value !== '1' || !loaded) return
+    const query = { ...route.query }
+    delete query.new
+    void router.replace({ query })
+    // After mounting: the dialog fills its form when `open` changes, not when it mounts open.
+    void nextTick(() => openNew())
+  },
+  { immediate: true },
+)
 
 const moveOpen = ref(false)
 const moveEvent = ref<EventResponse | null>(null)

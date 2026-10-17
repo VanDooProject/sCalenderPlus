@@ -143,5 +143,14 @@
       "owned_groups": "Mehrere Konstellationen? Mit Pro kannst du mehr davon besitzen.",
       "members_per_group": "Deine Konstellation wächst. Pro bietet Platz für viel mehr Mitglieder pro Konstellation."
     }
+  },
+  "onboarding": {
+    "steps": {
+      "group": {
+        "title": "Lade deine Konstellation ein",
+        "text": "Lege eine Konstellation an und teile einen Einladungslink oder seinen QR-Code mit den Leuten, mit denen du planst.",
+        "create": "Konstellation anlegen"
+      }
+    }
   }
 }
