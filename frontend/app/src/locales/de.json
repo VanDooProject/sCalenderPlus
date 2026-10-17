@@ -630,7 +630,10 @@
       "doneText": "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
       "toLogin": "Anmelden",
       "invalidText": "Der Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordere einen neuen an.",
-      "requestNew": "Neuen Link anfordern"
+      "requestNew": "Neuen Link anfordern",
+      "rotateFeeds": "Auch meine Kalender-Feed-Links erneuern",
+      "rotateFeedsHint": "Gibt jedem Feed-Link eine neue geheime Adresse, falls jemand anderes einen hat. Die neuen Adressen holst du dir danach unter Einstellungen → Kalender-Feeds.",
+      "feedsRotated": "Deine Feed-Links haben neue Adressen bekommen. Hol sie dir nach dem Anmelden unter Einstellungen → Kalender-Feeds und aktualisiere deine Kalender-Apps."
     },
     "verify": {
       "title": "E-Mail-Adresse bestätigen",
@@ -934,6 +937,183 @@
     "comingSoon": "Upgrades kommen bald: In der Beta gibt es noch keinen Bezahlvorgang.",
     "notNow": "Nicht jetzt",
     "ok": "OK"
+  },
+  "feeds": {
+    "title": "Kalender-Feeds",
+    "description": "Persönliche Links, die deine Kalender in Apple Kalender, Google Kalender, Outlook und anderen Apps zeigen – genau so, wie du sie in {app} sehen darfst. Behandle jeden Link wie ein Passwort.",
+    "help": "So abonnierst du in deiner Kalender-App",
+    "latency": "Widerrufst du einen Link oder gibst ihm eine neue Adresse, funktioniert die alte sofort nicht mehr; Kalender-Apps merken das bei ihrer nächsten Aktualisierung.",
+    "scope": {
+      "aggregate": "Alle meine Kalender",
+      "calendarNamed": "Kalender: {name}",
+      "calendarGone": "Ein Kalender, den du nicht mehr siehst",
+      "shared_with_me": "Mit mir geteilt"
+    },
+    "labelModes": {
+      "prefix_emoji": {
+        "label": "🔒 vor schreibgeschützten Terminen (empfohlen)",
+        "example": "Schreibgeschützt: „🔒 Vorstandssitzung“; Termine, die du bearbeiten kannst, bleiben unmarkiert."
+      },
+      "prefix_emoji_both": {
+        "label": "🔒 schreibgeschützt und ✏️ bearbeitbar",
+        "example": "„🔒 Vorstandssitzung“, „✏️ Training“."
+      },
+      "suffix_text": {
+        "label": "Ein Wort nach dem Titel",
+        "example": "„Vorstandssitzung [schreibgeschützt]“, „Training [bearbeitbar]“."
+      },
+      "description_only": {
+        "label": "Nur in der Beschreibung",
+        "example": "Titel bleiben unverändert; die Beschreibung sagt, ob du den Termin bearbeiten kannst."
+      },
+      "none": {
+        "label": "Keine Markierung",
+        "example": "Titel und Beschreibungen bleiben unverändert."
+      }
+    },
+    "list": {
+      "emptyTitle": "Noch keine Feed-Links",
+      "emptyText": "Erstelle einen Link für alle deine Kalender und füge ihn in deiner Kalender-App hinzu.",
+      "empty": "Keine Feed-Links.",
+      "lastUsed": "Zuletzt abgerufen {when}",
+      "neverUsed": "Noch nicht abgerufen",
+      "created": "erstellt {when}",
+      "pastDays": "Nur kommende Termine | Mit dem vergangenen Tag | Mit den vergangenen {n} Tagen"
+    },
+    "needsNew": {
+      "title": "Ein Feed-Link funktioniert nicht mehr | {n} Feed-Links funktionieren nicht mehr",
+      "text": "Beim Zurücksetzen deines Passworts haben sie neue geheime Adressen bekommen. Hol dir für jeden eine neue Adresse und aktualisiere das Abo in deiner Kalender-App.",
+      "badge": "Braucht eine neue Adresse",
+      "action": "Neue Adresse holen"
+    },
+    "create": {
+      "action": "Neuer Link",
+      "title": "Neuer Feed-Link",
+      "description": "Wähle, was der Link zeigt. Seine Adresse siehst du nur einmal.",
+      "scope": "Zeigt",
+      "scopes": {
+        "aggregate": "Alle meine Kalender (empfohlen)",
+        "calendar": "Einen Kalender",
+        "shared_with_me": "Nur mit mir geteilte Termine"
+      },
+      "scopeHints": {
+        "aggregate": "Jeder Kalender, den du siehst und nicht ausgeblendet hast, dazu mit dir geteilte Termine: ein Abo für alles.",
+        "calendar": "Die Termine eines Kalenders, so wie du sie siehst.",
+        "shared_with_me": "Termine, die Leute persönlich mit dir geteilt haben, aus Kalendern, die du sonst nicht siehst."
+      },
+      "calendar": "Kalender",
+      "calendarPlaceholder": "Kalender wählen",
+      "pickCalendar": "Wähle zuerst einen Kalender.",
+      "labelMode": "Termine danach markieren, was du darfst",
+      "name": "Name",
+      "nameHint": "Optional, z. B. das Gerät, auf dem du ihn nutzt.",
+      "pastDays": "Vergangene Termine",
+      "pastDaysOption": "Nur kommende | Auch der vergangene Tag | Auch die vergangenen {n} Tage",
+      "submit": "Link erstellen"
+    },
+    "reveal": {
+      "title": "Dein Feed-Link",
+      "newTitle": "Neue Adresse",
+      "once": "Kopiere die Adresse jetzt: Sie wird nur dieses eine Mal angezeigt. Wer sie hat, sieht, was der Link zeigt – halte sie also privat.",
+      "address": "Feed-Adresse",
+      "copyFailed": "Kopieren hat nicht geklappt: Markiere die Adresse und kopiere sie selbst.",
+      "openApp": "In Kalender-App öffnen",
+      "qrLabel": "QR-Code der Feed-Adresse",
+      "qrHint": "Mit der Handykamera scannen, um zu abonnieren.",
+      "done": "Fertig"
+    },
+    "rotate": {
+      "action": "Neue Adresse",
+      "actionFor": "Neue Adresse für {name}",
+      "title": "Neue Adresse für {name}?",
+      "text": "Die aktuelle Adresse funktioniert sofort nicht mehr. Aktualisiere das Abo in deinen Kalender-Apps mit der neuen."
+    },
+    "revoke": {
+      "action": "Widerrufen",
+      "actionFor": "{name} widerrufen",
+      "title": "{name} widerrufen?",
+      "text": "Die Adresse funktioniert sofort nicht mehr und Kalender-Apps bekommen keine Aktualisierungen mehr.",
+      "done": "{name} widerrufen."
+    },
+    "rotateAll": {
+      "title": "Neue Adressen für alle Links",
+      "description": "Falls ein Link in falsche Hände geraten sein könnte, ersetze alle Adressen auf einmal. Jede neue Adresse wird einmal angezeigt.",
+      "action": "Alle Adressen ersetzen",
+      "confirmTitle": "Alle Feed-Adressen ersetzen?",
+      "confirmText": "Alle aktuellen Adressen funktionieren sofort nicht mehr. Aktualisiere danach jedes Abo in deinen Kalender-Apps.",
+      "revealTitle": "Neue Adressen"
+    },
+    "subscribe": {
+      "action": "In Kalender-App abonnieren",
+      "title": "{name} abonnieren",
+      "text": "Hol dir eine persönliche Adresse für {name} und füge sie in deiner Kalender-App hinzu. Sie zeigt den Kalender genau so, wie du ihn hier siehst.",
+      "existing": "Du hast schon einen Link für diesen Kalender (zuletzt abgerufen: {when}). Seine Adresse wurde nur beim Erstellen angezeigt.",
+      "notYet": "noch nicht",
+      "existingBroken": "Dein Link für diesen Kalender funktioniert seit dem Zurücksetzen deines Passworts nicht mehr. Hol dir eine neue Adresse dafür.",
+      "existingChoices": "Gib diesem Link eine neue Adresse (die alte funktioniert dann nicht mehr) oder erstelle einen weiteren Link, z. B. für ein zweites Gerät.",
+      "another": "Weiteren Link erstellen",
+      "renew": "Neue Adresse",
+      "create": "Link erstellen",
+      "aggregateTip": "Tipp: Ein Link kann alle deine Kalender auf einmal zeigen.",
+      "allLinks": "Alle Feed-Links",
+      "cardTitle": "Kalender-Apps",
+      "cardDescription": "Sieh diesen Kalender in Apple Kalender, Google Kalender, Outlook oder einer anderen App."
+    },
+    "errors": {
+      "limit": "Du hast die maximale Zahl an Feed-Links erreicht. Widerrufe einen, den du nicht mehr brauchst."
+    }
+  },
+  "shareLinks": {
+    "title": "Freigabelinks",
+    "description": "Wer so einen Link hat, kann diesen Kalender in einer Kalender-App abonnieren – ohne Konto.",
+    "empty": "Keine Freigabelinks.",
+    "verifyFirst": "Bestätige deine E-Mail-Adresse, um Freigabelinks zu erstellen.",
+    "frozenHint": "Eingefroren: Freigabelinks können widerrufen, aber nicht erstellt werden.",
+    "levels": {
+      "free_busy": {
+        "label": "Nur belegte Zeiten",
+        "hint": "Zeigt, wann der Kalender belegt ist (mit Ersatztiteln, wo gesetzt), ohne Titel oder Details."
+      },
+      "read": {
+        "label": "Termine mit Details",
+        "hint": "Zeigt Termine mit Titeln und Details, außer Terminen, deren eigene Berechtigungen sie vor Leuten mit dem Link verbergen."
+      }
+    },
+    "list": {
+      "expires": "läuft am {when} ab",
+      "expired": "am {when} abgelaufen",
+      "noExpiry": "läuft nie ab"
+    },
+    "create": {
+      "action": "Neuer Freigabelink",
+      "title": "Neuer Freigabelink",
+      "description": "Der Link funktioniert ohne Anmeldung. Seine Adresse siehst du nur einmal.",
+      "level": "Zeigt",
+      "label": "Bezeichnung",
+      "labelHint": "Optional, z. B. wo du ihn veröffentlichst.",
+      "expiry": "Läuft ab",
+      "never": "Nie",
+      "days": "Nach einem Tag | Nach {n} Tagen",
+      "submit": "Link erstellen",
+      "createdTitle": "Dein Freigabelink"
+    },
+    "revoke": {
+      "action": "Widerrufen",
+      "actionFor": "{name} widerrufen",
+      "title": "{name} widerrufen?",
+      "text": "Die Adresse funktioniert sofort nicht mehr.",
+      "done": "{name} widerrufen."
+    },
+    "errors": {
+      "limit": "Dieser Kalender hat die maximale Zahl an Freigabelinks. Widerrufe zuerst einen."
+    }
+  },
+  "eventLink": {
+    "title": "Termin",
+    "opening": "Termin wird geöffnet …",
+    "goneTitle": "Termin nicht verfügbar",
+    "goneText": "Vielleicht wurde er gelöscht oder du hast keinen Zugriff mehr darauf.",
+    "toCalendar": "Zum Kalender"
   },
   "help": {
     "calendarApps": {

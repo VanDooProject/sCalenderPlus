@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Check, Palette, Settings } from '@lucide/vue'
+import { CalendarPlus, Check, Palette, Settings } from '@lucide/vue'
 import { UiMenu, UiMenuItem, UiMenuSeparator } from '@scalenderplus/ui'
 import {
   useCalendarLayers,
@@ -9,6 +10,7 @@ import {
   useUpdateCalendarPrefs,
   type CalendarLayer,
 } from '@/composables/calendars'
+import SubscribeCalendarDialog from '@/components/feeds/SubscribeCalendarDialog.vue'
 import { calendarPalette, sharedColor } from '@/lib/calendarColors'
 
 const { t } = useI18n()
@@ -19,6 +21,14 @@ function openSettings(layer: CalendarLayer) {
   emit('navigate')
   void router.push({ name: 'calendar-settings', params: { calendarId: layer.calendar.id } })
 }
+/** "Subscribe in calendar app" of one calendar (a personal feed link). */
+const subscribeOpen = ref(false)
+const subscribeTarget = ref<{ id: string; name: string } | null>(null)
+function openSubscribe(layer: CalendarLayer) {
+  subscribeTarget.value = { id: layer.calendar.id, name: layer.calendar.name }
+  subscribeOpen.value = true
+}
+
 const { calendars, layers } = useCalendarLayers()
 const update = useUpdateCalendarPrefs()
 const sharedWithMe = useSharedWithMe()
@@ -122,6 +132,13 @@ function setColor(layer: CalendarLayer, color: string | null) {
             <Settings class="size-3" aria-hidden="true" />
             <span class="flex-1">{{ t('calendar.settings') }}</span>
           </UiMenuItem>
+          <UiMenuItem
+            :data-testid="`calendar-subscribe-${layer.calendar.id}`"
+            @select="openSubscribe(layer)"
+          >
+            <CalendarPlus class="size-3" aria-hidden="true" />
+            <span class="flex-1">{{ t('feeds.subscribe.action') }}</span>
+          </UiMenuItem>
           <UiMenuSeparator />
           <UiMenuItem @select="setColor(layer, null)">
             <svg viewBox="0 0 12 12" class="size-3" aria-hidden="true">
@@ -184,4 +201,10 @@ function setColor(layer: CalendarLayer, color: string | null) {
       </li>
     </ul>
   </template>
+  <SubscribeCalendarDialog
+    v-if="subscribeTarget"
+    v-model:open="subscribeOpen"
+    :calendar-id="subscribeTarget.id"
+    :calendar-name="subscribeTarget.name"
+  />
 </template>
