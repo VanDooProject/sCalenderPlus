@@ -1,0 +1,23 @@
+# Coolify resource for the landing page (docs/deployment/coolify.md §13): a separate Docker Compose
+# resource next to the sCalenderPlus stack, so marketing changes never redeploy the app. Published images
+# only; the site settings (URLs, contact) are baked in at build time (build-images.yml, repository
+# variables LANDING_* / POLY_LANDING_*). Domain: `https://www.example.com:8080` on the `landing` service.
+services:
+  landing:
+    image: ${IMAGE_PREFIX:-ghcr.io/vandooproject}/${LANDING_IMAGE:-scalenderplus-landing}:${IMAGE_TAG:-main}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /data:uid=10001,gid=10001
+      - /config:uid=10001,gid=10001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
