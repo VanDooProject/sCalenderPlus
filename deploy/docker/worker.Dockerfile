@@ -3,7 +3,7 @@
 # Framework-dependent, RID-neutral publish (no apphost): the build stage runs natively on the build
 # platform and the output runs on any target architecture of the runtime image (linux/amd64, linux/arm64).
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 ENV DOTNET_NOLOGO=true DOTNET_CLI_TELEMETRY_OPTOUT=true
 
